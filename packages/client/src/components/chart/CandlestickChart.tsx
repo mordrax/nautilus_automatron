@@ -1,12 +1,14 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState, useCallback } from 'react'
 import * as echarts from 'echarts'
 import { CHART_COLORS } from '@/lib/chart-config'
-import { buildTradeMarkLines, formatDatetime } from '@/lib/trade-utils'
+import { buildTradeMarkLines, formatTradeTooltip, formatDatetime } from '@/lib/trade-utils'
 import type { OhlcData, Trade } from '@/types/api'
 
 type CandlestickChartProps = {
   readonly ohlc: OhlcData
   readonly trades: readonly Trade[]
+  readonly currentTradeIndex: number
+  readonly onSelectTrade: (index: number) => void
   readonly onChartReady?: (chart: echarts.ECharts) => void
 }
 
@@ -70,6 +72,9 @@ const buildOption = (ohlc: OhlcData, trades: readonly Trade[]): Record<string, a
             position: 'end',
             fontSize: 10,
           },
+          emphasis: {
+            lineStyle: { width: 4 },
+          },
           lineStyle: {
             type: 'solid',
             width: 2,
@@ -82,19 +87,87 @@ const buildOption = (ohlc: OhlcData, trades: readonly Trade[]): Record<string, a
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
-export const CandlestickChart = ({ ohlc, trades, onChartReady }: CandlestickChartProps) => {
-  const containerRef = useRef<HTMLDivElement>(null)
+type TooltipPosition = { readonly x: number; readonly y: number }
+
+const TradeTooltip = ({ trade }: { readonly trade: Trade | undefined }) => {
+  const [pos, setPos] = useState<TooltipPosition>({ x: 10, y: 10 })
+  const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null)
+
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    dragRef.current = { startX: e.clientX, startY: e.clientY, origX: pos.x, origY: pos.y }
+
+    const onMouseMove = (ev: MouseEvent) => {
+      if (!dragRef.current) return
+      setPos({
+        x: dragRef.current.origX + (ev.clientX - dragRef.current.startX),
+        y: dragRef.current.origY + (ev.clientY - dragRef.current.startY),
+      })
+    }
+
+    const onMouseUp = () => {
+      dragRef.current = null
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+    }
+
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
+  }, [pos])
+
+  if (!trade) return null
+  return (
+    <div
+      onMouseDown={onMouseDown}
+      style={{
+        position: 'absolute',
+        top: pos.y,
+        left: pos.x,
+        zIndex: 9999,
+        padding: '8px 12px',
+        background: 'rgba(0,0,0,0.85)',
+        color: '#fff',
+        borderRadius: 4,
+        fontSize: 13,
+        lineHeight: 1.6,
+        whiteSpace: 'nowrap',
+        cursor: 'grab',
+        userSelect: 'none',
+      }}
+      dangerouslySetInnerHTML={{ __html: formatTradeTooltip(trade) }}
+    />
+  )
+}
+
+export const CandlestickChart = ({
+  ohlc,
+  trades,
+  currentTradeIndex,
+  onSelectTrade,
+  onChartReady,
+}: CandlestickChartProps) => {
+  const chartDivRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<echarts.ECharts | null>(null)
+  const [selectTradeRef] = useState(() => ({ current: onSelectTrade }))
+  selectTradeRef.current = onSelectTrade
 
   useEffect(() => {
-    if (!containerRef.current) return
+    if (!chartDivRef.current) return
 
-    const chart = echarts.init(containerRef.current)
+    const chart = echarts.init(chartDivRef.current)
     chartRef.current = chart
     onChartReady?.(chart)
 
     const option = buildOption(ohlc, trades)
     chart.setOption(option)
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    chart.on('click', { componentType: 'markLine' }, (params: any) => {
+      const trade = params.data?.trade
+      if (!trade) return
+      const idx = trades.findIndex((t) => t.relative_id === trade.relative_id)
+      if (idx >= 0) selectTradeRef.current(idx)
+    })
 
     const handleResize = () => chart.resize()
     window.addEventListener('resize', handleResize)
@@ -106,5 +179,12 @@ export const CandlestickChart = ({ ohlc, trades, onChartReady }: CandlestickChar
     }
   }, [ohlc, trades, onChartReady])
 
-  return <div ref={containerRef} style={{ width: '100%', height: '600px' }} />
+  const currentTrade = trades[currentTradeIndex]
+
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '600px' }}>
+      <div ref={chartDivRef} style={{ width: '100%', height: '100%' }} />
+      <TradeTooltip trade={currentTrade} />
+    </div>
+  )
 }

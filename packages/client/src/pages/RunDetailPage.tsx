@@ -65,7 +65,13 @@ export const RunDetailPage = ({ runId }: RunDetailPageProps) => {
       <Card>
         <CardContent className="p-0">
           {ohlc && trades ? (
-            <CandlestickChart ohlc={ohlc} trades={trades} onChartReady={onChartReady} />
+            <CandlestickChart
+              ohlc={ohlc}
+              trades={trades}
+              currentTradeIndex={currentIndex}
+              onSelectTrade={selectTrade}
+              onChartReady={onChartReady}
+            />
           ) : (
             <div className="h-[600px] flex items-center justify-center text-muted-foreground">
               Loading chart data...
