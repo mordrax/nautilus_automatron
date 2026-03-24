@@ -274,6 +274,7 @@ export const CandlestickChart = ({
   const panelCount = indicators.filter(i => i.display === 'panel').length
   const chartHeight = 600 + panelCount * 150
 
+  // Init chart and bindClick on ohlc/trades change (destroys + recreates)
   useEffect(() => {
     if (!chartDivRef.current) return
 
@@ -300,7 +301,15 @@ export const CandlestickChart = ({
       chart.dispose()
       chartRef.current = null
     }
-  }, [ohlc, trades, indicators, onChartReady])
+  }, [ohlc, trades, onChartReady])
+
+  // Update indicators without destroying chart (preserves zoom/state)
+  useEffect(() => {
+    if (!chartRef.current) return
+    const option = buildOption(ohlc, trades, indicators)
+    chartRef.current.setOption(option, { replaceMerge: ['series', 'grid', 'xAxis', 'yAxis'] })
+    chartRef.current.resize()
+  }, [indicators])
 
   const currentTrade = trades[currentTradeIndex]
 
