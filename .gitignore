@@ -9,3 +9,4 @@ __pycache__/
 .DS_Store
 bun.lock
 .claude/settings.local.json
+.worktrees/
