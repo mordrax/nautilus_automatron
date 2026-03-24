@@ -9,6 +9,7 @@ export const buildTradeMarkLines = (trades: readonly Trade[]) =>
         color: trade.pnl > 0 ? CHART_COLORS.tradeWin : CHART_COLORS.tradeLoss,
       },
       name: `#${trade.relative_id}`,
+      trade,
     },
     {
       coord: [trade.exit_datetime, trade.exit_price],
@@ -28,6 +29,18 @@ export const formatDatetime = (iso: string): string => {
   const hours = d.getHours().toString().padStart(2, '0')
   const mins = d.getMinutes().toString().padStart(2, '0')
   return `${month}-${day} ${hours}:${mins}`
+}
+
+export const formatTradeTooltip = (trade: Trade): string => {
+  const pnlColor = trade.pnl >= 0 ? CHART_COLORS.tradeWin : CHART_COLORS.tradeLoss
+  return [
+    `<b>Trade #${trade.relative_id}</b>`,
+    `<b>Direction:</b> ${trade.direction}`,
+    `<b>Entry:</b> ${formatDatetime(trade.entry_datetime)} @ ${formatPrice(trade.entry_price)}`,
+    `<b>Exit:</b> ${formatDatetime(trade.exit_datetime)} @ ${formatPrice(trade.exit_price)}`,
+    `<b>Qty:</b> ${trade.quantity}`,
+    `<b>PnL:</b> <span style="color:${pnlColor}">${formatPnl(trade.pnl)} ${trade.currency}</span>`,
+  ].join('<br/>')
 }
 
 export const findBarIndex = (datetimes: readonly string[], target: string): number => {

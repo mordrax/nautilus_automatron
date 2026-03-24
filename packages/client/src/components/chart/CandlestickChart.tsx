@@ -1,7 +1,7 @@
 import { useRef, useEffect } from 'react'
 import * as echarts from 'echarts'
 import { CHART_COLORS } from '@/lib/chart-config'
-import { buildTradeMarkLines, formatDatetime } from '@/lib/trade-utils'
+import { buildTradeMarkLines, formatTradeTooltip, formatDatetime } from '@/lib/trade-utils'
 import type { OhlcData, Trade } from '@/types/api'
 
 type CandlestickChartProps = {
@@ -25,8 +25,13 @@ const buildOption = (ohlc: OhlcData, trades: readonly Trade[]): Record<string, a
   return {
     animation: false,
     tooltip: {
+      animation: false,
+      transitionDuration: 0,
       trigger: 'axis',
       axisPointer: { type: 'cross' },
+      position: (_pos: number[], _params: any, _el: any, _elRect: any, size: any) => {
+        return { top: -10, right: size.viewSize[0] - size.contentSize[0] - 10 }
+      },
     },
     grid: {
       left: '3%',
@@ -69,6 +74,26 @@ const buildOption = (ohlc: OhlcData, trades: readonly Trade[]): Record<string, a
             formatter: (params: any) => params.data?.name ?? '',
             position: 'end',
             fontSize: 10,
+          },
+          tooltip: {
+            animation: false,
+            transitionDuration: 0,
+            trigger: 'item',
+            position: (pos: number[], _params: any, _el: any, _elRect: any, size: any) => {
+              const chartMidX = size.viewSize[0] / 2
+              if (pos[0] > chartMidX) {
+                return { top: 10, left: 10 }
+              }
+              return { top: 10, right: 10 }
+            },
+            formatter: (params: any) => {
+              const trade = params.data?.trade
+              if (!trade) return params.data?.name ?? ''
+              return formatTradeTooltip(trade)
+            },
+          },
+          emphasis: {
+            lineStyle: { width: 4 },
           },
           lineStyle: {
             type: 'solid',
