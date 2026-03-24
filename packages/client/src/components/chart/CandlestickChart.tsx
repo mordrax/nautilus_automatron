@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect, useState, useCallback } from 'react'
 import * as echarts from 'echarts'
 import { CHART_COLORS } from '@/lib/chart-config'
 import { buildTradeMarkLines, formatTradeTooltip, formatDatetime } from '@/lib/trade-utils'
@@ -87,15 +87,42 @@ const buildOption = (ohlc: OhlcData, trades: readonly Trade[]): Record<string, a
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
+type TooltipPosition = { readonly x: number; readonly y: number }
+
 const TradeTooltip = ({ trade }: { readonly trade: Trade | undefined }) => {
+  const [pos, setPos] = useState<TooltipPosition>({ x: 10, y: 10 })
+  const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null)
+
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    dragRef.current = { startX: e.clientX, startY: e.clientY, origX: pos.x, origY: pos.y }
+
+    const onMouseMove = (ev: MouseEvent) => {
+      if (!dragRef.current) return
+      setPos({
+        x: dragRef.current.origX + (ev.clientX - dragRef.current.startX),
+        y: dragRef.current.origY + (ev.clientY - dragRef.current.startY),
+      })
+    }
+
+    const onMouseUp = () => {
+      dragRef.current = null
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+    }
+
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
+  }, [pos])
+
   if (!trade) return null
   return (
     <div
+      onMouseDown={onMouseDown}
       style={{
         position: 'absolute',
-        top: 10,
-        left: 10,
-        pointerEvents: 'none',
+        top: pos.y,
+        left: pos.x,
         zIndex: 9999,
         padding: '8px 12px',
         background: 'rgba(0,0,0,0.85)',
@@ -104,6 +131,8 @@ const TradeTooltip = ({ trade }: { readonly trade: Trade | undefined }) => {
         fontSize: 13,
         lineHeight: 1.6,
         whiteSpace: 'nowrap',
+        cursor: 'grab',
+        userSelect: 'none',
       }}
       dangerouslySetInnerHTML={{ __html: formatTradeTooltip(trade) }}
     />
