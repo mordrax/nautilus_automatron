@@ -1,0 +1,34 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from server.config import get_settings
+from server.routes.runs import router as runs_router
+from server.routes.bars import router as bars_router
+from server.routes.fills import router as fills_router
+from server.routes.positions import router as positions_router
+from server.routes.account import router as account_router
+
+
+def create_app() -> FastAPI:
+    settings = get_settings()
+
+    app = FastAPI(title="Nautilus Automatron")
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    app.include_router(runs_router, prefix="/api")
+    app.include_router(bars_router, prefix="/api")
+    app.include_router(fills_router, prefix="/api")
+    app.include_router(positions_router, prefix="/api")
+    app.include_router(account_router, prefix="/api")
+
+    return app
+
+
+app = create_app()

@@ -1,0 +1,14 @@
+{
+  "name": "nautilus-automatron",
+  "private": true,
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "dev": "concurrently \"bun run dev:client\" \"bun run dev:server\"",
+    "dev:client": "cd packages/client && bun run dev",
+    "dev:server": "cd packages/server && uvicorn server.main:app --reload --port 8000",
+    "build": "cd packages/client && bun run build"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
