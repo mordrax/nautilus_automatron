@@ -7,6 +7,7 @@ from server.routes.bars import router as bars_router
 from server.routes.fills import router as fills_router
 from server.routes.positions import router as positions_router
 from server.routes.account import router as account_router
+from server.routes.indicators import router as indicators_router
 
 
 def create_app() -> FastAPI:
@@ -27,6 +28,7 @@ def create_app() -> FastAPI:
     app.include_router(fills_router, prefix="/api")
     app.include_router(positions_router, prefix="/api")
     app.include_router(account_router, prefix="/api")
+    app.include_router(indicators_router, prefix="/api")
 
     return app
 

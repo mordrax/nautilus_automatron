@@ -81,3 +81,18 @@ export type Position = {
   readonly ts_closed: string
   readonly duration_ns: number
 }
+
+export type IndicatorMeta = {
+  readonly id: string
+  readonly label: string
+  readonly display: "overlay" | "panel"
+  readonly outputs: readonly string[]
+}
+
+export type IndicatorData = {
+  readonly id: string
+  readonly label: string
+  readonly display: "overlay" | "panel"
+  readonly outputs: Readonly<Record<string, readonly (number | null)[]>>
+  readonly datetime: readonly string[]
+}

@@ -1,19 +1,115 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import * as echarts from 'echarts'
-import { CHART_COLORS } from '@/lib/chart-config'
+import { CHART_COLORS, INDICATOR_COLORS } from '@/lib/chart-config'
 import { buildTradeMarkLines, formatTradeTooltip, formatDatetime } from '@/lib/trade-utils'
-import type { OhlcData, Trade } from '@/types/api'
+import type { OhlcData, Trade, IndicatorData } from '@/types/api'
 
 type CandlestickChartProps = {
   readonly ohlc: OhlcData
   readonly trades: readonly Trade[]
+  readonly indicators?: readonly IndicatorData[]
   readonly currentTradeIndex: number
   readonly onSelectTrade: (index: number) => void
   readonly onChartReady?: (chart: echarts.ECharts) => void
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const buildOption = (ohlc: OhlcData, trades: readonly Trade[]): Record<string, any> => {
+const buildIndicatorOverlaySeries = (
+  indicators: readonly IndicatorData[],
+  colorOffset: number,
+): any[] => {
+  const series: any[] = []
+  let colorIdx = colorOffset
+
+  for (const ind of indicators) {
+    if (ind.display !== 'overlay') continue
+    for (const field of Object.keys(ind.outputs)) {
+      const color = INDICATOR_COLORS[colorIdx % INDICATOR_COLORS.length]
+      colorIdx++
+      series.push({
+        name: Object.keys(ind.outputs).length > 1 ? `${ind.label} ${field}` : ind.label,
+        type: 'line',
+        data: ind.outputs[field],
+        smooth: false,
+        showSymbol: false,
+        lineStyle: { width: 1.5, color },
+        itemStyle: { color },
+        xAxisIndex: 0,
+        yAxisIndex: 0,
+      })
+    }
+  }
+
+  return series
+}
+
+const buildPanelConfig = (
+  indicators: readonly IndicatorData[],
+  colorOffset: number,
+) => {
+  const panelIndicators = indicators.filter(i => i.display === 'panel')
+  const grids: any[] = []
+  const xAxes: any[] = []
+  const yAxes: any[] = []
+  const series: any[] = []
+  let colorIdx = colorOffset
+
+  panelIndicators.forEach((ind, panelIdx) => {
+    const gridIdx = panelIdx + 1 // 0 is main chart
+    const panelCount = panelIndicators.length
+    const panelHeight = 100
+    const bottomOffset = (panelCount - panelIdx) * (panelHeight + 30)
+
+    grids.push({
+      left: '3%',
+      right: '3%',
+      height: `${panelHeight}px`,
+      bottom: `${bottomOffset}px`,
+    })
+
+    xAxes.push({
+      type: 'category',
+      gridIndex: gridIdx,
+      data: ind.datetime,
+      boundaryGap: false,
+      axisLabel: { show: false },
+      axisTick: { show: false },
+    })
+
+    yAxes.push({
+      scale: true,
+      gridIndex: gridIdx,
+      splitNumber: 3,
+      axisLabel: { fontSize: 10 },
+      name: ind.label,
+      nameTextStyle: { fontSize: 10, padding: [0, 40, 0, 0] },
+    })
+
+    for (const field of Object.keys(ind.outputs)) {
+      const color = INDICATOR_COLORS[colorIdx % INDICATOR_COLORS.length]
+      colorIdx++
+      series.push({
+        name: Object.keys(ind.outputs).length > 1 ? `${ind.label} ${field}` : ind.label,
+        type: 'line',
+        data: ind.outputs[field],
+        smooth: false,
+        showSymbol: false,
+        lineStyle: { width: 1.5, color },
+        itemStyle: { color },
+        xAxisIndex: gridIdx,
+        yAxisIndex: gridIdx,
+      })
+    }
+  })
+
+  return { grids, xAxes, yAxes, series, panelCount: panelIndicators.length }
+}
+
+const buildOption = (
+  ohlc: OhlcData,
+  trades: readonly Trade[],
+  indicators: readonly IndicatorData[],
+): Record<string, any> => {
   const categoryData = ohlc.datetime
   const ohlcValues = ohlc.open.map((_, i) => [
     ohlc.open[i],
@@ -24,33 +120,54 @@ const buildOption = (ohlc: OhlcData, trades: readonly Trade[]): Record<string, a
 
   const tradeMarkLines = buildTradeMarkLines(trades)
 
+  const overlaySeries = buildIndicatorOverlaySeries(indicators, 0)
+  const overlayColorCount = indicators
+    .filter(i => i.display === 'overlay')
+    .reduce((acc, ind) => acc + Object.keys(ind.outputs).length, 0)
+  const panels = buildPanelConfig(indicators, overlayColorCount)
+
+  const mainGridBottom = panels.panelCount > 0
+    ? `${panels.panelCount * 130 + 60}px`
+    : '15%'
+
+  const allXAxisIndices = [0, ...panels.xAxes.map((_: any, i: number) => i + 1)]
+
   return {
     animation: false,
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'cross' },
     },
-    grid: {
-      left: '3%',
-      right: '3%',
-      top: '5%',
-      bottom: '15%',
-    },
-    xAxis: {
-      type: 'category',
-      data: categoryData,
-      boundaryGap: false,
-      axisLabel: {
-        formatter: (value: string) => formatDatetime(value),
+    grid: [
+      {
+        left: '3%',
+        right: '3%',
+        top: '5%',
+        bottom: mainGridBottom,
       },
-    },
-    yAxis: {
-      scale: true,
-      splitArea: { show: true },
-    },
+      ...panels.grids,
+    ],
+    xAxis: [
+      {
+        type: 'category',
+        data: categoryData,
+        boundaryGap: false,
+        axisLabel: {
+          formatter: (value: string) => formatDatetime(value),
+        },
+      },
+      ...panels.xAxes,
+    ],
+    yAxis: [
+      {
+        scale: true,
+        splitArea: { show: true },
+      },
+      ...panels.yAxes,
+    ],
     dataZoom: [
-      { type: 'inside', start: 0, end: 100 },
-      { type: 'slider', start: 0, end: 100, bottom: '2%' },
+      { type: 'inside', start: 0, end: 100, xAxisIndex: allXAxisIndices },
+      { type: 'slider', start: 0, end: 100, bottom: '2%', xAxisIndex: allXAxisIndices },
     ],
     series: [
       {
@@ -82,6 +199,8 @@ const buildOption = (ohlc: OhlcData, trades: readonly Trade[]): Record<string, a
           data: tradeMarkLines,
         },
       },
+      ...overlaySeries,
+      ...panels.series,
     ],
   }
 }
@@ -142,6 +261,7 @@ const TradeTooltip = ({ trade }: { readonly trade: Trade | undefined }) => {
 export const CandlestickChart = ({
   ohlc,
   trades,
+  indicators = [],
   currentTradeIndex,
   onSelectTrade,
   onChartReady,
@@ -151,6 +271,9 @@ export const CandlestickChart = ({
   const [selectTradeRef] = useState(() => ({ current: onSelectTrade }))
   selectTradeRef.current = onSelectTrade
 
+  const panelCount = indicators.filter(i => i.display === 'panel').length
+  const chartHeight = 600 + panelCount * 150
+
   useEffect(() => {
     if (!chartDivRef.current) return
 
@@ -158,7 +281,7 @@ export const CandlestickChart = ({
     chartRef.current = chart
     onChartReady?.(chart)
 
-    const option = buildOption(ohlc, trades)
+    const option = buildOption(ohlc, trades, indicators)
     chart.setOption(option)
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -177,12 +300,12 @@ export const CandlestickChart = ({
       chart.dispose()
       chartRef.current = null
     }
-  }, [ohlc, trades, onChartReady])
+  }, [ohlc, trades, indicators, onChartReady])
 
   const currentTrade = trades[currentTradeIndex]
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '600px' }}>
+    <div style={{ position: 'relative', width: '100%', height: `${chartHeight}px` }}>
       <div ref={chartDivRef} style={{ width: '100%', height: '100%' }} />
       <TradeTooltip trade={currentTrade} />
     </div>
