@@ -7,6 +7,8 @@ import type { OhlcData, Trade } from '@/types/api'
 type CandlestickChartProps = {
   readonly ohlc: OhlcData
   readonly trades: readonly Trade[]
+  readonly currentTradeIndex: number
+  readonly onSelectTrade: (index: number) => void
   readonly onChartReady?: (chart: echarts.ECharts) => void
 }
 
@@ -75,23 +77,6 @@ const buildOption = (ohlc: OhlcData, trades: readonly Trade[]): Record<string, a
             position: 'end',
             fontSize: 10,
           },
-          tooltip: {
-            animation: false,
-            transitionDuration: 0,
-            trigger: 'item',
-            position: (pos: number[], _params: any, _el: any, _elRect: any, size: any) => {
-              const chartMidX = size.viewSize[0] / 2
-              if (pos[0] > chartMidX) {
-                return { top: 10, left: 10 }
-              }
-              return { top: 10, right: 10 }
-            },
-            formatter: (params: any) => {
-              const trade = params.data?.trade
-              if (!trade) return params.data?.name ?? ''
-              return formatTradeTooltip(trade)
-            },
-          },
           emphasis: {
             lineStyle: { width: 4 },
           },
@@ -107,10 +92,48 @@ const buildOption = (ohlc: OhlcData, trades: readonly Trade[]): Record<string, a
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
-export const CandlestickChart = ({ ohlc, trades, onChartReady }: CandlestickChartProps) => {
+const TOOLTIP_STYLE = [
+  'position:absolute',
+  'pointer-events:none',
+  'z-index:9999',
+  'padding:8px 12px',
+  'background:rgba(0,0,0,0.85)',
+  'color:#fff',
+  'border-radius:4px',
+  'font-size:13px',
+  'line-height:1.6',
+  'white-space:nowrap',
+].join(';')
+
+const updateTradeTooltip = (
+  el: HTMLDivElement,
+  trade: Trade | undefined,
+) => {
+  if (!trade) {
+    el.style.display = 'none'
+    return
+  }
+  el.innerHTML = formatTradeTooltip(trade)
+  el.style.display = 'block'
+  // Position: if tooltip is wider than half the container, pin left; otherwise pin right
+  // We always show top-left for now, the OHLC tooltip is top-right
+  el.style.top = '10px'
+  el.style.left = '10px'
+  el.style.right = ''
+}
+
+export const CandlestickChart = ({
+  ohlc,
+  trades,
+  currentTradeIndex,
+  onSelectTrade,
+  onChartReady,
+}: CandlestickChartProps) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<echarts.ECharts | null>(null)
+  const tooltipRef = useRef<HTMLDivElement | null>(null)
 
+  // Build chart once
   useEffect(() => {
     if (!containerRef.current) return
 
@@ -121,15 +144,43 @@ export const CandlestickChart = ({ ohlc, trades, onChartReady }: CandlestickChar
     const option = buildOption(ohlc, trades)
     chart.setOption(option)
 
+    // Create persistent trade tooltip element
+    const tooltipEl = document.createElement('div')
+    tooltipEl.style.cssText = TOOLTIP_STYLE
+    containerRef.current.style.position = 'relative'
+    containerRef.current.appendChild(tooltipEl)
+    tooltipRef.current = tooltipEl
+
+    // Set initial content
+    updateTradeTooltip(tooltipEl, trades[currentTradeIndex])
+
+    // Click on markLine selects that trade
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    chart.on('click', { componentType: 'markLine' }, (params: any) => {
+      const trade = params.data?.trade
+      if (!trade) return
+      const idx = trades.findIndex((t) => t.relative_id === trade.relative_id)
+      if (idx >= 0) onSelectTrade(idx)
+    })
+
     const handleResize = () => chart.resize()
     window.addEventListener('resize', handleResize)
 
     return () => {
       window.removeEventListener('resize', handleResize)
+      tooltipEl.remove()
       chart.dispose()
       chartRef.current = null
+      tooltipRef.current = null
     }
-  }, [ohlc, trades, onChartReady])
+  }, [ohlc, trades, onChartReady, onSelectTrade])
+
+  // Update tooltip content when current trade changes
+  useEffect(() => {
+    if (!tooltipRef.current || !containerRef.current) return
+    const trade = trades[currentTradeIndex]
+    updateTradeTooltip(tooltipRef.current, trade)
+  }, [currentTradeIndex, trades])
 
   return <div ref={containerRef} style={{ width: '100%', height: '600px' }} />
 }
