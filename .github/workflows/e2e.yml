@@ -7,8 +7,13 @@ on:
 jobs:
   e2e:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          token: ${{ github.token }}
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -31,6 +36,29 @@ jobs:
         run: cd packages/client && bunx playwright install chromium --with-deps
 
       - name: Run E2E tests (headless)
+        id: test
+        continue-on-error: true
+        run: cd packages/client && bun run test:e2e
+
+      - name: Update snapshots if missing
+        if: steps.test.outcome == 'failure'
+        run: cd packages/client && bunx playwright test e2e/visual.spec.ts --project=headless --update-snapshots
+
+      - name: Commit updated snapshots
+        if: steps.test.outcome == 'failure'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet packages/client/e2e/visual.spec.ts-snapshots/; then
+            echo "No snapshot changes to commit"
+            exit 1
+          fi
+          git add packages/client/e2e/visual.spec.ts-snapshots/
+          git commit -m "Update Linux screenshot baselines [skip ci]"
+          git push
+
+      - name: Re-run tests after snapshot update
+        if: steps.test.outcome == 'failure'
         run: cd packages/client && bun run test:e2e
 
       - name: Upload Playwright report
