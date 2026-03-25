@@ -35,11 +35,12 @@ export const useTradeNavigation = (
     const entryIdx = findBarIndex(currentOhlc.datetime, trade.entry_datetime)
     const exitIdx = findBarIndex(currentOhlc.datetime, trade.exit_datetime)
 
-    // Zoom to 3x trade length, centered on the trade
+    // Zoom to 5x trade length, centered on the trade (min 50 bars)
     const tradeLen = Math.max(exitIdx - entryIdx, 1)
-    const padding = tradeLen // 1x on each side = 3x total
-    const startIdx = Math.max(0, entryIdx - padding)
-    const endIdx = Math.min(totalBars - 1, exitIdx + padding)
+    const viewLen = Math.max(tradeLen * 5, 50)
+    const padding = (viewLen - tradeLen) / 2
+    const startIdx = Math.max(0, Math.round(entryIdx - padding))
+    const endIdx = Math.min(totalBars - 1, Math.round(exitIdx + padding))
 
     const startPercent = (startIdx / totalBars) * 100
     const endPercent = (endIdx / totalBars) * 100
