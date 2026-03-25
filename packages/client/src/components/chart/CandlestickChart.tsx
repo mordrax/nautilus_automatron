@@ -309,7 +309,7 @@ export const CandlestickChart = ({
     const option = buildOption(ohlc, trades, indicators)
     chartRef.current.setOption(option, { replaceMerge: ['series', 'grid', 'xAxis', 'yAxis'] })
     chartRef.current.resize()
-  }, [indicators])
+  }, [ohlc, trades, indicators])
 
   const currentTrade = trades[currentTradeIndex]
 

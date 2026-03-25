@@ -82,7 +82,7 @@ INDICATOR_REGISTRY: dict[str, dict] = {
         "kwargs": {"fast_period": 12, "slow_period": 26},
         "outputs": ["value"],
         "display": "panel",
-        "label": "MACD(12,26,9)",
+        "label": "MACD(12,26)",
         "update": "close",
     },
     "ATR_14": {

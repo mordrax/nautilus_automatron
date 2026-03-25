@@ -46,5 +46,10 @@ def get_indicators(
                 status_code=400,
                 detail=f"Unknown indicator: {indicator_id}",
             )
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error computing {indicator_id}: {str(e)}",
+            )
 
     return results
