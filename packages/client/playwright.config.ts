@@ -46,7 +46,7 @@ export default defineConfig({
       timeout: 30_000,
     },
     {
-      command: 'bun run dev',
+      command: 'VITE_PORT=5173 VITE_API_URL=http://localhost:8000 bun run dev',
       port: 5173,
       reuseExistingServer: true,
       timeout: 30_000,

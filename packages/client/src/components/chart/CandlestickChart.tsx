@@ -285,6 +285,10 @@ export const CandlestickChart = ({
     const option = buildOption(ohlc, trades, indicators)
     chart.setOption(option)
 
+    // Expose chart for e2e testing
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(window as any).__ECHARTS_INSTANCE__ = chart
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     chart.on('click', { componentType: 'markLine' }, (params: any) => {
       const trade = params.data?.trade
