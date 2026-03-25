@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import type { Trade, OhlcData } from '@/types/api'
 import type * as echarts from 'echarts'
 import { findBarIndex } from '@/lib/trade-utils'
@@ -12,40 +12,53 @@ export const useTradeNavigation = (
 ) => {
   const [currentIndex, setCurrentIndex] = useState(0)
 
-  const centerOnTrade = useCallback(
-    (index: number) => {
-      if (!chartInstance || !ohlc || trades.length === 0) return
+  // Use refs to avoid stale closures in callbacks
+  const chartRef = useRef(chartInstance)
+  const ohlcRef = useRef(ohlc)
+  const tradesRef = useRef(trades)
 
-      const trade = trades[index]
-      if (!trade) return
+  useEffect(() => { chartRef.current = chartInstance }, [chartInstance])
+  useEffect(() => { ohlcRef.current = ohlc }, [ohlc])
+  useEffect(() => { tradesRef.current = trades }, [trades])
 
-      const entryIdx = findBarIndex(ohlc.datetime, trade.entry_datetime)
-      const exitIdx = findBarIndex(ohlc.datetime, trade.exit_datetime)
+  const centerOnTrade = useCallback((index: number) => {
+    const chart = chartRef.current
+    const currentOhlc = ohlcRef.current
+    const currentTrades = tradesRef.current
 
-      const totalBars = ohlc.datetime.length
-      const startIdx = Math.max(0, entryIdx - ZOOM_PADDING)
-      const endIdx = Math.min(totalBars - 1, exitIdx + ZOOM_PADDING)
+    if (!chart || !currentOhlc || currentTrades.length === 0) return
 
-      const startPercent = (startIdx / totalBars) * 100
-      const endPercent = (endIdx / totalBars) * 100
+    const trade = currentTrades[index]
+    if (!trade) return
 
-      chartInstance.dispatchAction({
-        type: 'dataZoom',
-        start: startPercent,
-        end: endPercent,
-      })
-    },
-    [chartInstance, ohlc, trades],
-  )
+    const entryIdx = findBarIndex(currentOhlc.datetime, trade.entry_datetime)
+    const exitIdx = findBarIndex(currentOhlc.datetime, trade.exit_datetime)
+
+    const totalBars = currentOhlc.datetime.length
+    const startIdx = Math.max(0, entryIdx - ZOOM_PADDING)
+    const endIdx = Math.min(totalBars - 1, exitIdx + ZOOM_PADDING)
+
+    const startPercent = (startIdx / totalBars) * 100
+    const endPercent = (endIdx / totalBars) * 100
+
+    chart.dispatchAction({
+      type: 'dataZoom',
+      start: startPercent,
+      end: endPercent,
+    })
+  }, [])
 
   const navigateTrade = useCallback(
     (direction: number) => {
-      if (trades.length === 0) return
-      const newIndex = ((currentIndex + direction) % trades.length + trades.length) % trades.length
-      setCurrentIndex(newIndex)
-      centerOnTrade(newIndex)
+      setCurrentIndex(prev => {
+        const len = tradesRef.current.length
+        if (len === 0) return prev
+        const newIndex = ((prev + direction) % len + len) % len
+        centerOnTrade(newIndex)
+        return newIndex
+      })
     },
-    [currentIndex, trades.length, centerOnTrade],
+    [centerOnTrade],
   )
 
   const selectTrade = useCallback(
