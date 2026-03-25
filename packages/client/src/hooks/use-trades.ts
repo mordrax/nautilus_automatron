@@ -31,20 +31,33 @@ export const useTradeNavigation = (
     const trade = currentTrades[index]
     if (!trade) return
 
+    const totalBars = currentOhlc.datetime.length
     const entryIdx = findBarIndex(currentOhlc.datetime, trade.entry_datetime)
     const exitIdx = findBarIndex(currentOhlc.datetime, trade.exit_datetime)
 
-    const totalBars = currentOhlc.datetime.length
-    const startIdx = Math.max(0, entryIdx - ZOOM_PADDING)
-    const endIdx = Math.min(totalBars - 1, exitIdx + ZOOM_PADDING)
+    const entryPercent = (entryIdx / totalBars) * 100
+    const exitPercent = (exitIdx / totalBars) * 100
 
-    const startPercent = (startIdx / totalBars) * 100
-    const endPercent = (endIdx / totalBars) * 100
+    // Get current zoom window
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const opts = chart.getOption() as any
+    const zoom = opts.dataZoom?.[0]
+    const viewStart = zoom?.start ?? 0
+    const viewEnd = zoom?.end ?? 100
+
+    // Only pan if trade is outside the current viewport
+    if (entryPercent >= viewStart && exitPercent <= viewEnd) return
+
+    // Keep the same zoom width, just shift to center the trade
+    const viewWidth = viewEnd - viewStart
+    const tradeMid = (entryPercent + exitPercent) / 2
+    const newStart = Math.max(0, tradeMid - viewWidth / 2)
+    const newEnd = Math.min(100, newStart + viewWidth)
 
     chart.dispatchAction({
       type: 'dataZoom',
-      start: startPercent,
-      end: endPercent,
+      start: newEnd === 100 ? 100 - viewWidth : newStart,
+      end: newEnd,
     })
   }, [])
 
