@@ -10,10 +10,17 @@ from server.routes.account import router as account_router
 from server.routes.indicators import router as indicators_router
 
 
+VERSION = "0.0.2"
+
+
 def create_app() -> FastAPI:
     settings = get_settings()
 
-    app = FastAPI(title="Nautilus Automatron")
+    app = FastAPI(title="Nautilus Automatron", version=VERSION)
+
+    @app.get("/api/version")
+    def get_version() -> dict[str, str]:
+        return {"version": VERSION}
 
     app.add_middleware(
         CORSMiddleware,

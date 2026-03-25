@@ -219,7 +219,7 @@ const TradeTooltip = ({ trade }: { readonly trade: Trade | undefined }) => {
     const onMouseMove = (ev: MouseEvent) => {
       if (!dragRef.current) return
       setPos({
-        x: dragRef.current.origX + (ev.clientX - dragRef.current.startX),
+        x: dragRef.current.origX - (ev.clientX - dragRef.current.startX),
         y: dragRef.current.origY + (ev.clientY - dragRef.current.startY),
       })
     }
@@ -241,7 +241,7 @@ const TradeTooltip = ({ trade }: { readonly trade: Trade | undefined }) => {
       style={{
         position: 'absolute',
         top: pos.y,
-        left: pos.x,
+        right: pos.x,
         zIndex: 9999,
         padding: '8px 12px',
         background: 'rgba(0,0,0,0.85)',

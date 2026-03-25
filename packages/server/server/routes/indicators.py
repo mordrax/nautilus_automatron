@@ -6,7 +6,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from server.config import get_settings
 from server.store import reader
-from server.store.indicators import compute_indicator, list_available_indicators
+from server.store.indicators import (
+    IndicatorMeta,
+    IndicatorResult,
+    compute_indicator,
+    list_available_indicators,
+)
 
 router = APIRouter()
 
@@ -16,7 +21,7 @@ def _store_path() -> Path:
 
 
 @router.get("/indicators")
-def get_available_indicators():
+def get_available_indicators() -> list[IndicatorMeta]:
     return list_available_indicators()
 
 
@@ -26,7 +31,7 @@ def get_indicators(
     bar_type: str,
     ids: str = Query(..., description="Comma-separated indicator IDs"),
     store_path: Path = Depends(_store_path),
-):
+) -> list[IndicatorResult]:
     raw_table = reader.read_bars_raw(store_path, run_id, bar_type)
     if raw_table is None:
         raise HTTPException(status_code=404, detail=f"No bar data for {bar_type}")

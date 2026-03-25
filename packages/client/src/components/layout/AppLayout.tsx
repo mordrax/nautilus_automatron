@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Link, useLocation } from 'wouter'
 import { cn } from '@/lib/utils'
+import { getVersion, runEffect } from '@/lib/api'
 
 type NavItem = { readonly href: string; readonly label: string }
 
@@ -27,20 +29,27 @@ const NavLink = ({ href, label }: NavItem) => {
   )
 }
 
-export const AppLayout = ({ children }: { readonly children: ReactNode }) => (
-  <div className="min-h-screen bg-background">
-    <header className="border-b border-border">
-      <div className="max-w-screen-2xl mx-auto px-6 py-3 flex items-center gap-6">
-        <Link href="/" className="text-lg font-bold text-foreground">
-          Nautilus Automatron
-        </Link>
-        <nav className="flex gap-1">
-          {NAV_ITEMS.map((item) => (
-            <NavLink key={item.href} {...item} />
-          ))}
-        </nav>
-      </div>
-    </header>
-    <main className="max-w-screen-2xl mx-auto px-6 py-6">{children}</main>
-  </div>
-)
+export const AppLayout = ({ children }: { readonly children: ReactNode }) => {
+  const { data: versionData } = useQuery({
+    queryKey: ['version'],
+    queryFn: () => runEffect(getVersion()),
+  })
+
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="border-b border-border">
+        <div className="max-w-screen-2xl mx-auto px-6 py-3 flex items-center gap-6">
+          <Link href="/" className="text-lg font-bold text-foreground">
+            Nautilus Automatron{versionData ? ` (${versionData.version})` : ''}
+          </Link>
+          <nav className="flex gap-1">
+            {NAV_ITEMS.map((item) => (
+              <NavLink key={item.href} {...item} />
+            ))}
+          </nav>
+        </div>
+      </header>
+      <main className="max-w-screen-2xl mx-auto px-6 py-6">{children}</main>
+    </div>
+  )
+}
