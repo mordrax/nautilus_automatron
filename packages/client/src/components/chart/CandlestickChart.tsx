@@ -314,7 +314,7 @@ export const CandlestickChart = ({
   const currentTrade = trades[currentTradeIndex]
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: `${chartHeight}px` }}>
+    <div data-testid="chart-container" style={{ position: 'relative', width: '100%', height: `${chartHeight}px` }}>
       <div ref={chartDivRef} style={{ width: '100%', height: '100%' }} />
       <TradeTooltip trade={currentTrade} />
     </div>

@@ -43,11 +43,6 @@ test.describe('Run Detail Page', () => {
     // Wait for the trades section heading to confirm data is loaded
     const tradesHeading = page.getByText(/Trades \(\d+\)/)
     await expect(tradesHeading).toBeVisible()
-    // The trades table is the second table on the page (first is the runs table during navigation)
-    // Locate it by finding the table near the "Trades" heading
-    const tradesSection = page.locator('text=Trades (').locator('..')
-    const tradesTable = tradesSection.locator('~ *').locator('table').first()
-    // Use page-level locators scoped after the heading
     await expect(page.getByRole('columnheader', { name: 'Direction' })).toBeVisible()
     await expect(page.getByRole('columnheader', { name: 'Entry Time' })).toBeVisible()
     await expect(page.getByRole('columnheader', { name: 'Exit Time' })).toBeVisible()

@@ -9,13 +9,13 @@ export default defineConfig({
   testDir: './e2e',
   timeout: 30_000,
   expect: { timeout: 10_000 },
-  fullyParallel: false,
+  fullyParallel: true,
   retries: 0,
   reporter: [['html', { open: 'never' }]],
 
   use: {
     baseURL: 'http://localhost:5173',
-    trace: 'on-first-retry',
+    trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
 
@@ -40,7 +40,7 @@ export default defineConfig({
 
   webServer: [
     {
-      command: `NAUTILUS_STORE_PATH=${testDataPath} cd ${path.resolve(__dirname, '../server')} && .venv/bin/python -m uvicorn server.main:app --port 8000`,
+      command: `cd ${path.resolve(__dirname, '../server')} && NAUTILUS_STORE_PATH=${testDataPath} .venv/bin/python -m uvicorn server.main:app --port 8000`,
       port: 8000,
       reuseExistingServer: true,
       timeout: 30_000,

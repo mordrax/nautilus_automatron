@@ -14,13 +14,13 @@ test.describe('Trade Navigation', () => {
 
   test('clicking Next advances to the next trade', async ({ page }) => {
     // Should start at Trade #1
-    await expect(page.getByText('1 / ')).toBeVisible()
+    await expect(page.getByText(/^1 \/ \d+$/)).toBeVisible()
 
     await page.getByRole('button', { name: /Next/ }).click()
 
     // Should now show Trade #2
     await expect(page.getByText(/Trade #2/).first()).toBeVisible()
-    await expect(page.getByText('2 / ')).toBeVisible()
+    await expect(page.getByText(/^2 \/ \d+$/)).toBeVisible()
   })
 
   test('clicking Prev goes back to previous trade', async ({ page }) => {
@@ -31,7 +31,7 @@ test.describe('Trade Navigation', () => {
     // Click Prev — back to Trade #1
     await page.getByRole('button', { name: /Prev/ }).click()
     await expect(page.getByText(/Trade #1/).first()).toBeVisible()
-    await expect(page.getByText('1 / ')).toBeVisible()
+    await expect(page.getByText(/^1 \/ \d+$/)).toBeVisible()
   })
 
   test('clicking a trade in the table selects it', async ({ page }) => {
@@ -46,7 +46,7 @@ test.describe('Trade Navigation', () => {
 
     // Navigator should update to Trade #3
     await expect(page.getByText(/Trade #3/).first()).toBeVisible()
-    await expect(page.getByText('3 / ')).toBeVisible()
+    await expect(page.getByText(/^3 \/ \d+$/)).toBeVisible()
   })
 
   test('trade tooltip updates when trade changes', async ({ page }) => {

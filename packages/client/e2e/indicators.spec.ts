@@ -30,20 +30,19 @@ test.describe('Indicator Toggles', () => {
   })
 
   test('toggling RSI(14) increases chart height', async ({ page }) => {
-    // Get initial chart container height
-    const chartContainer = page.locator('[style*="height"]').first()
+    const chartContainer = page.getByTestId('chart-container')
     const initialBox = await chartContainer.boundingBox()
     expect(initialBox).not.toBeNull()
     const initialHeight = initialBox!.height
 
-    // Toggle RSI (first panel indicator — 7th checkbox: 6 overlays + 1st panel)
+    // Toggle RSI (first panel indicator)
     const rsiLabel = page.getByText('RSI(14)')
     await rsiLabel.click()
 
     // Wait for chart to re-render — the container should grow
     await page.waitForFunction(
       (prevHeight) => {
-        const el = document.querySelector('[style*="height"]')
+        const el = document.querySelector('[data-testid="chart-container"]')
         return el && el.getBoundingClientRect().height > prevHeight
       },
       initialHeight,
