@@ -54,11 +54,14 @@ const buildPanelConfig = (
   const series: any[] = []
   let colorIdx = colorOffset
 
+  const dataZoomHeight = 40 // space for the slider at the bottom
+  const panelHeight = 100
+  const panelGap = 30 // gap between panels
+
   panelIndicators.forEach((ind, panelIdx) => {
     const gridIdx = panelIdx + 1 // 0 is main chart
     const panelCount = panelIndicators.length
-    const panelHeight = 100
-    const bottomOffset = (panelCount - panelIdx) * (panelHeight + 30)
+    const bottomOffset = dataZoomHeight + (panelCount - 1 - panelIdx) * (panelHeight + panelGap)
 
     grids.push({
       left: '3%',
@@ -67,13 +70,16 @@ const buildPanelConfig = (
       bottom: `${bottomOffset}px`,
     })
 
+    const isBottomPanel = panelIdx === panelIndicators.length - 1
     xAxes.push({
       type: 'category',
       gridIndex: gridIdx,
       data: ind.datetime,
       boundaryGap: false,
-      axisLabel: { show: false },
-      axisTick: { show: false },
+      axisLabel: isBottomPanel
+        ? { formatter: (value: string) => formatDatetime(value), fontSize: 10 }
+        : { show: false },
+      axisTick: { show: isBottomPanel },
     })
 
     yAxes.push({
@@ -127,7 +133,7 @@ const buildOption = (
   const panels = buildPanelConfig(indicators, overlayColorCount)
 
   const mainGridBottom = panels.panelCount > 0
-    ? `${panels.panelCount * 130 + 60}px`
+    ? `${40 + panels.panelCount * 130 + 40}px`
     : '15%'
 
   const allXAxisIndices = [0, ...panels.xAxes.map((_: any, i: number) => i + 1)]
@@ -152,9 +158,10 @@ const buildOption = (
         type: 'category',
         data: categoryData,
         boundaryGap: false,
-        axisLabel: {
-          formatter: (value: string) => formatDatetime(value),
-        },
+        axisLabel: panels.panelCount > 0
+          ? { show: false }
+          : { formatter: (value: string) => formatDatetime(value) },
+        axisTick: { show: panels.panelCount === 0 },
       },
       ...panels.xAxes,
     ],

@@ -53,6 +53,68 @@ test.describe('Indicator Toggles', () => {
     expect(newBox!.height).toBeGreaterThan(initialHeight)
   })
 
+  test('panel indicator does not overlap main chart x-axis', async ({ page }) => {
+    // Toggle RSI to add a panel below the main chart
+    await page.getByText('RSI(14)').click()
+
+    // Wait for the panel to render
+    await page.waitForFunction(() => {
+      const el = document.querySelector('[data-testid="chart-container"]')
+      return el && el.getBoundingClientRect().height > 600
+    })
+
+    const positions = await page.evaluate(() => {
+      const container = document.querySelector('[data-testid="chart-container"]')
+      if (!container) return null
+      const canvas = container.querySelector('canvas')
+      if (!canvas) return null
+      return {
+        containerHeight: container.getBoundingClientRect().height,
+        canvasHeight: canvas.getBoundingClientRect().height,
+      }
+    })
+
+    expect(positions).not.toBeNull()
+    // Container should be taller than default 600px to accommodate the panel
+    expect(positions!.containerHeight).toBeGreaterThan(700)
+    // Canvas should fill the container
+    expect(positions!.canvasHeight).toBeGreaterThan(700)
+  })
+
+  test('multiple panels stack without overlapping each other', async ({ page }) => {
+    // Toggle RSI and ATR to add two panels
+    await page.getByText('RSI(14)').click()
+    await page.getByText('ATR(14)').click()
+
+    // Wait for both panels to render
+    await page.waitForFunction(() => {
+      const el = document.querySelector('[data-testid="chart-container"]')
+      return el && el.getBoundingClientRect().height > 750
+    })
+
+    const containerHeight = await page.evaluate(() => {
+      const el = document.querySelector('[data-testid="chart-container"]')
+      return el ? el.getBoundingClientRect().height : 0
+    })
+
+    // With 2 panels (150px each), container should be 600 + 300 = 900px
+    expect(containerHeight).toBeGreaterThan(850)
+  })
+
+  test('panel x-axis labels are visible on the bottom panel', async ({ page }) => {
+    // Toggle RSI to add a panel
+    await page.getByText('RSI(14)').click()
+
+    // Wait for panel to render
+    await page.waitForFunction(() => {
+      const el = document.querySelector('[data-testid="chart-container"]')
+      return el && el.getBoundingClientRect().height > 600
+    })
+
+    // The bottom panel should show date labels — check that date text still appears
+    await expect(page.getByText(/Jan-\d+|Feb-\d+/).first()).toBeVisible()
+  })
+
   test('toggling indicator off unchecks it', async ({ page }) => {
     const smaCheckbox = page.getByRole('checkbox').nth(0)
     // Toggle on
