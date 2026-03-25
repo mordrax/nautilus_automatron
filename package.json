@@ -6,7 +6,9 @@
     "dev": "concurrently \"bun run dev:client\" \"bun run dev:server\"",
     "dev:client": "cd packages/client && bun run dev",
     "dev:server": "cd packages/server && uvicorn server.main:app --reload --port 8000",
-    "build": "cd packages/client && bun run build"
+    "build": "cd packages/client && bun run build",
+    "test:e2e": "cd packages/client && bun run test:e2e",
+    "test:e2e:headed": "cd packages/client && bun run test:e2e:headed"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"
