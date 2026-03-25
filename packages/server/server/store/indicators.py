@@ -6,7 +6,7 @@ strategies for type-safe integration with NautilusTrader indicators.
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Callable, Literal, Protocol
+from typing import Callable, Literal, Protocol
 
 from nautilus_trader.indicators import (
     AverageTrueRange,
@@ -38,7 +38,10 @@ class IndicatorProto(Protocol):
 # Typed update strategies (replace string dispatch)
 # ---------------------------------------------------------------------------
 
-UpdateFn = Callable[[Any, Bar], None]
+# Using IndicatorProto here rather than Any so the update callable contract
+# is fully typed. Cython indicator classes satisfy this Protocol structurally
+# at runtime, even though static analysers may not verify it.
+UpdateFn = Callable[[IndicatorProto, Bar], None]
 
 
 def update_close(indicator: IndicatorProto, bar: Bar) -> None:
@@ -62,7 +65,9 @@ Display = Literal["overlay", "panel"]
 
 @dataclass(frozen=True)
 class IndicatorConfig:
-    indicator_class: type
+    # Cython indicator classes satisfy IndicatorProto structurally at runtime
+    # but static analysers cannot verify Cython .pxd declarations.
+    indicator_class: type[IndicatorProto]
     params: tuple[int | float, ...]
     outputs: tuple[str, ...]
     display: Display

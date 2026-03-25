@@ -1,5 +1,5 @@
 import { Effect, pipe } from 'effect'
-import type { RunsResponse, RunDetail, Trade, OhlcData, EquityPoint, Position, IndicatorMeta, IndicatorData } from '@/types/api'
+import type { RunsResponse, RunDetail, Trade, OhlcData, EquityPoint, Position, IndicatorMeta, IndicatorResult } from '@/types/api'
 
 export type ApiError = {
   readonly _tag: 'ApiError'
@@ -49,8 +49,8 @@ export const getBarTypes = (runId: string) =>
 export const getIndicators = () =>
   fetchJson<readonly IndicatorMeta[]>('/api/indicators')
 
-export const getIndicatorData = (runId: string, barType: string, ids: readonly string[]) =>
-  fetchJson<readonly IndicatorData[]>(
+export const getIndicatorResult = (runId: string, barType: string, ids: readonly string[]) =>
+  fetchJson<readonly IndicatorResult[]>(
     `/api/runs/${runId}/bars/${encodeURIComponent(barType)}/indicators?ids=${ids.join(',')}`
   )
 

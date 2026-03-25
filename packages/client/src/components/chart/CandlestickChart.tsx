@@ -2,12 +2,12 @@ import { useRef, useEffect, useState, useCallback } from 'react'
 import * as echarts from 'echarts'
 import { CHART_COLORS, INDICATOR_COLORS } from '@/lib/chart-config'
 import { buildTradeMarkLines, formatTradeTooltip, formatDatetime } from '@/lib/trade-utils'
-import type { OhlcData, Trade, IndicatorData } from '@/types/api'
+import type { OhlcData, Trade, IndicatorResult } from '@/types/api'
 
 type CandlestickChartProps = {
   readonly ohlc: OhlcData
   readonly trades: readonly Trade[]
-  readonly indicators?: readonly IndicatorData[]
+  readonly indicators?: readonly IndicatorResult[]
   readonly currentTradeIndex: number
   readonly onSelectTrade: (index: number) => void
   readonly onChartReady?: (chart: echarts.ECharts) => void
@@ -15,7 +15,7 @@ type CandlestickChartProps = {
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const buildIndicatorOverlaySeries = (
-  indicators: readonly IndicatorData[],
+  indicators: readonly IndicatorResult[],
   colorOffset: number,
 ): any[] => {
   const series: any[] = []
@@ -44,7 +44,7 @@ const buildIndicatorOverlaySeries = (
 }
 
 const buildPanelConfig = (
-  indicators: readonly IndicatorData[],
+  indicators: readonly IndicatorResult[],
   colorOffset: number,
 ) => {
   const panelIndicators = indicators.filter(i => i.display === 'panel')
@@ -108,7 +108,7 @@ const buildPanelConfig = (
 const buildOption = (
   ohlc: OhlcData,
   trades: readonly Trade[],
-  indicators: readonly IndicatorData[],
+  indicators: readonly IndicatorResult[],
 ): Record<string, any> => {
   const categoryData = ohlc.datetime
   const ohlcValues = ohlc.open.map((_, i) => [
