@@ -35,7 +35,7 @@ export const AppLayout = ({ children }: { readonly children: ReactNode }) => {
     queryFn: () => runEffect(getVersion()),
   })
 
-  const { isSuccess: backendUp } = useQuery({
+  const { isSuccess: backendUp, isError: backendDown, isFetching: pingLoading } = useQuery({
     queryKey: ['ping'],
     queryFn: () => runEffect(ping()),
     refetchInterval: 60_000,
@@ -50,9 +50,9 @@ export const AppLayout = ({ children }: { readonly children: ReactNode }) => {
             <span
               className={cn(
                 'inline-block h-2.5 w-2.5 rounded-full',
-                backendUp ? 'bg-green-500' : 'bg-red-500',
+                backendUp ? 'bg-green-500' : backendDown ? 'bg-red-500' : 'bg-gray-400',
               )}
-              title={backendUp ? 'Backend connected' : 'Backend unreachable'}
+              title={backendUp ? 'Backend connected' : backendDown ? 'Backend unreachable' : 'Checking...'}
             />
             <Link href="/" className="text-lg font-bold text-foreground">
               Nautilus Automatron{versionData ? ` (${versionData.version})` : ''}

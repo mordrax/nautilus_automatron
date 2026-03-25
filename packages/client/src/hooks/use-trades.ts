@@ -3,8 +3,6 @@ import type { Trade, OhlcData } from '@/types/api'
 import type * as echarts from 'echarts'
 import { findBarIndex } from '@/lib/trade-utils'
 
-const ZOOM_PADDING = 100
-
 export const useTradeNavigation = (
   trades: readonly Trade[],
   ohlc: OhlcData | undefined,
