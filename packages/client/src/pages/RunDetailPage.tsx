@@ -8,6 +8,46 @@ import { TradeNavigator } from '@/components/trades/TradeNavigator'
 import { useRunDetail, useTrades, useBars } from '@/hooks/use-run-detail'
 import { useTradeNavigation } from '@/hooks/use-trades'
 import { useHotkeys } from '@/hooks/use-hotkeys'
+import { useIndicators } from '@/hooks/use-indicators'
+import type { IndicatorMeta } from '@/types/api'
+
+type IndicatorTogglesProps = {
+  readonly indicators: readonly IndicatorMeta[]
+  readonly enabledIds: ReadonlySet<string>
+  readonly onToggle: (id: string) => void
+}
+
+const IndicatorToggles = ({ indicators, enabledIds, onToggle }: IndicatorTogglesProps) => {
+  const overlays = indicators.filter(i => i.display === 'overlay')
+  const panels = indicators.filter(i => i.display === 'panel')
+
+  const renderGroup = (label: string, items: readonly IndicatorMeta[]) =>
+    items.length > 0 && (
+      <div>
+        <h4 className="font-semibold mb-2 text-muted-foreground">{label}</h4>
+        <div className="space-y-1">
+          {items.map(ind => (
+            <label key={ind.id} className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={enabledIds.has(ind.id)}
+                onChange={() => onToggle(ind.id)}
+                className="rounded"
+              />
+              <span>{ind.label}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+    )
+
+  return (
+    <div className="space-y-4 text-sm">
+      {renderGroup('Overlays', overlays)}
+      {renderGroup('Panels', panels)}
+    </div>
+  )
+}
 
 type RunDetailPageProps = {
   readonly runId: string
@@ -38,6 +78,8 @@ export const RunDetailPage = ({ runId }: RunDetailPageProps) => {
     onNextTradeFast: useCallback(() => navigateTrade(50), [navigateTrade]),
   })
 
+  const { available, data: indicatorData, enabledIds, toggle } = useIndicators(runId, barType)
+
   if (!runDetail) return <div className="text-muted-foreground">Loading...</div>
 
   return (
@@ -61,24 +103,40 @@ export const RunDetailPage = ({ runId }: RunDetailPageProps) => {
         onNext={() => navigateTrade(1)}
       />
 
-      {/* Chart */}
-      <Card>
-        <CardContent className="p-0">
-          {ohlc && trades ? (
-            <CandlestickChart
-              ohlc={ohlc}
-              trades={trades}
-              currentTradeIndex={currentIndex}
-              onSelectTrade={selectTrade}
-              onChartReady={onChartReady}
+      {/* Chart + Indicator Panel */}
+      <div className="flex gap-4">
+        <Card className="flex-1">
+          <CardContent className="p-0">
+            {ohlc && trades ? (
+              <CandlestickChart
+                ohlc={ohlc}
+                trades={trades}
+                indicators={indicatorData}
+                currentTradeIndex={currentIndex}
+                onSelectTrade={selectTrade}
+                onChartReady={onChartReady}
+              />
+            ) : (
+              <div className="h-[600px] flex items-center justify-center text-muted-foreground">
+                Loading chart data...
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="w-52 shrink-0">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Indicators</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <IndicatorToggles
+              indicators={available}
+              enabledIds={enabledIds}
+              onToggle={toggle}
             />
-          ) : (
-            <div className="h-[600px] flex items-center justify-center text-muted-foreground">
-              Loading chart data...
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Hotkey hint */}
       <p className="text-xs text-muted-foreground">
