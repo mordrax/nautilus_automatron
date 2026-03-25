@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     model_config = {
         "env_prefix": "NAUTILUS_",
         "env_file": str(_ENV_FILE) if _ENV_FILE.exists() else None,
+        "extra": "ignore",
     }
 
 

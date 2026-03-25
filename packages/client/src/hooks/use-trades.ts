@@ -10,14 +10,13 @@ export const useTradeNavigation = (
 ) => {
   const [currentIndex, setCurrentIndex] = useState(0)
 
-  // Use refs to avoid stale closures in callbacks
+  // Sync refs on every render so callbacks always read latest values
   const chartRef = useRef(chartInstance)
+  chartRef.current = chartInstance
   const ohlcRef = useRef(ohlc)
+  ohlcRef.current = ohlc
   const tradesRef = useRef(trades)
-
-  useEffect(() => { chartRef.current = chartInstance }, [chartInstance])
-  useEffect(() => { ohlcRef.current = ohlc }, [ohlc])
-  useEffect(() => { tradesRef.current = trades }, [trades])
+  tradesRef.current = trades
 
   const centerOnTrade = useCallback((index: number) => {
     const chart = chartRef.current
