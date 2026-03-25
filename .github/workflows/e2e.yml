@@ -49,11 +49,11 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet packages/client/e2e/visual.spec.ts-snapshots/; then
+          git add packages/client/e2e/visual.spec.ts-snapshots/
+          if git diff --cached --quiet; then
             echo "No snapshot changes to commit"
             exit 1
           fi
-          git add packages/client/e2e/visual.spec.ts-snapshots/
           git commit -m "Update Linux screenshot baselines [skip ci]"
           git push
 
