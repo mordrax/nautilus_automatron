@@ -306,8 +306,8 @@ export const CandlestickChart = ({
   // Update indicators without destroying chart (preserves zoom/state)
   useEffect(() => {
     if (!chartRef.current) return
-    const option = buildOption(ohlc, trades, indicators)
-    chartRef.current.setOption(option, { replaceMerge: ['series', 'grid', 'xAxis', 'yAxis'] })
+    const { dataZoom: _, ...optionWithoutZoom } = buildOption(ohlc, trades, indicators)
+    chartRef.current.setOption(optionWithoutZoom, { replaceMerge: ['series', 'grid', 'xAxis', 'yAxis'] })
     chartRef.current.resize()
   }, [ohlc, trades, indicators])
 
