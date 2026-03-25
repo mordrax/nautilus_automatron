@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useLocation } from 'wouter'
 import { cn } from '@/lib/utils'
-import { getVersion, runEffect } from '@/lib/api'
+import { getVersion, ping, runEffect } from '@/lib/api'
 
 type NavItem = { readonly href: string; readonly label: string }
 
@@ -35,13 +35,29 @@ export const AppLayout = ({ children }: { readonly children: ReactNode }) => {
     queryFn: () => runEffect(getVersion()),
   })
 
+  const { isSuccess: backendUp } = useQuery({
+    queryKey: ['ping'],
+    queryFn: () => runEffect(ping()),
+    refetchInterval: 60_000,
+    retry: false,
+  })
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border">
         <div className="max-w-screen-2xl mx-auto px-6 py-3 flex items-center gap-6">
-          <Link href="/" className="text-lg font-bold text-foreground">
-            Nautilus Automatron{versionData ? ` (${versionData.version})` : ''}
-          </Link>
+          <div className="flex items-center gap-2">
+            <span
+              className={cn(
+                'inline-block h-2.5 w-2.5 rounded-full',
+                backendUp ? 'bg-green-500' : 'bg-red-500',
+              )}
+              title={backendUp ? 'Backend connected' : 'Backend unreachable'}
+            />
+            <Link href="/" className="text-lg font-bold text-foreground">
+              Nautilus Automatron{versionData ? ` (${versionData.version})` : ''}
+            </Link>
+          </div>
           <nav className="flex gap-1">
             {NAV_ITEMS.map((item) => (
               <NavLink key={item.href} {...item} />

@@ -25,6 +25,9 @@ const fetchJson = <T>(url: string): Effect.Effect<T, ApiError> =>
 export const getVersion = () =>
   fetchJson<{ readonly version: string }>('/api/version')
 
+export const ping = () =>
+  fetchJson<{ readonly status: string }>('/api/ping')
+
 export const getRuns = (page: number = 1) =>
   fetchJson<RunsResponse>(`/api/runs?page=${page}`)
 
