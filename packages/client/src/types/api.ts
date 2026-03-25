@@ -89,7 +89,7 @@ export type IndicatorMeta = {
   readonly outputs: readonly string[]
 }
 
-export type IndicatorData = {
+export type IndicatorResult = {
   readonly id: string
   readonly label: string
   readonly display: "overlay" | "panel"

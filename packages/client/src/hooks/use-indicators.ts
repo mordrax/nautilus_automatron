@@ -14,7 +14,7 @@ export const useIndicators = (runId: string, barType: string) => {
 
   const { data } = useQuery({
     queryKey: ['indicator-data', runId, barType, sortedIds],
-    queryFn: () => api.runEffect(api.getIndicatorData(runId, barType, sortedIds)),
+    queryFn: () => api.runEffect(api.getIndicatorResult(runId, barType, sortedIds)),
     enabled: !!runId && !!barType && sortedIds.length > 0,
   })
 
