@@ -110,3 +110,14 @@ def test_strategy_tracks_previous_bar_values():
     assert strategy._prev_high is None
     assert strategy._prev_low is None
     assert strategy._bars_since_entry == 0
+
+
+def test_strategy_breakout_config():
+    config = make_config(
+        signal_variant=BBBSignalVariant.BREAKOUT,
+        ma_trend_kind=MATrendKind.NORMAL,
+    )
+    strategy = BBBStrategy(config=config)
+    assert strategy.config.signal_variant == BBBSignalVariant.BREAKOUT
+    assert strategy.config.ma_trend_kind == MATrendKind.NORMAL
+    assert strategy._close_history == []

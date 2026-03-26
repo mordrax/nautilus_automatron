@@ -106,6 +106,7 @@ class BBBStrategy(Strategy):
         self._prev_low: float | None = None
         self._bars_since_entry: int = 0
         self._has_position: bool = False
+        self._close_history: list[float] = []
 
     def on_start(self) -> None:
         self.instrument = self.cache.instrument(self.config.instrument_id)
@@ -137,6 +138,8 @@ class BBBStrategy(Strategy):
         if self._prev_buy_price is not None:
             self._check_signals(buy_price, buy_band, sell_price, sell_band)
 
+        self._close_history.append(bar.close.as_double())
+
         self._prev_buy_price = buy_price
         self._prev_buy_band = buy_band
         self._prev_sell_price = sell_price
@@ -145,25 +148,70 @@ class BBBStrategy(Strategy):
         self._prev_high = bar.high.as_double()
         self._prev_low = bar.low.as_double()
 
+    def _get_ma_trend(self) -> "TrendDirection":
+        from runner.strategies.ma_trend import (
+            TrendDirection,
+            calculate_gradients,
+            get_trend_direction,
+            FAST_LOOKBACK,
+            NORMAL_LOOKBACK,
+            SLOW_LOOKBACK,
+            GRADIENT_THRESHOLD,
+        )
+
+        lookback_map = {
+            MATrendKind.IMMEDIATE: FAST_LOOKBACK,
+            MATrendKind.FAST: FAST_LOOKBACK,
+            MATrendKind.NORMAL: NORMAL_LOOKBACK,
+            MATrendKind.SLOW: SLOW_LOOKBACK,
+        }
+
+        if len(self._close_history) < 2:
+            return TrendDirection.FLAT
+
+        gradients = calculate_gradients(self._close_history)
+        bar = len(gradients) - 1
+        lookback = lookback_map[self.config.ma_trend_kind]
+
+        return get_trend_direction(gradients, bar, lookback, GRADIENT_THRESHOLD)
+
     def _check_signals(self, buy_price, buy_band, sell_price, sell_band) -> None:
         is_long = self.portfolio.is_net_long(self.config.instrument_id)
 
+        # Exit check first (always check, no frequency limit)
         if is_long:
             is_exit = (
                 self._prev_sell_price > self._prev_sell_band
                 and sell_price <= sell_band
             )
+
+            # Breakout mode: also exit on MA trend down
+            if self.config.signal_variant == BBBSignalVariant.BREAKOUT:
+                from runner.strategies.ma_trend import TrendDirection
+                ma_trend = self._get_ma_trend()
+                if ma_trend == TrendDirection.DOWN:
+                    is_exit = True
+
             if is_exit:
                 self.close_all_positions(self.config.instrument_id)
                 self._has_position = False
                 return
 
+        # Entry check (respects frequency delay)
         if not is_long:
             is_entry = (
                 self._prev_buy_price < self._prev_buy_band
                 and buy_price >= buy_band
             )
             frequency_ok = self._bars_since_entry >= self.config.frequency_bars
+
+            # Breakout mode: entry gated by MA trend up
+            if self.config.signal_variant == BBBSignalVariant.BREAKOUT:
+                from runner.strategies.ma_trend import TrendDirection
+                ma_trend = self._get_ma_trend()
+                if ma_trend != TrendDirection.UP:
+                    is_entry = False
+
             if is_entry and frequency_ok:
                 self._enter_long()
 
@@ -196,3 +244,4 @@ class BBBStrategy(Strategy):
         self._prev_low = None
         self._bars_since_entry = 0
         self._has_position = False
+        self._close_history = []
