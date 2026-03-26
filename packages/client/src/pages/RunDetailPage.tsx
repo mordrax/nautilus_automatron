@@ -6,9 +6,11 @@ import { Badge } from '@/components/ui/badge'
 import { CandlestickChart } from '@/components/chart/CandlestickChart'
 import { TradeTable } from '@/components/trades/TradeTable'
 import { TradeNavigator } from '@/components/trades/TradeNavigator'
+import { CategorisationTable } from '@/components/trades/CategorisationTable'
 import { useRunDetail, useTrades, useBars } from '@/hooks/use-run-detail'
 import { useTradeNavigation } from '@/hooks/use-trades'
 import { useHotkeys } from '@/hooks/use-hotkeys'
+import { useCategorisation } from '@/hooks/use-categorisation'
 import { useIndicators } from '@/hooks/use-indicators'
 import type { IndicatorMeta } from '@/types/api'
 
@@ -72,11 +74,19 @@ export const RunDetailPage = ({ runId }: RunDetailPageProps) => {
     chartInstance,
   )
 
+  const { categories, assignTrade, updateDescription } = useCategorisation()
+
   useHotkeys({
     onPrevTrade: useCallback(() => navigateTrade(-1), [navigateTrade]),
     onNextTrade: useCallback(() => navigateTrade(1), [navigateTrade]),
     onPrevTradeFast: useCallback(() => navigateTrade(-50), [navigateTrade]),
     onNextTradeFast: useCallback(() => navigateTrade(50), [navigateTrade]),
+    onCategoryAssign: useCallback(
+      (categoryId: number) => {
+        if (currentTrade) assignTrade(categoryId, currentTrade.relative_id)
+      },
+      [currentTrade, assignTrade],
+    ),
   })
 
   const { available, data: indicatorData, enabledIds, toggle } = useIndicators(runId, barType)
@@ -192,7 +202,20 @@ export const RunDetailPage = ({ runId }: RunDetailPageProps) => {
         </TabsContent>
 
         <TabsContent value="categorisation" className="min-h-[400px]">
-          <div className="flex items-center justify-center h-[400px] text-muted-foreground">Coming soon</div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Trade Categorisation</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CategorisationTable
+                categories={categories}
+                onUpdateDescription={updateDescription}
+              />
+              <p className="text-xs text-muted-foreground mt-4">
+                CapsLock + 1-7 to assign current trade to a category. Double-click a description to edit.
+              </p>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="trades-by-month" className="min-h-[400px]">
