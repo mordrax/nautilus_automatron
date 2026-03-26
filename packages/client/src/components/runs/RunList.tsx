@@ -1,7 +1,7 @@
 import { useRef, useEffect } from 'react'
 import { useLocation } from 'wouter'
 import { TabulatorFull as Tabulator } from 'tabulator-tables'
-import 'tabulator-tables/dist/css/tabulator_midnight.min.css'
+import 'tabulator-tables/dist/css/tabulator.min.css'
 import type { RunSummary } from '@/types/api'
 import { createRunColumns } from '@/lib/run-columns'
 

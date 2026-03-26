@@ -87,4 +87,28 @@ test.describe('Runs Page', () => {
     const count = await rows.count()
     expect(count).toBeGreaterThan(0)
   })
+
+  test('Total PnL numeric filter works with eval predicate', async ({ page }) => {
+    const tabulator = page.locator('.tabulator')
+    await expect(tabulator.locator('.tabulator-row').first()).toBeVisible()
+
+    const pnlCol = tabulator.locator('.tabulator-col', { hasText: 'Total' }).first()
+    const pnlFilter = pnlCol.locator('input')
+
+    // Test data has PnL of -2967.06, so >0 should hide all rows
+    await pnlFilter.click()
+    await pnlFilter.fill('>0')
+    await pnlFilter.press('Enter')
+    await expect(tabulator.locator('.tabulator-row')).toHaveCount(0)
+
+    // <0 should show the row back
+    await pnlFilter.fill('<0')
+    await pnlFilter.press('Enter')
+    await expect(tabulator.locator('.tabulator-row').first()).toBeVisible()
+
+    // Clear filter should show all rows again
+    await pnlFilter.fill('')
+    await pnlFilter.press('Enter')
+    await expect(tabulator.locator('.tabulator-row').first()).toBeVisible()
+  })
 })

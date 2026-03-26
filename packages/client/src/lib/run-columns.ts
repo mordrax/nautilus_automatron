@@ -51,46 +51,30 @@ const evalFilter = (cellValue: number, filter: string): boolean => {
   }
 }
 
-const numericHeaderFilterFunc = (
-  headerValue: string,
-  _rowValue: unknown,
-  rowData: unknown,
-  filterParams: { field: string }
-): boolean => {
+const numericFilterFn = (headerValue: string, rowValue: unknown): boolean => {
   const raw = String(headerValue).trim()
   if (!raw) return true
-
-  const rowVal = (rowData as Record<string, unknown>)[filterParams.field]
-  const num = typeof rowVal === 'number' ? rowVal : parseFloat(String(rowVal))
+  const num = typeof rowValue === 'number' ? rowValue : parseFloat(String(rowValue))
   if (isNaN(num)) return false
-
   return evalFilter(num, raw)
 }
 
-export const numericHeaderFilter = {
-  headerFilter: 'input' as const,
-  headerFilterFunc: numericHeaderFilterFunc,
-}
-
-const percentHeaderFilterFunc = (
-  headerValue: string,
-  _rowValue: unknown,
-  rowData: unknown,
-  filterParams: { field: string }
-): boolean => {
+const percentFilterFn = (headerValue: string, rowValue: unknown): boolean => {
   const raw = String(headerValue).trim()
   if (!raw) return true
-
-  const rowVal = (rowData as Record<string, unknown>)[filterParams.field]
-  const num = typeof rowVal === 'number' ? rowVal : parseFloat(String(rowVal))
+  const num = typeof rowValue === 'number' ? rowValue : parseFloat(String(rowValue))
   if (isNaN(num)) return false
-
   return evalFilter(num * 100, raw)
 }
 
+export const numericHeaderFilter = {
+  headerFilter: true as const,
+  headerFilterFunc: numericFilterFn,
+}
+
 const percentHeaderFilter = {
-  headerFilter: 'input' as const,
-  headerFilterFunc: percentHeaderFilterFunc,
+  headerFilter: true as const,
+  headerFilterFunc: percentFilterFn,
 }
 
 const stringHeaderFilterFunc = (
@@ -102,7 +86,7 @@ const stringHeaderFilterFunc = (
 }
 
 export const stringHeaderFilter = {
-  headerFilter: 'input' as const,
+  headerFilter: true as const,
   headerFilterFunc: stringHeaderFilterFunc,
 }
 
