@@ -9,8 +9,8 @@ export const RunsPage = () => {
   if (!data) return null
 
   return (
-    <div className="p-4">
-      <h2 className="text-xl font-semibold mb-4">Backtest Runs ({data.total})</h2>
+    <div className="px-2 py-4">
+      <h2 className="text-xl font-semibold mb-4 px-2">Backtest Runs ({data.total})</h2>
       <RunList runs={data.runs} />
     </div>
   )

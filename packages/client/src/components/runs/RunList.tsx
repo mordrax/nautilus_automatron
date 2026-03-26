@@ -24,7 +24,7 @@ export const RunList = ({ runs }: RunListProps) => {
     const table = new Tabulator(tableRef.current, {
       data: runs as RunSummary[],
       columns,
-      layout: 'fitData',
+      layout: 'fitColumns',
       height: '80vh',
       initialSort: [{ column: 'total_pnl', dir: 'desc' }],
       pagination: true,

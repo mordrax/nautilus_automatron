@@ -86,6 +86,19 @@ export const stringHeaderFilter = {
 
 export const createRunColumns = (onViewRun: (runId: string) => void): ColumnDefinition[] => [
   {
+    title: '',
+    field: 'run_id',
+    headerSort: false,
+    headerFilter: undefined,
+    hozAlign: 'center',
+    width: 60,
+    frozen: true,
+    formatter: (): string => '<button>View</button>',
+    cellClick: (_e: UIEvent, cell: CellComponent) => {
+      onViewRun(cell.getValue() as string)
+    },
+  },
+  {
     title: 'Run ID',
     field: 'run_id',
     sorter: 'string',
@@ -210,17 +223,5 @@ export const createRunColumns = (onViewRun: (runId: string) => void): ColumnDefi
     hozAlign: 'right',
     formatter: ratioFormatter,
     ...numericHeaderFilter,
-  },
-  {
-    title: '',
-    field: 'run_id',
-    headerSort: false,
-    headerFilter: undefined,
-    hozAlign: 'center',
-    width: 70,
-    formatter: (): string => '<button>View</button>',
-    cellClick: (_e: UIEvent, cell: CellComponent) => {
-      onViewRun(cell.getValue() as string)
-    },
   },
 ]
