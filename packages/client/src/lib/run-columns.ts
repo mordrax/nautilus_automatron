@@ -131,7 +131,10 @@ export const createRunColumns = (onViewRun: (runId: string) => void): ColumnDefi
     formatter: (cell: CellComponent): string => {
       const value = cell.getValue() as string
       if (!value) return '—'
-      return `<span style="font-family:monospace">${value.slice(0, 8)}...</span>`
+      return `<span style="font-family:monospace; cursor:pointer; text-decoration:underline;">${value.slice(0, 8)}...</span>`
+    },
+    cellClick: (_e: UIEvent, cell: CellComponent) => {
+      onViewRun(cell.getValue() as string)
     },
   },
   {
