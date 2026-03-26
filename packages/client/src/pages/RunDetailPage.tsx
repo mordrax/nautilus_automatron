@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import type * as echarts from 'echarts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { CandlestickChart } from '@/components/chart/CandlestickChart'
 import { TradeTable } from '@/components/trades/TradeTable'
@@ -143,23 +144,61 @@ export const RunDetailPage = ({ runId }: RunDetailPageProps) => {
         Enable CapsLock, then use Arrow Left/Right to navigate trades (Shift+Arrow to skip 50)
       </p>
 
-      {/* Trade Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Trades ({trades?.length ?? 0})</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {trades ? (
-            <TradeTable
-              trades={trades}
-              selectedIndex={currentIndex}
-              onSelectTrade={selectTrade}
-            />
-          ) : (
-            <div className="text-muted-foreground">Loading trades...</div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Trade Analysis Tabs */}
+      <Tabs defaultValue="trades">
+        <TabsList>
+          <TabsTrigger value="trades">Trades</TabsTrigger>
+          <TabsTrigger value="pl-distribution">P/L Distribution</TabsTrigger>
+          <TabsTrigger value="pl-vs-hold-time">P/L vs Hold Time</TabsTrigger>
+          <TabsTrigger value="pl-over-time">P/L Over Time</TabsTrigger>
+          <TabsTrigger value="equity-curve">Equity Curve</TabsTrigger>
+          <TabsTrigger value="categorisation">Categorisation</TabsTrigger>
+          <TabsTrigger value="trades-by-month">Trades by Month</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="trades" className="min-h-[400px]">
+          <Card>
+            <CardHeader>
+              <CardTitle>Trades ({trades?.length ?? 0})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {trades ? (
+                <TradeTable
+                  trades={trades}
+                  selectedIndex={currentIndex}
+                  onSelectTrade={selectTrade}
+                />
+              ) : (
+                <div className="text-muted-foreground">Loading trades...</div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="pl-distribution" className="min-h-[400px]">
+          <div className="flex items-center justify-center h-[400px] text-muted-foreground">Coming soon</div>
+        </TabsContent>
+
+        <TabsContent value="pl-vs-hold-time" className="min-h-[400px]">
+          <div className="flex items-center justify-center h-[400px] text-muted-foreground">Coming soon</div>
+        </TabsContent>
+
+        <TabsContent value="pl-over-time" className="min-h-[400px]">
+          <div className="flex items-center justify-center h-[400px] text-muted-foreground">Coming soon</div>
+        </TabsContent>
+
+        <TabsContent value="equity-curve" className="min-h-[400px]">
+          <div className="flex items-center justify-center h-[400px] text-muted-foreground">Coming soon</div>
+        </TabsContent>
+
+        <TabsContent value="categorisation" className="min-h-[400px]">
+          <div className="flex items-center justify-center h-[400px] text-muted-foreground">Coming soon</div>
+        </TabsContent>
+
+        <TabsContent value="trades-by-month" className="min-h-[400px]">
+          <div className="flex items-center justify-center h-[400px] text-muted-foreground">Coming soon</div>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }
