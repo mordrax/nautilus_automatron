@@ -12,3 +12,6 @@ bun.lock
 .worktrees/
 playwright-report/
 test-results/
+
+# Interactive Brokers credentials
+.env.ib
