@@ -12,11 +12,10 @@ const buildOption = (equity: readonly EquityPoint[]): echarts.EChartsOption => {
   if (equity.length === 0) return {}
 
   const startingBalance = equity[0].equity
+  const lastBalance = equity[equity.length - 1].equity
+  const lineColor = lastBalance >= startingBalance ? CHART_COLORS.tradeWin : CHART_COLORS.tradeLoss
 
-  const data = equity.map(p => ({
-    value: [p.timestamp, p.equity],
-    itemStyle: { color: p.equity >= startingBalance ? CHART_COLORS.tradeWin : CHART_COLORS.tradeLoss },
-  }))
+  const data = equity.map(p => [p.timestamp, p.equity])
 
   return {
     animation: false,
@@ -41,20 +40,20 @@ const buildOption = (equity: readonly EquityPoint[]): echarts.EChartsOption => {
       { type: 'slider', start: 0, end: 100, bottom: '2%' },
     ],
     grid: { left: '10%', right: '5%', bottom: '18%', top: '15%' },
-    visualMap: {
-      show: false,
-      pieces: [
-        { lt: startingBalance, color: CHART_COLORS.tradeLoss },
-        { gte: startingBalance, color: CHART_COLORS.tradeWin },
-      ],
-    },
     series: [
       {
         type: 'line',
         data,
         symbolSize: 1,
         showSymbol: false,
-        areaStyle: { opacity: 0.1 },
+        lineStyle: { color: lineColor },
+        areaStyle: { color: lineColor, opacity: 0.1 },
+        markLine: {
+          silent: true,
+          symbol: 'none',
+          lineStyle: { type: 'dashed', color: '#888' },
+          data: [{ yAxis: startingBalance, label: { formatter: 'Start' } }],
+        },
       },
     ],
   }
