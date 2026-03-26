@@ -42,6 +42,15 @@ const winsLossesFormatter = (cell: CellComponent): string => {
 
 // --- Header Filters ---
 
+const evalFilter = (cellValue: number, filter: string): boolean => {
+  const expr = `${cellValue}${filter}`
+  try {
+    return Boolean(new Function(`return ${expr}`)())
+  } catch {
+    return true
+  }
+}
+
 const numericHeaderFilterFunc = (
   headerValue: string,
   _rowValue: unknown,
@@ -55,18 +64,33 @@ const numericHeaderFilterFunc = (
   const num = typeof rowVal === 'number' ? rowVal : parseFloat(String(rowVal))
   if (isNaN(num)) return false
 
-  if (raw.startsWith('>=')) return num >= parseFloat(raw.slice(2))
-  if (raw.startsWith('<=')) return num <= parseFloat(raw.slice(2))
-  if (raw.startsWith('>')) return num > parseFloat(raw.slice(1))
-  if (raw.startsWith('<')) return num < parseFloat(raw.slice(1))
-  if (raw.startsWith('=')) return num === parseFloat(raw.slice(1))
-
-  return num === parseFloat(raw)
+  return evalFilter(num, raw)
 }
 
 export const numericHeaderFilter = {
   headerFilter: 'input' as const,
   headerFilterFunc: numericHeaderFilterFunc,
+}
+
+const percentHeaderFilterFunc = (
+  headerValue: string,
+  _rowValue: unknown,
+  rowData: unknown,
+  filterParams: { field: string }
+): boolean => {
+  const raw = String(headerValue).trim()
+  if (!raw) return true
+
+  const rowVal = (rowData as Record<string, unknown>)[filterParams.field]
+  const num = typeof rowVal === 'number' ? rowVal : parseFloat(String(rowVal))
+  if (isNaN(num)) return false
+
+  return evalFilter(num * 100, raw)
+}
+
+const percentHeaderFilter = {
+  headerFilter: 'input' as const,
+  headerFilterFunc: percentHeaderFilterFunc,
 }
 
 const stringHeaderFilterFunc = (
@@ -150,7 +174,7 @@ export const createRunColumns = (onViewRun: (runId: string) => void): ColumnDefi
     sorter: 'number',
     hozAlign: 'right',
     formatter: percentFormatter,
-    ...numericHeaderFilter,
+    ...percentHeaderFilter,
   },
   {
     title: 'Expectancy',
