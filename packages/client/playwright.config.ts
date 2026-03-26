@@ -14,7 +14,7 @@ export default defineConfig({
   reporter: [['html', { open: 'never' }]],
 
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: `http://localhost:${process.env.TEST_VITE_PORT ?? '5173'}`,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
@@ -40,14 +40,14 @@ export default defineConfig({
 
   webServer: [
     {
-      command: `cd ${path.resolve(__dirname, '../server')} && NAUTILUS_STORE_PATH=${testDataPath} .venv/bin/python -m uvicorn server.main:app --port 8000`,
-      port: 8000,
+      command: `cd ${path.resolve(__dirname, '../server')} && NAUTILUS_STORE_PATH=${testDataPath} .venv/bin/python -m uvicorn server.main:app --port ${process.env.TEST_API_PORT ?? '8000'}`,
+      port: Number(process.env.TEST_API_PORT ?? 8000),
       reuseExistingServer: true,
       timeout: 30_000,
     },
     {
-      command: 'VITE_PORT=5173 VITE_API_URL=http://localhost:8000 bun run dev',
-      port: 5173,
+      command: `VITE_PORT=${process.env.TEST_VITE_PORT ?? '5173'} VITE_API_URL=http://localhost:${process.env.TEST_API_PORT ?? '8000'} bun run dev`,
+      port: Number(process.env.TEST_VITE_PORT ?? 5173),
       reuseExistingServer: true,
       timeout: 30_000,
     },
