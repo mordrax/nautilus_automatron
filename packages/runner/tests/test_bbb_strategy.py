@@ -9,6 +9,8 @@ from runner.strategies.bbb_strategy import (
     BBBSignalVariant,
     BBBStrategyConfig,
     MATrendKind,
+    is_cross_above,
+    is_cross_below,
 )
 
 
@@ -47,3 +49,33 @@ def test_config_custom_params():
     assert config.sell_sd == 3.0
     assert config.signal_variant == BBBSignalVariant.BREAKOUT
     assert config.ma_trend_kind == MATrendKind.FAST
+
+
+def test_cross_above_detected():
+    prices = [100.0, 98.0, 102.0]
+    bands = [100.0, 100.0, 100.0]
+    assert is_cross_above(prices, bands, 2) is True
+
+
+def test_cross_above_not_detected_when_already_above():
+    prices = [100.0, 101.0, 102.0]
+    bands = [100.0, 100.0, 100.0]
+    assert is_cross_above(prices, bands, 2) is False
+
+
+def test_cross_below_detected():
+    prices = [100.0, 102.0, 98.0]
+    bands = [100.0, 100.0, 100.0]
+    assert is_cross_below(prices, bands, 2) is True
+
+
+def test_cross_below_not_detected_when_already_below():
+    prices = [100.0, 98.0, 97.0]
+    bands = [100.0, 100.0, 100.0]
+    assert is_cross_below(prices, bands, 2) is False
+
+
+def test_cross_above_at_boundary():
+    prices = [99.0, 100.0]
+    bands = [100.0, 100.0]
+    assert is_cross_above(prices, bands, 1) is True

@@ -46,3 +46,19 @@ class BBBStrategyConfig(StrategyConfig, frozen=True):
     signal_variant: BBBSignalVariant = BBBSignalVariant.BASELINE
     ma_trend_kind: MATrendKind = MATrendKind.NORMAL
     close_positions_on_stop: bool = True
+
+
+def is_cross_above(prices: list[float], bands: list[float], index: int) -> bool:
+    prev_price = prices[index - 1]
+    prev_band = bands[index - 1]
+    curr_price = prices[index]
+    curr_band = bands[index]
+    return prev_price < prev_band and curr_price >= curr_band
+
+
+def is_cross_below(prices: list[float], bands: list[float], index: int) -> bool:
+    prev_price = prices[index - 1]
+    prev_band = bands[index - 1]
+    curr_price = prices[index]
+    curr_band = bands[index]
+    return prev_price > prev_band and curr_price <= curr_band
