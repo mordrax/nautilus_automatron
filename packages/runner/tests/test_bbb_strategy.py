@@ -79,3 +79,34 @@ def test_cross_above_at_boundary():
     prices = [99.0, 100.0]
     bands = [100.0, 100.0]
     assert is_cross_above(prices, bands, 1) is True
+
+
+from runner.strategies.bbb_strategy import BBBStrategy
+
+
+def make_config(**overrides):
+    defaults = dict(
+        instrument_id=InstrumentId.from_str("XAU/USD.SIM"),
+        bar_type=BarType.from_str("XAU/USD.SIM-5-MINUTE-BID-EXTERNAL"),
+        trade_size=Decimal("1"),
+    )
+    defaults.update(overrides)
+    return BBBStrategyConfig(**defaults)
+
+
+def test_strategy_creates_two_bb_indicators():
+    config = make_config(buy_period=20, buy_sd=1.0, sell_period=20, sell_sd=3.0)
+    strategy = BBBStrategy(config=config)
+    assert strategy.buy_bb.period == 20
+    assert strategy.buy_bb.k == 1.0
+    assert strategy.sell_bb.period == 20
+    assert strategy.sell_bb.k == 3.0
+
+
+def test_strategy_tracks_previous_bar_values():
+    config = make_config()
+    strategy = BBBStrategy(config=config)
+    assert strategy._prev_close is None
+    assert strategy._prev_high is None
+    assert strategy._prev_low is None
+    assert strategy._bars_since_entry == 0

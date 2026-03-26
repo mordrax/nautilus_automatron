@@ -1,9 +1,15 @@
 from decimal import Decimal
 from enum import Enum
 
+from nautilus_trader.common.enums import LogColor
 from nautilus_trader.config import PositiveFloat, PositiveInt, StrategyConfig
-from nautilus_trader.model.data import BarType
+from nautilus_trader.indicators import BollingerBands
+from nautilus_trader.model.data import Bar, BarType
+from nautilus_trader.model.enums import OrderSide, TimeInForce
 from nautilus_trader.model.identifiers import InstrumentId
+from nautilus_trader.model.instruments import Instrument
+from nautilus_trader.model.orders import MarketOrder
+from nautilus_trader.trading.strategy import Strategy
 
 
 class ArrayKind(Enum):
@@ -62,3 +68,131 @@ def is_cross_below(prices: list[float], bands: list[float], index: int) -> bool:
     curr_price = prices[index]
     curr_band = bands[index]
     return prev_price > prev_band and curr_price <= curr_band
+
+
+def _get_price_from_bar(bar: Bar, array_kind: ArrayKind) -> float:
+    match array_kind:
+        case ArrayKind.CLOSE:
+            return bar.close.as_double()
+        case ArrayKind.HIGH:
+            return bar.high.as_double()
+        case ArrayKind.LOW:
+            return bar.low.as_double()
+        case ArrayKind.OPEN:
+            return bar.open.as_double()
+
+
+def _get_band_value(bb: BollingerBands, band_kind: BandKind) -> float:
+    match band_kind:
+        case BandKind.TOP:
+            return bb.upper
+        case BandKind.BOTTOM:
+            return bb.lower
+
+
+class BBBStrategy(Strategy):
+
+    def __init__(self, config: BBBStrategyConfig) -> None:
+        super().__init__(config)
+        self.instrument: Instrument | None = None
+        self.buy_bb = BollingerBands(config.buy_period, config.buy_sd)
+        self.sell_bb = BollingerBands(config.sell_period, config.sell_sd)
+        self._prev_buy_price: float | None = None
+        self._prev_buy_band: float | None = None
+        self._prev_sell_price: float | None = None
+        self._prev_sell_band: float | None = None
+        self._prev_close: float | None = None
+        self._prev_high: float | None = None
+        self._prev_low: float | None = None
+        self._bars_since_entry: int = 0
+        self._has_position: bool = False
+
+    def on_start(self) -> None:
+        self.instrument = self.cache.instrument(self.config.instrument_id)
+        if self.instrument is None:
+            self.log.error(f"Could not find instrument for {self.config.instrument_id}")
+            self.stop()
+            return
+        self.register_indicator_for_bars(self.config.bar_type, self.buy_bb)
+        self.register_indicator_for_bars(self.config.bar_type, self.sell_bb)
+        self.subscribe_bars(self.config.bar_type)
+
+    def on_bar(self, bar: Bar) -> None:
+        if not self.indicators_initialized():
+            self.log.info(
+                f"Waiting for indicators to warm up [{self.cache.bar_count(self.config.bar_type)}]",
+                color=LogColor.BLUE,
+            )
+            return
+        if bar.is_single_price():
+            return
+
+        buy_price = _get_price_from_bar(bar, self.config.buy_array_kind)
+        buy_band = _get_band_value(self.buy_bb, self.config.buy_band_kind)
+        sell_price = _get_price_from_bar(bar, self.config.sell_array_kind)
+        sell_band = _get_band_value(self.sell_bb, self.config.sell_band_kind)
+
+        self._bars_since_entry += 1
+
+        if self._prev_buy_price is not None:
+            self._check_signals(buy_price, buy_band, sell_price, sell_band)
+
+        self._prev_buy_price = buy_price
+        self._prev_buy_band = buy_band
+        self._prev_sell_price = sell_price
+        self._prev_sell_band = sell_band
+        self._prev_close = bar.close.as_double()
+        self._prev_high = bar.high.as_double()
+        self._prev_low = bar.low.as_double()
+
+    def _check_signals(self, buy_price, buy_band, sell_price, sell_band) -> None:
+        is_long = self.portfolio.is_net_long(self.config.instrument_id)
+
+        if is_long:
+            is_exit = (
+                self._prev_sell_price > self._prev_sell_band
+                and sell_price <= sell_band
+            )
+            if is_exit:
+                self.close_all_positions(self.config.instrument_id)
+                self._has_position = False
+                return
+
+        if not is_long:
+            is_entry = (
+                self._prev_buy_price < self._prev_buy_band
+                and buy_price >= buy_band
+            )
+            frequency_ok = self._bars_since_entry >= self.config.frequency_bars
+            if is_entry and frequency_ok:
+                self._enter_long()
+
+    def _enter_long(self) -> None:
+        order: MarketOrder = self.order_factory.market(
+            instrument_id=self.config.instrument_id,
+            order_side=OrderSide.BUY,
+            quantity=self.instrument.make_qty(self.config.trade_size),
+            time_in_force=TimeInForce.GTC,
+        )
+        self.submit_order(order)
+        self._bars_since_entry = 0
+        self._has_position = True
+
+    def on_stop(self) -> None:
+        self.cancel_all_orders(self.config.instrument_id)
+        if self.config.close_positions_on_stop:
+            self.close_all_positions(self.config.instrument_id)
+        self.unsubscribe_bars(self.config.bar_type)
+
+    def on_reset(self) -> None:
+        self.buy_bb.reset()
+        self.sell_bb.reset()
+        self._prev_buy_price = None
+        self._prev_buy_band = None
+        self._prev_sell_price = None
+        self._prev_sell_band = None
+        self._prev_close = None
+        self._prev_high = None
+        self._prev_low = None
+        self._bars_since_entry = 0
+        self._has_position = False
