@@ -38,7 +38,7 @@ def list_runs(
         positions_count = len(positions_table) if positions_table is not None else 0
 
         summary = transforms.run_summary(
-            run_id, config, positions_count, fills_count, positions_opened
+            run_id, config, positions_count, fills_count, positions_opened, positions_table
         )
         runs.append(summary)
 

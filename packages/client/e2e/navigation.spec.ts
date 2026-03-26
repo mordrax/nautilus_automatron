@@ -3,9 +3,9 @@ import { test, expect } from '@playwright/test'
 test.describe('Trade Navigation', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
-    const table = page.locator('table')
-    await expect(table).toBeVisible()
-    await table.locator('tbody tr').first().click()
+    const grid = page.locator('[role="grid"]')
+    await expect(grid).toBeVisible()
+    await grid.getByRole('button', { name: 'View' }).first().click()
     await expect(page).toHaveURL(/\/runs\/[a-f0-9-]+/)
     // Wait for trade data to load
     await expect(page.getByRole('button', { name: /Prev/ })).toBeVisible()
@@ -39,7 +39,7 @@ test.describe('Trade Navigation', () => {
     await expect(page.getByText(/Trades \(\d+\)/)).toBeVisible()
 
     // Click the 3rd trade row in the trades table
-    const tradesTable = page.locator('table').last()
+    const tradesTable = page.locator('table')
     const thirdRow = tradesTable.locator('tbody tr').nth(2)
     await expect(thirdRow).toBeVisible()
     await thirdRow.click()

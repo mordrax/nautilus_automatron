@@ -4,6 +4,18 @@ export type RunSummary = {
   readonly strategy: string
   readonly total_positions: number
   readonly total_fills: number
+  readonly total_pnl: number | null
+  readonly win_rate: number | null
+  readonly expectancy: number | null
+  readonly sharpe_ratio: number | null
+  readonly avg_win: number | null
+  readonly avg_loss: number | null
+  readonly win_loss_ratio: number | null
+  readonly wins: number | null
+  readonly losses: number | null
+  readonly avg_hold_hours: number | null
+  readonly pnl_per_week: number | null
+  readonly trades_per_week: number | null
 }
 
 export type RunsResponse = {
