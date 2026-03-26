@@ -120,4 +120,4 @@ def test_strategy_breakout_config():
     strategy = BBBStrategy(config=config)
     assert strategy.config.signal_variant == BBBSignalVariant.BREAKOUT
     assert strategy.config.ma_trend_kind == MATrendKind.NORMAL
-    assert strategy._close_history == []
+    assert strategy._ema_normal_history == []

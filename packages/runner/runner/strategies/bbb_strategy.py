@@ -3,13 +3,23 @@ from enum import Enum
 
 from nautilus_trader.common.enums import LogColor
 from nautilus_trader.config import PositiveFloat, PositiveInt, StrategyConfig
-from nautilus_trader.indicators import BollingerBands
+from nautilus_trader.indicators import BollingerBands, ExponentialMovingAverage
 from nautilus_trader.model.data import Bar, BarType
 from nautilus_trader.model.enums import OrderSide, TimeInForce
 from nautilus_trader.model.identifiers import InstrumentId
 from nautilus_trader.model.instruments import Instrument
 from nautilus_trader.model.orders import MarketOrder
 from nautilus_trader.trading.strategy import Strategy
+
+from runner.strategies.ma_trend import (
+    TrendDirection,
+    calculate_gradients,
+    get_trend_direction,
+    FAST_LOOKBACK,
+    NORMAL_LOOKBACK,
+    SLOW_LOOKBACK,
+    GRADIENT_THRESHOLD,
+)
 
 
 class ArrayKind(Enum):
@@ -105,8 +115,13 @@ class BBBStrategy(Strategy):
         self._prev_high: float | None = None
         self._prev_low: float | None = None
         self._bars_since_entry: int = 0
-        self._has_position: bool = False
-        self._close_history: list[float] = []
+        # EMA indicators for MA trend (Breakout mode)
+        self._ema_fast = ExponentialMovingAverage(10)
+        self._ema_normal = ExponentialMovingAverage(50)
+        self._ema_slow = ExponentialMovingAverage(100)
+        self._ema_fast_history: list[float] = []
+        self._ema_normal_history: list[float] = []
+        self._ema_slow_history: list[float] = []
 
     def on_start(self) -> None:
         self.instrument = self.cache.instrument(self.config.instrument_id)
@@ -116,6 +131,9 @@ class BBBStrategy(Strategy):
             return
         self.register_indicator_for_bars(self.config.bar_type, self.buy_bb)
         self.register_indicator_for_bars(self.config.bar_type, self.sell_bb)
+        self.register_indicator_for_bars(self.config.bar_type, self._ema_fast)
+        self.register_indicator_for_bars(self.config.bar_type, self._ema_normal)
+        self.register_indicator_for_bars(self.config.bar_type, self._ema_slow)
         self.subscribe_bars(self.config.bar_type)
 
     def on_bar(self, bar: Bar) -> None:
@@ -138,7 +156,12 @@ class BBBStrategy(Strategy):
         if self._prev_buy_price is not None:
             self._check_signals(buy_price, buy_band, sell_price, sell_band)
 
-        self._close_history.append(bar.close.as_double())
+        if self._ema_fast.initialized:
+            self._ema_fast_history.append(self._ema_fast.value)
+        if self._ema_normal.initialized:
+            self._ema_normal_history.append(self._ema_normal.value)
+        if self._ema_slow.initialized:
+            self._ema_slow_history.append(self._ema_slow.value)
 
         self._prev_buy_price = buy_price
         self._prev_buy_band = buy_band
@@ -148,30 +171,21 @@ class BBBStrategy(Strategy):
         self._prev_high = bar.high.as_double()
         self._prev_low = bar.low.as_double()
 
-    def _get_ma_trend(self) -> "TrendDirection":
-        from runner.strategies.ma_trend import (
-            TrendDirection,
-            calculate_gradients,
-            get_trend_direction,
-            FAST_LOOKBACK,
-            NORMAL_LOOKBACK,
-            SLOW_LOOKBACK,
-            GRADIENT_THRESHOLD,
-        )
-
-        lookback_map = {
-            MATrendKind.IMMEDIATE: FAST_LOOKBACK,
-            MATrendKind.FAST: FAST_LOOKBACK,
-            MATrendKind.NORMAL: NORMAL_LOOKBACK,
-            MATrendKind.SLOW: SLOW_LOOKBACK,
+    def _get_ma_trend(self) -> TrendDirection:
+        ema_map = {
+            MATrendKind.IMMEDIATE: (self._ema_fast_history, FAST_LOOKBACK),
+            MATrendKind.FAST: (self._ema_fast_history, FAST_LOOKBACK),
+            MATrendKind.NORMAL: (self._ema_normal_history, NORMAL_LOOKBACK),
+            MATrendKind.SLOW: (self._ema_slow_history, SLOW_LOOKBACK),
         }
 
-        if len(self._close_history) < 2:
+        history, lookback = ema_map[self.config.ma_trend_kind]
+
+        if len(history) < 2:
             return TrendDirection.FLAT
 
-        gradients = calculate_gradients(self._close_history)
+        gradients = calculate_gradients(history)
         bar = len(gradients) - 1
-        lookback = lookback_map[self.config.ma_trend_kind]
 
         return get_trend_direction(gradients, bar, lookback, GRADIENT_THRESHOLD)
 
@@ -187,14 +201,12 @@ class BBBStrategy(Strategy):
 
             # Breakout mode: also exit on MA trend down
             if self.config.signal_variant == BBBSignalVariant.BREAKOUT:
-                from runner.strategies.ma_trend import TrendDirection
                 ma_trend = self._get_ma_trend()
                 if ma_trend == TrendDirection.DOWN:
                     is_exit = True
 
             if is_exit:
                 self.close_all_positions(self.config.instrument_id)
-                self._has_position = False
                 return
 
         # Entry check (respects frequency delay)
@@ -207,7 +219,6 @@ class BBBStrategy(Strategy):
 
             # Breakout mode: entry gated by MA trend up
             if self.config.signal_variant == BBBSignalVariant.BREAKOUT:
-                from runner.strategies.ma_trend import TrendDirection
                 ma_trend = self._get_ma_trend()
                 if ma_trend != TrendDirection.UP:
                     is_entry = False
@@ -224,7 +235,6 @@ class BBBStrategy(Strategy):
         )
         self.submit_order(order)
         self._bars_since_entry = 0
-        self._has_position = True
 
     def on_stop(self) -> None:
         self.cancel_all_orders(self.config.instrument_id)
@@ -243,5 +253,9 @@ class BBBStrategy(Strategy):
         self._prev_high = None
         self._prev_low = None
         self._bars_since_entry = 0
-        self._has_position = False
-        self._close_history = []
+        self._ema_fast.reset()
+        self._ema_normal.reset()
+        self._ema_slow.reset()
+        self._ema_fast_history = []
+        self._ema_normal_history = []
+        self._ema_slow_history = []
