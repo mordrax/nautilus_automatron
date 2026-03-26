@@ -59,6 +59,10 @@ export const TradesByMonthChart = ({ trades }: TradesByMonthChartProps) => {
     const chart = echarts.init(chartDivRef.current)
     chart.setOption(buildOption(trades))
 
+    // Expose chart instance for e2e test access
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(chartDivRef.current as any)._ec_instance = chart
+
     const handleResize = () => chart.resize()
     window.addEventListener('resize', handleResize)
 
