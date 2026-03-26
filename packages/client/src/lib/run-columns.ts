@@ -43,12 +43,29 @@ const winsLossesFormatter = (cell: CellComponent): string => {
 // --- Header Filters ---
 
 const evalFilter = (cellValue: number, filter: string): boolean => {
-  const expr = `${cellValue}${filter}`
-  try {
-    return Boolean(new Function(`return ${expr}`)())
-  } catch {
-    return true
+  const trimmed = filter.trim()
+  if (trimmed.startsWith('>=')) {
+    const t = parseFloat(trimmed.slice(2))
+    return !isNaN(t) && cellValue >= t
   }
+  if (trimmed.startsWith('<=')) {
+    const t = parseFloat(trimmed.slice(2))
+    return !isNaN(t) && cellValue <= t
+  }
+  if (trimmed.startsWith('>')) {
+    const t = parseFloat(trimmed.slice(1))
+    return !isNaN(t) && cellValue > t
+  }
+  if (trimmed.startsWith('<')) {
+    const t = parseFloat(trimmed.slice(1))
+    return !isNaN(t) && cellValue < t
+  }
+  if (trimmed.startsWith('=')) {
+    const t = parseFloat(trimmed.slice(1))
+    return !isNaN(t) && cellValue === t
+  }
+  const t = parseFloat(trimmed)
+  return isNaN(t) || cellValue === t
 }
 
 const numericFilterFn = (headerValue: string, rowValue: unknown): boolean => {
@@ -95,15 +112,14 @@ export const stringHeaderFilter = {
 export const createRunColumns = (onViewRun: (runId: string) => void): ColumnDefinition[] => [
   {
     title: '',
-    field: 'run_id',
+    formatter: (): string => '<button>View</button>',
     headerSort: false,
-    headerFilter: undefined,
     hozAlign: 'center',
     width: 60,
     frozen: true,
-    formatter: (): string => '<button>View</button>',
     cellClick: (_e: UIEvent, cell: CellComponent) => {
-      onViewRun(cell.getValue() as string)
+      const data = cell.getRow().getData() as { run_id: string }
+      onViewRun(data.run_id)
     },
   },
   {

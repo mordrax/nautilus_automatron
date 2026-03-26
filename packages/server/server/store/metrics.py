@@ -13,7 +13,7 @@ import pyarrow as pa
 _NS_PER_WEEK = 7 * 86_400_000_000_000
 
 
-def _empty_metrics() -> dict:
+def empty_metrics() -> dict:
     """Return a metrics dict with all None values (for runs with 0 positions)."""
     return {
         "total_pnl": None,
@@ -79,10 +79,10 @@ def _sharpe_ratio(pnls: list[float], ts_closeds: list[int]) -> float | None:
 def compute_run_metrics(positions_closed: pa.Table) -> dict:
     """Compute trade metrics from a positions_closed Arrow table.
 
-    Returns a dict with all metric keys. Returns _empty_metrics() for empty tables.
+    Returns a dict with all metric keys. Returns empty_metrics() for empty tables.
     """
     if len(positions_closed) == 0:
-        return _empty_metrics()
+        return empty_metrics()
 
     pnl_col: list[float] = positions_closed.column("realized_pnl").to_pylist()
     ts_opened_col: list[int] = positions_closed.column("ts_opened").to_pylist()

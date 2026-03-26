@@ -170,7 +170,7 @@ def run_summary(
     positions_closed: "pa.Table | None" = None,
 ) -> dict:
     """Build a run summary dict from config and counts."""
-    from server.store.metrics import compute_run_metrics, _empty_metrics
+    from server.store.metrics import compute_run_metrics, empty_metrics
 
     strategy_name = _extract_strategy_name(config, positions_opened)
 
@@ -185,7 +185,7 @@ def run_summary(
     if positions_closed is not None and len(positions_closed) > 0:
         metrics = compute_run_metrics(positions_closed)
     else:
-        metrics = _empty_metrics()
+        metrics = empty_metrics()
 
     summary.update(metrics)
     return summary

@@ -5,7 +5,7 @@ import math
 import pyarrow as pa
 
 from server.store.metrics import (
-    _empty_metrics,
+    empty_metrics,
     _expectancy,
     _run_span_weeks,
     _sharpe_ratio,
@@ -47,18 +47,18 @@ def _make_positions_table(
 
 
 # ---------------------------------------------------------------------------
-# _empty_metrics
+# empty_metrics
 # ---------------------------------------------------------------------------
 
 
-def test_empty_metrics_all_none():
-    result = _empty_metrics()
+def testempty_metrics_all_none():
+    result = empty_metrics()
     for key, value in result.items():
         assert value is None, f"Expected None for key '{key}', got {value!r}"
 
 
-def test_empty_metrics_has_all_keys():
-    result = _empty_metrics()
+def testempty_metrics_has_all_keys():
+    result = empty_metrics()
     expected_keys = {
         "total_pnl",
         "win_rate",
