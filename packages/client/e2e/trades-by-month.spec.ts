@@ -7,7 +7,6 @@ test.describe('Trades by Month Chart', () => {
     await expect(table).toBeVisible()
     await table.locator('tbody tr').first().click()
     await expect(page).toHaveURL(/\/runs\/[a-f0-9-]+/)
-    // Wait for async data to load
     await expect(page.getByRole('button', { name: /Prev/ })).toBeVisible()
 
     // Switch to Trades by Month tab
@@ -70,7 +69,6 @@ test.describe('Trades by Month Chart', () => {
     const chart = page.getByTestId('trades-by-month-chart')
     await expect(chart).toBeVisible()
 
-    // Wait for eCharts to render and expose instance
     await page.waitForFunction(() => {
       const el = document.querySelector('[data-testid="trades-by-month-chart"]')
       if (!el) return false
