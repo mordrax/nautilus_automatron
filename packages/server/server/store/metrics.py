@@ -8,7 +8,6 @@ from collections import defaultdict
 from datetime import datetime, timezone
 
 import pyarrow as pa
-import pyarrow.compute as pc
 
 # Nanoseconds per week
 _NS_PER_WEEK = 7 * 86_400_000_000_000
@@ -125,10 +124,8 @@ def compute_run_metrics(positions_closed: pa.Table) -> dict:
         expectancy = _expectancy(win_rate, avg_win, avg_loss)
 
     # --- avg_hold_hours ---
-    avg_hold_hours: float | None = None
-    if duration_col:
-        mean_ns = sum(duration_col) / len(duration_col)
-        avg_hold_hours = round(mean_ns / 3_600_000_000_000, 1)
+    mean_ns = sum(duration_col) / len(duration_col)
+    avg_hold_hours = round(mean_ns / 3_600_000_000_000, 1)
 
     # --- sharpe_ratio ---
     sharpe_ratio = _sharpe_ratio(pnl_col, ts_closed_col)

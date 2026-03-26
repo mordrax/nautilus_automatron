@@ -3,7 +3,6 @@
 import math
 
 import pyarrow as pa
-import pytest
 
 from server.store.metrics import (
     _empty_metrics,
@@ -378,6 +377,7 @@ def test_all_winning_trades_no_avg_loss():
     assert result["losses"] == 0
     assert result["avg_loss"] is None
     assert result["win_loss_ratio"] is None
+    assert result["expectancy"] is None
 
 
 def test_all_losing_trades_no_avg_win():
