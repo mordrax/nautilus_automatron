@@ -19,24 +19,17 @@ test.describe('Trade Analysis Tabs', () => {
     await expect(page.getByRole('columnheader', { name: 'Direction' })).toBeVisible()
   })
 
-  test('clicking a tab switches to that tab content', async ({ page }) => {
-    // Click P/L Distribution tab
-    const plTab = page.getByRole('tab', { name: 'P/L Distribution' })
-    await plTab.click()
-    await expect(plTab).toHaveAttribute('data-state', 'active')
-    // Trades tab should no longer be active
+  test('clicking Chart Analysis tab switches to chart content', async ({ page }) => {
+    const chartTab = page.getByRole('tab', { name: 'Chart Analysis' })
+    await chartTab.click()
+    await expect(chartTab).toHaveAttribute('data-state', 'active')
     await expect(page.getByRole('tab', { name: 'Trades', exact: true })).toHaveAttribute('data-state', 'inactive')
-    // Placeholder content should be visible
-    await expect(page.getByText('Coming soon').first()).toBeVisible()
   })
 
   test('all tabs are present', async ({ page }) => {
     const expectedTabs = [
       'Trades',
-      'P/L Distribution',
-      'P/L vs Hold Time',
-      'P/L Over Time',
-      'Equity Curve',
+      'Chart Analysis',
       'Categorisation',
       'Trades by Month',
     ]
@@ -47,8 +40,8 @@ test.describe('Trade Analysis Tabs', () => {
 
   test('switching back to Trades tab restores trade table', async ({ page }) => {
     // Navigate away
-    await page.getByRole('tab', { name: 'Equity Curve' }).click()
-    await expect(page.getByText('Coming soon').first()).toBeVisible()
+    await page.getByRole('tab', { name: 'Chart Analysis' }).click()
+    await expect(page.getByTestId('pnl-distribution-chart')).toBeVisible()
 
     // Navigate back
     await page.getByRole('tab', { name: 'Trades', exact: true }).click()
