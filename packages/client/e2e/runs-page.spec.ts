@@ -10,35 +10,81 @@ test.describe('Runs Page', () => {
     await expect(page.getByRole('link', { name: 'Runs' })).toBeVisible()
   })
 
-  test('runs table is visible with correct columns', async ({ page }) => {
+  test('runs table is visible with metric columns', async ({ page }) => {
     await expect(page.getByText('Backtest Runs')).toBeVisible()
-    const table = page.locator('table')
-    await expect(table).toBeVisible()
-    await expect(table.getByText('Run ID')).toBeVisible()
-    await expect(table.getByText('Trader')).toBeVisible()
-    await expect(table.getByText('Strategy')).toBeVisible()
-    await expect(table.getByText('Positions')).toBeVisible()
-    await expect(table.getByText('Fills')).toBeVisible()
+
+    const tabulator = page.locator('.tabulator')
+    await expect(tabulator).toBeVisible()
+
+    // Verify key columns exist in header
+    for (const col of ['Run ID', 'Strategy', 'Total PnL', 'Win Rate', 'Sharpe', 'Avg Hold']) {
+      await expect(tabulator.locator('.tabulator-col-title', { hasText: col }).first()).toBeVisible()
+    }
   })
 
   test('strategy column shows actual names, not Unknown', async ({ page }) => {
-    const table = page.locator('table')
-    await expect(table).toBeVisible()
-    // Wait for data to load
-    await expect(table.getByText('EMACross-000').first()).toBeVisible()
-    // Ensure no "Unknown" values in the strategy column
-    const unknownCount = await table.getByText('Unknown').count()
+    const tabulator = page.locator('.tabulator')
+    await expect(tabulator).toBeVisible()
+
+    // Wait for data rows to render
+    await expect(tabulator.locator('.tabulator-row').first()).toBeVisible()
+
+    // Check that "Unknown" does not appear in any cell
+    const unknownCount = await tabulator.locator('.tabulator-cell', { hasText: 'Unknown' }).count()
     expect(unknownCount).toBe(0)
+
+    // Verify actual strategy name appears
+    await expect(tabulator.locator('.tabulator-cell', { hasText: 'EMACross-000' }).first()).toBeVisible()
   })
 
-  test('clicking a run navigates to detail page', async ({ page }) => {
-    const table = page.locator('table')
-    await expect(table).toBeVisible()
-    // Click the first run row (uses onClick on table row)
-    const firstRow = table.locator('tbody tr').first()
-    await expect(firstRow).toBeVisible()
-    await firstRow.click()
-    // Should navigate to /runs/<runId>
+  test('metric columns display numeric values', async ({ page }) => {
+    const tabulator = page.locator('.tabulator')
+    await expect(tabulator.locator('.tabulator-row').first()).toBeVisible()
+
+    // Total PnL column should have a colored value (+ or -)
+    // The PnL formatter wraps values in a <span> with color
+    const firstRow = tabulator.locator('.tabulator-row').first()
+    const pnlCell = firstRow.locator('[tabulator-field="total_pnl"]')
+    const pnlText = await pnlCell.textContent()
+    expect(pnlText).not.toBe('—')
+    expect(pnlText).toMatch(/[+-]?\d+\.?\d*/)
+  })
+
+  test('clicking View button navigates to detail page', async ({ page }) => {
+    const tabulator = page.locator('.tabulator')
+    await expect(tabulator.locator('.tabulator-row').first()).toBeVisible()
+
+    // Click the View button in the first row
+    const viewButton = tabulator.locator('.tabulator-row').first().locator('button', { hasText: 'View' })
+    await viewButton.click()
+
     await expect(page).toHaveURL(/\/runs\/[a-f0-9-]+/)
+  })
+
+  test('columns are sortable', async ({ page }) => {
+    const tabulator = page.locator('.tabulator')
+    await expect(tabulator.locator('.tabulator-row').first()).toBeVisible()
+
+    // Click Total PnL header to sort
+    const pnlHeader = tabulator.locator('.tabulator-col', { hasText: 'Total PnL' }).first()
+    await pnlHeader.click()
+
+    // Verify sort indicator appears (Tabulator adds a sort arrow)
+    await expect(pnlHeader.locator('.tabulator-col-sorter')).toBeVisible()
+  })
+
+  test('header filters are present and functional', async ({ page }) => {
+    const tabulator = page.locator('.tabulator')
+    await expect(tabulator.locator('.tabulator-row').first()).toBeVisible()
+
+    // Type in the Strategy header filter
+    const strategyCol = tabulator.locator('.tabulator-col', { hasText: 'Strategy' }).first()
+    const strategyFilter = strategyCol.locator('input')
+    await strategyFilter.fill('EMACross')
+
+    // All visible rows should still exist (EMACross matches the test data)
+    const rows = tabulator.locator('.tabulator-row')
+    const count = await rows.count()
+    expect(count).toBeGreaterThan(0)
   })
 })
