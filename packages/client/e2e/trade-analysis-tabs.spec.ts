@@ -3,9 +3,9 @@ import { test, expect } from '@playwright/test'
 test.describe('Trade Analysis Tabs', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
-    const table = page.locator('table')
-    await expect(table).toBeVisible()
-    await table.locator('tbody tr').first().click()
+    const grid = page.locator('[role="grid"]')
+    await expect(grid).toBeVisible()
+    await grid.getByRole('button', { name: 'View' }).first().click()
     await expect(page).toHaveURL(/\/runs\/[a-f0-9-]+/)
     // Wait for async data to load
     await expect(page.getByRole('button', { name: /Prev/ })).toBeVisible()

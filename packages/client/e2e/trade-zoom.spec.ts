@@ -30,9 +30,9 @@ const waitForZoomIn = async (page: import('@playwright/test').Page, maxWidth = 9
 test.describe('Trade Zoom', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
-    const table = page.locator('table')
-    await expect(table).toBeVisible()
-    await table.locator('tbody tr').first().click()
+    const grid = page.locator('[role="grid"]')
+    await expect(grid).toBeVisible()
+    await grid.getByRole('button', { name: 'View' }).first().click()
     await expect(page).toHaveURL(/\/runs\/[a-f0-9-]+/)
     await expect(page.getByRole('button', { name: /Prev/ })).toBeVisible()
     await expect(page.locator('canvas').first()).toBeVisible()
@@ -59,7 +59,7 @@ test.describe('Trade Zoom', () => {
     const zoom2 = await getZoom(page)
 
     // Jump to a distant trade via the table (trade #20)
-    const tradesTable = page.locator('table').last()
+    const tradesTable = page.locator('table')
     const distantRow = tradesTable.locator('tbody tr').nth(19)
     await expect(distantRow).toBeVisible()
     await distantRow.click()
@@ -92,7 +92,7 @@ test.describe('Trade Zoom', () => {
 
   test('clicking a trade in the table zooms the chart', async ({ page }) => {
     // Click 5th trade row
-    const tradesTable = page.locator('table').last()
+    const tradesTable = page.locator('table')
     const fifthRow = tradesTable.locator('tbody tr').nth(4)
     await expect(fifthRow).toBeVisible()
     await fifthRow.click()
