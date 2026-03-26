@@ -1,4 +1,4 @@
-name: E2E Tests
+name: CI
 
 on:
   pull_request:
@@ -31,6 +31,12 @@ jobs:
 
       - name: Install backend dependencies
         run: cd packages/server && uv sync
+
+      - name: TypeScript type check
+        run: cd packages/client && npx tsc -b --noEmit
+
+      - name: Lint
+        run: cd packages/client && bun run lint
 
       - name: Install Playwright browsers
         run: cd packages/client && bunx playwright install chromium --with-deps
