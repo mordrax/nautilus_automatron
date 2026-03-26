@@ -36,3 +36,26 @@ export const computeHoldTimeHours = (trade: Trade): number => {
   const exit = new Date(trade.exit_datetime).getTime()
   return (exit - entry) / (1000 * 60 * 60)
 }
+
+export type TradesByMonth = {
+  readonly months: readonly string[]
+  readonly counts: readonly number[]
+}
+
+export const computeTradesByMonth = (trades: readonly Trade[]): TradesByMonth => {
+  if (trades.length === 0) return { months: [], counts: [] }
+
+  const monthCounts = new Map<string, number>()
+
+  for (const trade of trades) {
+    const month = trade.exit_datetime.slice(0, 7) // "YYYY-MM"
+    monthCounts.set(month, (monthCounts.get(month) ?? 0) + 1)
+  }
+
+  const sorted = [...monthCounts.entries()].sort(([a], [b]) => a.localeCompare(b))
+
+  return {
+    months: sorted.map(([m]) => m),
+    counts: sorted.map(([, c]) => c),
+  }
+}
