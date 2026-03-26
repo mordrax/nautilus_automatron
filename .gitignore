@@ -13,5 +13,4 @@ bun.lock
 playwright-report/
 test-results/
 
-# Interactive Brokers credentials
-.env.ib
+.ipynb_checkpoints/
