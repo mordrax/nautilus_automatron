@@ -19,10 +19,10 @@ export const useHotkeys = ({ onPrevTrade, onNextTrade, onPrevTradeFast, onNextTr
 
       if (e.key === 'ArrowLeft') {
         e.preventDefault()
-        e.shiftKey ? onPrevTradeFast() : onPrevTrade()
+        if (e.shiftKey) { onPrevTradeFast() } else { onPrevTrade() }
       } else if (e.key === 'ArrowRight') {
         e.preventDefault()
-        e.shiftKey ? onNextTradeFast() : onNextTrade()
+        if (e.shiftKey) { onNextTradeFast() } else { onNextTrade() }
       } else if (onCategoryAssign && e.key >= '1' && e.key <= '7') {
         e.preventDefault()
         onCategoryAssign(Number(e.key))

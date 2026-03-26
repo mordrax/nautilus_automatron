@@ -275,8 +275,11 @@ export const CandlestickChart = ({
 }: CandlestickChartProps) => {
   const chartDivRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<echarts.ECharts | null>(null)
-  const [selectTradeRef] = useState(() => ({ current: onSelectTrade }))
-  selectTradeRef.current = onSelectTrade
+  const selectTradeRef = useRef(onSelectTrade)
+
+  useEffect(() => {
+    selectTradeRef.current = onSelectTrade
+  })
 
   const panelCount = indicators.filter(i => i.display === 'panel').length
   const chartHeight = 600 + panelCount * 150
@@ -312,12 +315,14 @@ export const CandlestickChart = ({
       chart.dispose()
       chartRef.current = null
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- indicators handled by the update effect below; selectTradeRef is a stable ref
   }, [ohlc, trades, onChartReady])
 
   // Update indicators without destroying chart (preserves zoom/state)
   useEffect(() => {
     if (!chartRef.current) return
-    const { dataZoom: _, ...optionWithoutZoom } = buildOption(ohlc, trades, indicators)
+    const fullOption = buildOption(ohlc, trades, indicators)
+    const { dataZoom: _, ...optionWithoutZoom } = fullOption // eslint-disable-line @typescript-eslint/no-unused-vars
     chartRef.current.setOption(optionWithoutZoom, { replaceMerge: ['series', 'grid', 'xAxis', 'yAxis'] })
     chartRef.current.resize()
   }, [ohlc, trades, indicators])

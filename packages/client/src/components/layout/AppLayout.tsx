@@ -35,7 +35,7 @@ export const AppLayout = ({ children }: { readonly children: ReactNode }) => {
     queryFn: () => runEffect(getVersion()),
   })
 
-  const { isSuccess: backendUp, isError: backendDown, isFetching: pingLoading } = useQuery({
+  const { isSuccess: backendUp, isError: backendDown } = useQuery({
     queryKey: ['ping'],
     queryFn: () => runEffect(ping()),
     refetchInterval: 60_000,
