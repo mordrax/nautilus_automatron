@@ -8,6 +8,7 @@ import { PnlDistributionChart } from '@/components/chart/PnlDistributionChart'
 import { PnlHoldTimeChart } from '@/components/chart/PnlHoldTimeChart'
 import { PnlOverTimeChart } from '@/components/chart/PnlOverTimeChart'
 import { EquityCurveChart } from '@/components/chart/EquityCurveChart'
+import { TradesByMonthChart } from '@/components/chart/TradesByMonthChart'
 import { TradeTable } from '@/components/trades/TradeTable'
 import { TradeNavigator } from '@/components/trades/TradeNavigator'
 import { CategorisationTable } from '@/components/trades/CategorisationTable'
@@ -250,7 +251,19 @@ export const RunDetailPage = ({ runId }: RunDetailPageProps) => {
         </TabsContent>
 
         <TabsContent value="trades-by-month" className="min-h-[400px]">
-          <div className="flex items-center justify-center h-[400px] text-muted-foreground">Coming soon</div>
+          {trades && trades.length > 0 ? (
+            <Card>
+              <CardContent className="p-2">
+                <div className="h-[500px]">
+                  <TradesByMonthChart trades={trades} />
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="flex items-center justify-center h-[400px] text-muted-foreground">
+              Loading trade data...
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>
