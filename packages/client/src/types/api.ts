@@ -82,6 +82,12 @@ export type Position = {
   readonly duration_ns: number
 }
 
+export type TradeCategory = {
+  readonly id: number
+  readonly description: string
+  readonly tradeIds: ReadonlySet<number>
+}
+
 export type IndicatorMeta = {
   readonly id: string
   readonly label: string
