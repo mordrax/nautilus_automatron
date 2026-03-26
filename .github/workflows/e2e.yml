@@ -1,10 +1,28 @@
-name: E2E Tests
+name: CI
 
 on:
   pull_request:
     branches: [main]
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install frontend dependencies
+        run: bun install
+
+      - name: TypeScript type check
+        run: cd packages/client && npx tsc -b --noEmit
+
+      - name: Lint
+        run: cd packages/client && bun run lint
+
   e2e:
     runs-on: ubuntu-latest
     permissions:

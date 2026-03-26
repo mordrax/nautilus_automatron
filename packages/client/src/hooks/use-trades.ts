@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import React, { useState, useCallback, useRef } from 'react'
 import type { Trade, OhlcData } from '@/types/api'
 import type * as echarts from 'echarts'
 import { findBarIndex } from '@/lib/trade-utils'
@@ -10,13 +10,16 @@ export const useTradeNavigation = (
 ) => {
   const [currentIndex, setCurrentIndex] = useState(0)
 
-  // Sync refs on every render so callbacks always read latest values
   const chartRef = useRef(chartInstance)
-  chartRef.current = chartInstance
   const ohlcRef = useRef(ohlc)
-  ohlcRef.current = ohlc
   const tradesRef = useRef(trades)
-  tradesRef.current = trades
+
+  // Sync refs in a passive effect so callbacks always read latest values
+  React.useEffect(() => {
+    chartRef.current = chartInstance
+    ohlcRef.current = ohlc
+    tradesRef.current = trades
+  })
 
   const centerOnTrade = useCallback((index: number) => {
     const chart = chartRef.current
