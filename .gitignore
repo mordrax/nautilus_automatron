@@ -14,3 +14,4 @@ bun.lock
 .worktrees/
 playwright-report/
 test-results/
+backtest_catalog/
