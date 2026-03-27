@@ -1,7 +1,7 @@
-import type { ColumnDefinition, CellComponent } from 'tabulator-tables'
+import type { ColumnDefinition } from 'tabulator-tables'
 import { stringHeaderFilter, numericHeaderFilter } from '@/lib/run-columns'
 
-export const createCatalogColumns = (onViewInstrument: (barType: string) => void): ColumnDefinition[] => [
+export const createCatalogColumns = (): ColumnDefinition[] => [
   {
     title: '',
     formatter: (): string => '<button>View</button>',
@@ -9,10 +9,6 @@ export const createCatalogColumns = (onViewInstrument: (barType: string) => void
     hozAlign: 'center',
     width: 60,
     frozen: true,
-    cellClick: (_e: UIEvent, cell: CellComponent) => {
-      const data = cell.getRow().getData() as { bar_type: string }
-      onViewInstrument(data.bar_type)
-    },
   },
   {
     title: 'Instrument',

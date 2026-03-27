@@ -17,7 +17,7 @@ export const CatalogTable = ({ entries, title, onViewInstrument }: CatalogTableP
   const tabulatorRef = useRef<Tabulator | null>(null)
   const { hiddenColumns, toggleColumn, applyVisibility } = useColumnVisibility('catalog-table')
 
-  const columns = useMemo(() => createCatalogColumns(onViewInstrument), [onViewInstrument])
+  const columns = useMemo(() => createCatalogColumns(), [])
 
   const toggleableColumns = useMemo(
     () =>
@@ -53,7 +53,7 @@ export const CatalogTable = ({ entries, title, onViewInstrument }: CatalogTableP
       table.destroy()
       tabulatorRef.current = null
     }
-  }, [entries, columns, applyVisibility])
+  }, [entries, columns, applyVisibility, onViewInstrument])
 
   return (
     <div>
