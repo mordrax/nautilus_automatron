@@ -3,11 +3,21 @@
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 
+from runner.backtest import build_run_config, load_run_config, run_backtest, save_run_config
 from server.config import get_settings
 from server.store import reader, transforms
+from server.store.reader import delete_run
 
 router = APIRouter()
+
+
+class CreateBacktestRequest(BaseModel):
+    strategy: str
+    bar_type: str
+    params: dict | None = None
+    starting_balance: int = 100_000
 
 
 def _store_path() -> Path:
@@ -61,3 +71,53 @@ def get_run(run_id: str, store_path: Path = Depends(_store_path)):
         "total_positions": len(positions_table) if positions_table is not None else 0,
         "bar_types": reader.list_bar_types(store_path, run_id),
     }
+
+
+@router.post("/runs")
+def create_run(
+    request: CreateBacktestRequest,
+    store_path: Path = Depends(_store_path),
+):
+    """Create and execute a new backtest."""
+    try:
+        config = build_run_config(
+            strategy_name=request.strategy,
+            bar_type=request.bar_type,
+            catalog_path=str(store_path),
+            params=request.params,
+            starting_balance=f"{request.starting_balance} USD",
+        )
+    except KeyError:
+        raise HTTPException(status_code=400, detail=f"Unknown strategy: {request.strategy}")
+
+    result = run_backtest(config)
+
+    # Save the run config for future reruns
+    save_run_config(config, str(store_path), result.run_id)
+
+    return {"run_id": result.run_id, "status": "completed"}
+
+
+@router.post("/runs/{run_id}/rerun")
+def rerun(run_id: str, store_path: Path = Depends(_store_path)):
+    """Rerun a backtest using its saved BacktestRunConfig."""
+    config = load_run_config(str(store_path), run_id)
+    if config is None:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Run {run_id} has no saved run_config.json — cannot rerun",
+        )
+
+    result = run_backtest(config)
+    save_run_config(config, str(store_path), result.run_id)
+
+    return {"run_id": result.run_id, "status": "completed"}
+
+
+@router.delete("/runs/{run_id}")
+def delete_run_endpoint(run_id: str, store_path: Path = Depends(_store_path)):
+    """Delete a backtest run from the catalog."""
+    deleted = delete_run(store_path, run_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
+    return {"status": "deleted", "run_id": run_id}
