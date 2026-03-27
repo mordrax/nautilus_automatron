@@ -838,10 +838,36 @@ wheels = [
 ]
 
 [[package]]
+name = "nautilus-automatron-data"
+version = "0.1.0"
+source = { directory = "../data" }
+dependencies = [
+    { name = "nautilus-ibapi" },
+    { name = "nautilus-trader" },
+    { name = "pandas" },
+    { name = "protobuf" },
+    { name = "pyarrow" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "ipykernel", marker = "extra == 'dev'", specifier = ">=6.0.0" },
+    { name = "jupyter", marker = "extra == 'dev'", specifier = ">=1.0.0" },
+    { name = "nautilus-ibapi", specifier = "==10.43.2" },
+    { name = "nautilus-trader" },
+    { name = "pandas", specifier = ">=2.2.0" },
+    { name = "protobuf", specifier = "==5.29.5" },
+    { name = "pyarrow", specifier = ">=18.0.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
+]
+provides-extras = ["dev"]
+
+[[package]]
 name = "nautilus-automatron-runner"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "nautilus-automatron-data" },
     { name = "nautilus-ibapi" },
     { name = "nautilus-strategies" },
     { name = "nautilus-trader" },
@@ -861,6 +887,7 @@ dev = [
 requires-dist = [
     { name = "ipykernel", marker = "extra == 'dev'", specifier = ">=6.0.0" },
     { name = "jupyter", marker = "extra == 'dev'", specifier = ">=1.0.0" },
+    { name = "nautilus-automatron-data", directory = "../data" },
     { name = "nautilus-ibapi", specifier = "==10.43.2" },
     { name = "nautilus-strategies", directory = "../../../../../nautilus_strategies" },
     { name = "nautilus-trader" },
