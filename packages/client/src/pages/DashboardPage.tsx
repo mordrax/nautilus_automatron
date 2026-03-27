@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import { RunList } from '@/components/runs/RunList'
 import { CatalogTable } from '@/components/catalog/CatalogTable'
 import { useRuns } from '@/hooks/use-runs'
@@ -13,6 +14,11 @@ export const DashboardPage = () => {
   const deleteMutation = useDeleteBacktest()
   const [, setLocation] = useLocation()
 
+  const handleViewInstrument = useCallback(
+    (barType: string) => setLocation(`/instruments/${encodeURIComponent(barType)}`),
+    [setLocation],
+  )
+
   return (
     <div className="px-2 py-4 space-y-8">
       <section>
@@ -22,7 +28,7 @@ export const DashboardPage = () => {
           <CatalogTable
             entries={catalogData}
             title="Instrument Data Catalog"
-            onViewInstrument={(barType) => setLocation(`/instruments/${encodeURIComponent(barType)}`)}
+            onViewInstrument={handleViewInstrument}
           />
         )}
         {catalogData && catalogData.length === 0 && (
