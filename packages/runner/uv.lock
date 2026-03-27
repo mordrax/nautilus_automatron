@@ -952,6 +952,7 @@ name = "nautilus-automatron-runner"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "nautilus-strategies" },
     { name = "nautilus-trader" },
     { name = "pandas" },
     { name = "pyarrow" },
@@ -968,9 +969,25 @@ dev = [
 requires-dist = [
     { name = "ipykernel", marker = "extra == 'dev'", specifier = ">=6.0.0" },
     { name = "jupyter", marker = "extra == 'dev'", specifier = ">=1.0.0" },
+    { name = "nautilus-strategies", directory = "../../../../../nautilus_strategies" },
     { name = "nautilus-trader" },
     { name = "pandas", specifier = ">=2.2.0" },
     { name = "pyarrow", specifier = ">=18.0.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
+]
+provides-extras = ["dev"]
+
+[[package]]
+name = "nautilus-strategies"
+version = "0.1.0"
+source = { directory = "../../../../../nautilus_strategies" }
+dependencies = [
+    { name = "nautilus-trader" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "nautilus-trader" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
 ]
 provides-extras = ["dev"]
