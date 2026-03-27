@@ -14,7 +14,7 @@ Backtest analysis dashboard for NautilusTrader.
 - See global CLAUDE.md for full rules
 
 ## Backend
-- Store path configured via STORE_PATH env var
+- Store path configured via NAUTILUS_STORE_PATH env var
 - Reads NautilusTrader StreamingConfig catalog format (feather files)
 - All route handlers are plain functions with dependency injection
 
