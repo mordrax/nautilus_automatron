@@ -1,3 +1,5 @@
+"""Nautilus Automatron Runner — backtest execution and data ingestion."""
+
 from strategies import (
     ArrayKind,
     BandKind,
