@@ -6,7 +6,7 @@ dependencies = [
     "nautilus_trader",
     "nautilus_strategies @ file:///Users/mordrax/code/nautilus_strategies",
     "nautilus-ibapi==10.43.2",
-    "nautilus-automatron-data @ file:///Users/mordrax/code/nautilus_automatron/.worktrees/backtest-crud/packages/data",
+    "nautilus-automatron-data @ file:///Users/mordrax/code/nautilus_automatron/packages/data",
     "protobuf==5.29.5",
     "pandas>=2.2.0",
     "pyarrow>=18.0.0",

@@ -8,7 +8,6 @@ Usage from server:
     Same — build config from API request, call run_backtest().
 """
 
-import json
 from pathlib import Path
 
 import msgspec
@@ -24,7 +23,23 @@ from nautilus_trader.config import LoggingConfig
 from nautilus_trader.persistence.config import StreamingConfig
 from nautilus_trader.trading.config import ImportableStrategyConfig
 
+from nautilus_trader.persistence.catalog import ParquetDataCatalog
+
 from runner.registry import get_strategy_info
+
+
+def _resolve_bar_type(bar_type_dir_name: str, catalog_path: str) -> str:
+    """Resolve the actual NautilusTrader bar type string from a catalog directory name.
+
+    The catalog directory name may differ from the actual bar type string when
+    instrument IDs contain slashes (e.g. 'AUD/USD.SIM' → dir 'AUDUSD.SIM').
+    We load a sample bar to get the canonical bar type string.
+    """
+    catalog = ParquetDataCatalog(catalog_path)
+    bars = catalog.bars(bar_types=[bar_type_dir_name], as_nautilus=True)
+    if bars:
+        return str(bars[0].bar_type)
+    return bar_type_dir_name
 
 
 def build_run_config(
@@ -39,7 +54,8 @@ def build_run_config(
 
     Args:
         strategy_name: Registry key, e.g. "BBBStrategy".
-        bar_type: Full bar type string, e.g. "XAUUSD.IBCFD-1-MINUTE-MID-EXTERNAL".
+        bar_type: Full bar type string or catalog directory name,
+                  e.g. "XAUUSD.IBCFD-1-MINUTE-MID-EXTERNAL".
         catalog_path: Path to the data catalog (reads data/ for bars, writes backtest/ for results).
         params: Strategy parameter overrides (merged over defaults).
         starting_balance: Starting balance string, e.g. "100000 USD".
@@ -53,13 +69,16 @@ def build_run_config(
     # Merge user params over defaults
     merged_params = {**info["default_params"], **(params or {})}
 
+    # Resolve the canonical bar type string from the catalog (handles slash/no-slash mismatch)
+    resolved_bar_type = _resolve_bar_type(bar_type, catalog_path)
+
     # Parse instrument_id from bar_type
     # e.g. "XAUUSD.IBCFD-1-MINUTE-MID-EXTERNAL" → instrument "XAUUSD.IBCFD"
-    instrument_id = bar_type.split("-")[0]  # e.g. "XAUUSD.IBCFD"
+    instrument_id = resolved_bar_type.split("-")[0]  # e.g. "XAUUSD.IBCFD" or "AUD/USD.SIM"
 
     # Add instrument_id and bar_type to strategy params (required by BBBStrategyConfig)
     merged_params["instrument_id"] = instrument_id
-    merged_params["bar_type"] = bar_type
+    merged_params["bar_type"] = resolved_bar_type
 
     strategy_config = ImportableStrategyConfig(
         strategy_path=info["strategy_path"],
@@ -107,6 +126,11 @@ def run_backtest(config: BacktestRunConfig) -> BacktestResult:
     """
     node = BacktestNode(configs=[config])
     results = node.run()
+    if not results:
+        raise RuntimeError(
+            "BacktestNode returned no results — the backtest may have failed silently. "
+            "Check that the instrument is registered and bar data is available."
+        )
     return results[0]
 
 
