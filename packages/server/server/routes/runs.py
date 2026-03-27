@@ -5,9 +5,18 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from nautilus_trader.persistence.catalog.parquet import ParquetDataCatalog
+
 from runner.backtest import build_run_config, load_run_config, run_backtest, save_run_config
-from server.config import get_settings
+from server.routes.dependencies import _catalog, _store_path
 from server.store import reader, transforms
+from server.store.catalog_reader import (
+    get_fills,
+    get_positions_closed,
+    get_positions_opened,
+    list_bar_types_from_data,
+    read_backtest_data,
+)
 from server.store.reader import delete_run
 
 router = APIRouter()
@@ -20,17 +29,14 @@ class CreateBacktestRequest(BaseModel):
     starting_balance: int = 100_000
 
 
-def _store_path() -> Path:
-    return Path(get_settings().store_path)
-
-
 @router.get("/runs")
 def list_runs(
     page: int = 1,
     per_page: int = 20,
     store_path: Path = Depends(_store_path),
+    catalog: ParquetDataCatalog = Depends(_catalog),
 ):
-    run_ids = reader.list_run_ids(store_path)
+    run_ids = catalog.list_backtest_runs()
     total = len(run_ids)
 
     start = (page - 1) * per_page
@@ -40,15 +46,19 @@ def list_runs(
     runs = []
     for run_id in page_ids:
         config = reader.read_run_config(store_path, run_id)
-        fills_table = reader.read_fills(store_path, run_id)
-        positions_table = reader.read_positions_closed(store_path, run_id)
-        positions_opened = reader.read_positions_opened(store_path, run_id)
+        data = read_backtest_data(catalog, run_id)
 
-        fills_count = len(fills_table) if fills_table is not None else 0
-        positions_count = len(positions_table) if positions_table is not None else 0
+        fills = get_fills(data)
+        positions_closed = get_positions_closed(data)
+        positions_opened = get_positions_opened(data)
 
         summary = transforms.run_summary(
-            run_id, config, positions_count, fills_count, positions_opened, positions_table
+            run_id,
+            config,
+            len(positions_closed),
+            len(fills),
+            positions_opened,
+            positions_closed,
         )
         runs.append(summary)
 
@@ -56,20 +66,25 @@ def list_runs(
 
 
 @router.get("/runs/{run_id}")
-def get_run(run_id: str, store_path: Path = Depends(_store_path)):
+def get_run(
+    run_id: str,
+    store_path: Path = Depends(_store_path),
+    catalog: ParquetDataCatalog = Depends(_catalog),
+):
     config = reader.read_run_config(store_path, run_id)
     if not config:
         raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
 
-    fills_table = reader.read_fills(store_path, run_id)
-    positions_table = reader.read_positions_closed(store_path, run_id)
+    data = read_backtest_data(catalog, run_id)
+    fills = get_fills(data)
+    positions = get_positions_closed(data)
 
     return {
         "run_id": run_id,
         "config": config,
-        "total_fills": len(fills_table) if fills_table is not None else 0,
-        "total_positions": len(positions_table) if positions_table is not None else 0,
-        "bar_types": reader.list_bar_types(store_path, run_id),
+        "total_fills": len(fills),
+        "total_positions": len(positions),
+        "bar_types": list_bar_types_from_data(data),
     }
 
 

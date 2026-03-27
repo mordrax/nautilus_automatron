@@ -1,32 +1,22 @@
 """Pure functions for reading NautilusTrader backtest catalog data.
 
-The catalog uses Arrow IPC stream format (.feather files) organized as:
-  backtest_catalog/backtest/{run_id}/
-    config.json
-    order_filled_0.feather      (Arrow IPC stream)
-    position_opened_0.feather
-    position_closed_0.feather
-    account_state_0.feather
-    bar/{bar_type}/{instrument}_*.feather
+Provides:
+  - read_run_config: read config.json for a specific run
+  - list_catalog_entries: scan all runs to build a deduplicated catalog of bar data
 """
+
+from __future__ import annotations
 
 import json
 import shutil
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pyarrow as pa
 import pyarrow.compute as pc
 
-
-def list_run_ids(store_path: Path) -> list[str]:
-    """List all backtest run IDs in the store."""
-    backtest_dir = store_path / "backtest"
-    if not backtest_dir.exists():
-        return []
-    return sorted(
-        [d.name for d in backtest_dir.iterdir() if d.is_dir()],
-        reverse=True,
-    )
+if TYPE_CHECKING:
+    from nautilus_trader.persistence.catalog.parquet import ParquetDataCatalog
 
 
 def read_run_config(store_path: Path, run_id: str) -> dict:
@@ -50,74 +40,32 @@ def _read_ipc_stream(path: Path) -> pa.Table | None:
         return None
 
 
-def read_fills(store_path: Path, run_id: str) -> pa.Table | None:
-    """Read order_filled events for a run."""
-    return _read_ipc_stream(
-        store_path / "backtest" / run_id / "order_filled_0.feather"
-    )
-
-
-def read_positions_opened(store_path: Path, run_id: str) -> pa.Table | None:
-    """Read position_opened events for a run."""
-    return _read_ipc_stream(
-        store_path / "backtest" / run_id / "position_opened_0.feather"
-    )
-
-
-def read_positions_closed(store_path: Path, run_id: str) -> pa.Table | None:
-    """Read position_closed events for a run."""
-    return _read_ipc_stream(
-        store_path / "backtest" / run_id / "position_closed_0.feather"
-    )
-
-
-def read_account_states(store_path: Path, run_id: str) -> pa.Table | None:
-    """Read account_state events for a run."""
-    return _read_ipc_stream(
-        store_path / "backtest" / run_id / "account_state_0.feather"
-    )
-
-
-def list_bar_types(store_path: Path, run_id: str) -> list[str]:
-    """List available bar types for a run."""
-    bar_dir = store_path / "backtest" / run_id / "bar"
-    if not bar_dir.exists():
-        return []
-    return sorted([d.name for d in bar_dir.iterdir() if d.is_dir()])
-
-
-def read_bars_raw(store_path: Path, run_id: str, bar_type: str) -> pa.Table | None:
-    """Read raw bar data (fixed-point encoded) for a bar type.
-
-    Returns the raw Arrow table — caller must decode fixed-point columns
-    using nautilus_trader.serialization.arrow.serializer.ArrowSerializer.
-    """
-    bar_dir = store_path / "backtest" / run_id / "bar" / bar_type
-    if not bar_dir.exists():
-        return None
-
-    tables = []
-    for feather_file in sorted(bar_dir.glob("*.feather")):
-        table = _read_ipc_stream(feather_file)
-        if table is not None:
-            tables.append(table)
-
-    if not tables:
-        return None
-
-    return pa.concat_tables(tables) if len(tables) > 1 else tables[0]
-
-
-def list_catalog_entries(store_path: Path) -> list[dict]:
+def list_catalog_entries(
+    store_path: Path,
+    catalog: ParquetDataCatalog | None = None,
+) -> list[dict]:
     """Scan all runs to build a deduplicated catalog of available instrument data.
 
     For each unique bar_type directory across all runs, reads all feather files
     to extract instrument ID, total bar count, and date range.
     Returns one entry per unique bar_type.
     """
+    if catalog is not None:
+        run_ids = catalog.list_backtest_runs()
+    else:
+        # Fallback: scan directories directly
+        backtest_dir = store_path / "backtest"
+        if not backtest_dir.exists():
+            run_ids = []
+        else:
+            run_ids = sorted(
+                [d.name for d in backtest_dir.iterdir() if d.is_dir()],
+                reverse=True,
+            )
+
     seen: dict[str, dict] = {}
 
-    for run_id in list_run_ids(store_path):
+    for run_id in run_ids:
         bar_dir = store_path / "backtest" / run_id / "bar"
         if not bar_dir.exists():
             continue

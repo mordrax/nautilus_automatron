@@ -1,12 +1,10 @@
-"""Pure functions for transforming raw Arrow data into API-ready dicts.
+"""Pure functions for transforming NautilusTrader objects into API-ready dicts.
 
-All functions take Arrow tables or lists of dicts and return plain Python
-structures suitable for JSON serialization.
+All functions take deserialized Nautilus objects or lists of dicts and return
+plain Python structures suitable for JSON serialization.
 """
 
 from datetime import datetime, timezone
-
-import pyarrow as pa
 
 
 def _ns_to_iso(ns: int) -> str:
@@ -14,50 +12,48 @@ def _ns_to_iso(ns: int) -> str:
     return datetime.fromtimestamp(ns / 1e9, tz=timezone.utc).isoformat()
 
 
-def fills_table_to_dicts(table: pa.Table) -> list[dict]:
-    """Convert order_filled Arrow table to list of dicts."""
-    df = table.to_pandas()
+def fills_to_dicts(fills: list) -> list[dict]:
+    """Convert OrderFilled objects to list of dicts."""
     return [
         {
-            "client_order_id": row["client_order_id"],
-            "venue_order_id": row["venue_order_id"],
-            "trade_id": row["trade_id"],
-            "position_id": row["position_id"],
-            "instrument_id": row["instrument_id"],
-            "order_side": row["order_side"],
-            "order_type": row["order_type"],
-            "last_qty": row["last_qty"],
-            "last_px": row["last_px"],
-            "currency": row["currency"],
-            "commission": row["commission"],
-            "ts_event": _ns_to_iso(row["ts_event"]),
+            "client_order_id": str(f.client_order_id),
+            "venue_order_id": str(f.venue_order_id),
+            "trade_id": str(f.trade_id),
+            "position_id": str(f.position_id) if f.position_id else None,
+            "instrument_id": str(f.instrument_id),
+            "order_side": str(f.order_side),
+            "order_type": str(f.order_type),
+            "last_qty": float(f.last_qty),
+            "last_px": float(f.last_px),
+            "currency": str(f.currency),
+            "commission": str(f.commission),
+            "ts_event": _ns_to_iso(f.ts_event),
         }
-        for _, row in df.iterrows()
+        for f in fills
     ]
 
 
-def positions_closed_to_dicts(table: pa.Table) -> list[dict]:
-    """Convert position_closed Arrow table to list of dicts."""
-    df = table.to_pandas()
+def positions_closed_to_dicts(positions: list) -> list[dict]:
+    """Convert PositionClosed objects to list of dicts."""
     return [
         {
-            "position_id": row["position_id"],
-            "instrument_id": row["instrument_id"],
-            "strategy_id": row["strategy_id"],
-            "entry": row["entry"],
-            "side": row["side"],
-            "quantity": row["quantity"],
-            "peak_qty": row["peak_qty"],
-            "avg_px_open": row["avg_px_open"],
-            "avg_px_close": row["avg_px_close"],
-            "realized_return": row["realized_return"],
-            "realized_pnl": row["realized_pnl"],
-            "currency": row["currency"],
-            "ts_opened": _ns_to_iso(row["ts_opened"]),
-            "ts_closed": _ns_to_iso(row["ts_closed"]),
-            "duration_ns": int(row["duration_ns"]),
+            "position_id": str(p.position_id),
+            "instrument_id": str(p.instrument_id),
+            "strategy_id": str(p.strategy_id),
+            "entry": str(p.entry),
+            "side": str(p.side),
+            "quantity": float(p.quantity),
+            "peak_qty": float(p.peak_qty),
+            "avg_px_open": p.avg_px_open,
+            "avg_px_close": p.avg_px_close,
+            "realized_return": _safe_float(p.realized_return),
+            "realized_pnl": float(p.realized_pnl),
+            "currency": str(p.currency),
+            "ts_opened": _ns_to_iso(p.ts_opened),
+            "ts_closed": _ns_to_iso(p.ts_closed),
+            "duration_ns": int(p.duration_ns),
         }
-        for _, row in df.iterrows()
+        for p in positions
     ]
 
 
@@ -115,20 +111,22 @@ def _safe_float(val: float) -> float | None:
     return None if (isinstance(val, float) and math.isnan(val)) else val
 
 
-def account_states_to_dicts(table: pa.Table) -> list[dict]:
-    """Convert account_state Arrow table to list of dicts, skipping NaN rows."""
-    df = table.to_pandas()
+def account_states_to_dicts(states: list) -> list[dict]:
+    """Convert AccountState objects to list of dicts, skipping states with no balance."""
     results = []
-    for _, row in df.iterrows():
-        total = _safe_float(row["balance_total"])
+    for s in states:
+        if not s.balances:
+            continue
+        b = s.balances[0]
+        total = _safe_float(float(b.total))
         if total is None:
-            continue  # Skip margin-only rows without balance data
+            continue
         results.append({
-            "ts_event": _ns_to_iso(row["ts_event"]),
+            "ts_event": _ns_to_iso(s.ts_event),
             "balance_total": total,
-            "balance_free": _safe_float(row["balance_free"]),
-            "balance_locked": _safe_float(row["balance_locked"]),
-            "currency": row["balance_currency"],
+            "balance_free": _safe_float(float(b.free)),
+            "balance_locked": _safe_float(float(b.locked)),
+            "currency": str(b.currency),
         })
     return results
 
@@ -161,18 +159,34 @@ def bars_to_ohlc(bars: list) -> dict:
     }
 
 
+def _extract_strategy_name(config: dict, positions_opened: list) -> str:
+    """Extract strategy name from position data, falling back to config."""
+    strategy_name = config.get("strategy_name")
+    if strategy_name:
+        return strategy_name
+
+    if positions_opened and len(positions_opened) > 0:
+        return str(positions_opened[0].strategy_id)
+
+    strategies = config.get("strategies", [])
+    if strategies:
+        return strategies[0].get("strategy_path", "Unknown")
+
+    return "Unknown"
+
+
 def run_summary(
     run_id: str,
     config: dict,
     positions_count: int,
     fills_count: int,
-    positions_opened: "pa.Table | None" = None,
-    positions_closed: "pa.Table | None" = None,
+    positions_opened: list | None = None,
+    positions_closed: list | None = None,
 ) -> dict:
     """Build a run summary dict from config and counts."""
     from server.store.metrics import compute_run_metrics, empty_metrics
 
-    strategy_name = _extract_strategy_name(config, positions_opened)
+    strategy_name = _extract_strategy_name(config, positions_opened or [])
 
     summary = {
         "run_id": run_id,
@@ -182,31 +196,13 @@ def run_summary(
         "total_fills": fills_count,
     }
 
-    if positions_closed is not None and len(positions_closed) > 0:
+    if positions_closed and len(positions_closed) > 0:
         metrics = compute_run_metrics(positions_closed)
     else:
         metrics = empty_metrics()
 
     summary.update(metrics)
     return summary
-
-
-def _extract_strategy_name(config: dict, positions_opened: "pa.Table | None") -> str:
-    """Extract strategy name from position data, falling back to config."""
-    if positions_opened is not None and len(positions_opened) > 0:
-        if "strategy_id" in positions_opened.column_names:
-            return positions_opened.column("strategy_id")[0].as_py()
-
-    # Check for run_config.json metadata (new runs have this)
-    strategy_name = config.get("strategy_name")
-    if strategy_name:
-        return strategy_name
-
-    strategies = config.get("strategies", [])
-    if strategies:
-        return strategies[0].get("strategy_path", "Unknown")
-
-    return "Unknown"
 
 
 def _parse_timeframe(bar_type: str, instrument_id: str) -> str:

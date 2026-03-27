@@ -1,28 +1,45 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useMemo } from 'react'
 import { useLocation } from 'wouter'
 import { TabulatorFull as Tabulator } from 'tabulator-tables'
 import 'tabulator-tables/dist/css/tabulator.min.css'
 import type { RunSummary } from '@/types/api'
 import { createRunColumns, createActionColumns } from '@/lib/run-columns'
+import { useColumnVisibility } from '@/hooks/use-column-visibility'
+import { ColumnVisibilityPopover } from '@/components/table/ColumnVisibilityPopover'
 
 type RunListProps = {
   readonly runs: readonly RunSummary[]
+  readonly title: string
   readonly onRerun: (runId: string) => void
   readonly onDelete: (runId: string) => void
 }
 
-export const RunList = ({ runs, onRerun, onDelete }: RunListProps) => {
+export const RunList = ({ runs, title, onRerun, onDelete }: RunListProps) => {
   const [, setLocation] = useLocation()
   const tableRef = useRef<HTMLDivElement>(null)
   const tabulatorRef = useRef<Tabulator | null>(null)
+  const { hiddenColumns, toggleColumn, applyVisibility } = useColumnVisibility('run-list')
+
+  const columns = useMemo(
+    () => [
+      ...createRunColumns((runId: string) => {
+        setLocation(`/runs/${runId}`)
+      }),
+      ...createActionColumns(onRerun, onDelete),
+    ],
+    [setLocation, onRerun, onDelete]
+  )
+
+  const toggleableColumns = useMemo(
+    () =>
+      columns
+        .filter((col) => col.field)
+        .map((col) => ({ field: col.field!, title: col.title ?? col.field! })),
+    [columns]
+  )
 
   useEffect(() => {
     if (!tableRef.current) return
-
-    const columns = [
-      ...createRunColumns((runId: string) => setLocation(`/runs/${runId}`)),
-      ...createActionColumns(onRerun, onDelete),
-    ]
 
     const table = new Tabulator(tableRef.current, {
       data: runs as RunSummary[],
@@ -35,13 +52,29 @@ export const RunList = ({ runs, onRerun, onDelete }: RunListProps) => {
       paginationSizeSelector: [10, 25, 50, 100],
     })
 
+    table.on('tableBuilt', () => {
+      applyVisibility(table)
+    })
+
     tabulatorRef.current = table
 
     return () => {
       table.destroy()
       tabulatorRef.current = null
     }
-  }, [runs, setLocation, onRerun, onDelete])
+  }, [runs, columns, applyVisibility])
 
-  return <div ref={tableRef} />
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4 px-2">
+        <h2 className="text-xl font-semibold">{title}</h2>
+        <ColumnVisibilityPopover
+          columns={toggleableColumns}
+          hiddenColumns={hiddenColumns}
+          onToggle={(field) => toggleColumn(field, tabulatorRef.current)}
+        />
+      </div>
+      <div ref={tableRef} />
+    </div>
+  )
 }

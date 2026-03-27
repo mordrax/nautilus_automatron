@@ -3,8 +3,8 @@
 STRATEGIES = {
     "BBBStrategy": {
         "label": "Bollinger Band Breakout",
-        "strategy_path": "strategies.bbb_strategy.BBBStrategy",
-        "config_path": "strategies.bbb_strategy.BBBStrategyConfig",
+        "strategy_path": "strategies.bbb_strategy:BBBStrategy",
+        "config_path": "strategies.bbb_strategy:BBBStrategyConfig",
         "default_params": {
             "trade_size": "1",
             "buy_array_kind": "close",

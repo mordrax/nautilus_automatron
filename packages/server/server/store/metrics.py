@@ -1,13 +1,11 @@
-"""Pure functions for computing trade metrics from a positions_closed Arrow table.
+"""Pure functions for computing trade metrics from a list of PositionClosed objects.
 
-All functions are stateless and take Arrow tables or plain Python structures.
+All functions are stateless and take plain Python structures.
 """
 
 import math
 from collections import defaultdict
 from datetime import datetime, timezone
-
-import pyarrow as pa
 
 # Nanoseconds per week
 _NS_PER_WEEK = 7 * 86_400_000_000_000
@@ -76,18 +74,18 @@ def _sharpe_ratio(pnls: list[float], ts_closeds: list[int]) -> float | None:
     return round((mean / std) * math.sqrt(12), 2)
 
 
-def compute_run_metrics(positions_closed: pa.Table) -> dict:
-    """Compute trade metrics from a positions_closed Arrow table.
+def compute_run_metrics(positions_closed: list) -> dict:
+    """Compute trade metrics from a list of PositionClosed objects.
 
-    Returns a dict with all metric keys. Returns empty_metrics() for empty tables.
+    Returns a dict with all metric keys. Returns empty_metrics() for empty lists.
     """
-    if len(positions_closed) == 0:
+    if not positions_closed:
         return empty_metrics()
 
-    pnl_col: list[float] = positions_closed.column("realized_pnl").to_pylist()
-    ts_opened_col: list[int] = positions_closed.column("ts_opened").to_pylist()
-    ts_closed_col: list[int] = positions_closed.column("ts_closed").to_pylist()
-    duration_col: list[int] = positions_closed.column("duration_ns").to_pylist()
+    pnl_col: list[float] = [float(p.realized_pnl) for p in positions_closed]
+    ts_opened_col: list[int] = [p.ts_opened for p in positions_closed]
+    ts_closed_col: list[int] = [p.ts_closed for p in positions_closed]
+    duration_col: list[int] = [p.duration_ns for p in positions_closed]
 
     total_positions = len(pnl_col)
 
