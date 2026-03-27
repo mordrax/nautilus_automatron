@@ -843,6 +843,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "nautilus-ibapi" },
+    { name = "nautilus-strategies" },
     { name = "nautilus-trader" },
     { name = "pandas" },
     { name = "protobuf" },
@@ -861,6 +862,7 @@ requires-dist = [
     { name = "ipykernel", marker = "extra == 'dev'", specifier = ">=6.0.0" },
     { name = "jupyter", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "nautilus-ibapi", specifier = "==10.43.2" },
+    { name = "nautilus-strategies", directory = "../../../../../nautilus_strategies" },
     { name = "nautilus-trader" },
     { name = "pandas", specifier = ">=2.2.0" },
     { name = "protobuf", specifier = "==5.29.5" },
@@ -877,6 +879,21 @@ sdist = { url = "https://files.pythonhosted.org/packages/76/a7/cd2c00d99a2500a9f
 wheels = [
     { url = "https://files.pythonhosted.org/packages/0a/03/b810d53eea98bbc29c0cd6ba06ffe942bdbe22e0c09582df4a6741b119c3/nautilus_ibapi-10.43.2-py3-none-any.whl", hash = "sha256:2afa9f42bc9f662dea0938829a1261c04edc42ecabbee9b06a27d5494b1113dc", size = 325562, upload-time = "2026-02-11T21:38:38.763Z" },
 ]
+
+[[package]]
+name = "nautilus-strategies"
+version = "0.1.0"
+source = { directory = "../../../../../nautilus_strategies" }
+dependencies = [
+    { name = "nautilus-trader" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "nautilus-trader" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
+]
+provides-extras = ["dev"]
 
 [[package]]
 name = "nautilus-trader"
