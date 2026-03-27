@@ -9,14 +9,15 @@ import { ColumnVisibilityPopover } from '@/components/table/ColumnVisibilityPopo
 type CatalogTableProps = {
   readonly entries: readonly CatalogEntry[]
   readonly title: string
+  readonly onViewInstrument: (barType: string) => void
 }
 
-export const CatalogTable = ({ entries, title }: CatalogTableProps) => {
+export const CatalogTable = ({ entries, title, onViewInstrument }: CatalogTableProps) => {
   const tableRef = useRef<HTMLDivElement>(null)
   const tabulatorRef = useRef<Tabulator | null>(null)
   const { hiddenColumns, toggleColumn, applyVisibility } = useColumnVisibility('catalog-table')
 
-  const columns = useMemo(() => createCatalogColumns(), [])
+  const columns = useMemo(() => createCatalogColumns(onViewInstrument), [onViewInstrument])
 
   const toggleableColumns = useMemo(
     () =>

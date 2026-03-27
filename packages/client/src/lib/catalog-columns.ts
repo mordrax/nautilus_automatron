@@ -1,7 +1,7 @@
-import type { ColumnDefinition } from 'tabulator-tables'
+import type { ColumnDefinition, CellComponent } from 'tabulator-tables'
 import { stringHeaderFilter, numericHeaderFilter } from '@/lib/run-columns'
 
-export const createCatalogColumns = (): ColumnDefinition[] => [
+export const createCatalogColumns = (onViewInstrument: (barType: string) => void): ColumnDefinition[] => [
   {
     title: 'Instrument',
     field: 'instrument',
@@ -46,5 +46,16 @@ export const createCatalogColumns = (): ColumnDefinition[] => [
     field: 'timeframe',
     sorter: 'string',
     ...stringHeaderFilter,
+  },
+  {
+    title: '',
+    formatter: () => '<button class="text-blue-500 hover:underline text-sm">View</button>',
+    width: 80,
+    hozAlign: 'center',
+    headerSort: false,
+    cellClick: (_e: UIEvent, cell: CellComponent) => {
+      const data = cell.getRow().getData() as { bar_type: string }
+      onViewInstrument(data.bar_type)
+    },
   },
 ]

@@ -19,7 +19,11 @@ export const DashboardPage = () => {
         {catalogLoading && <div className="text-muted-foreground p-4">Loading catalog...</div>}
         {catalogError && <div className="text-destructive p-4">Error loading catalog</div>}
         {catalogData && catalogData.length > 0 && (
-          <CatalogTable entries={catalogData} title="Instrument Data Catalog" />
+          <CatalogTable
+            entries={catalogData}
+            title="Instrument Data Catalog"
+            onViewInstrument={(barType) => setLocation(`/instruments/${encodeURIComponent(barType)}`)}
+          />
         )}
         {catalogData && catalogData.length === 0 && (
           <div className="text-muted-foreground p-4">No instrument data in catalog</div>
