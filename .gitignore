@@ -4,6 +4,8 @@ dist/
 *.pyc
 __pycache__/
 .env
+.env.*
+!.env.*.example
 .venv/
 *.egg-info/
 .DS_Store
@@ -12,5 +14,5 @@ bun.lock
 .worktrees/
 playwright-report/
 test-results/
-
 .ipynb_checkpoints/
+backtest_catalog/
