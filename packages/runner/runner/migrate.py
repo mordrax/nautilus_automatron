@@ -15,17 +15,17 @@ from nautilus_trader.persistence.catalog import ParquetDataCatalog
 from nautilus_trader.serialization.arrow.serializer import ArrowSerializer
 
 
-def get_xauusd_sim():
-    """XAUUSD instrument definition for backtesting."""
+def _make_xauusd(venue_str: str, symbol_str: str = "XAUUSD"):
+    """Create XAUUSD instrument definition for a given venue."""
     from decimal import Decimal
     from nautilus_trader.model.identifiers import InstrumentId, Symbol, Venue
     from nautilus_trader.model.instruments import CurrencyPair
-    from nautilus_trader.model.objects import Currency, Money, Price, Quantity
+    from nautilus_trader.model.objects import Currency, Price, Quantity
 
-    SIM = Venue("SIM")
+    venue = Venue(venue_str)
     return CurrencyPair(
-        instrument_id=InstrumentId(Symbol("XAU/USD"), SIM),
-        raw_symbol=Symbol("XAU/USD"),
+        instrument_id=InstrumentId(Symbol(symbol_str), venue),
+        raw_symbol=Symbol(symbol_str),
         base_currency=Currency.from_str("XAU"),
         quote_currency=Currency.from_str("USD"),
         price_precision=2,
@@ -46,15 +46,21 @@ def get_xauusd_sim():
     )
 
 
+# Instruments matching the bar data's instrument IDs
+INSTRUMENTS = [
+    _make_xauusd("IBCFD", "XAUUSD"),  # Matches XAUUSD.IBCFD in bar data
+]
+
+
 def migrate_catalog(catalog_path: str) -> None:
     """Migrate bar data from backtest/ into data/ and write instrument definitions."""
     root = Path(catalog_path)
     catalog = ParquetDataCatalog(str(root))
 
     # 1. Write instrument definitions
-    instrument = get_xauusd_sim()
-    catalog.write_data([instrument])
-    print(f"Wrote instrument: {instrument.id}")
+    for instrument in INSTRUMENTS:
+        catalog.write_data([instrument])
+        print(f"Wrote instrument: {instrument.id}")
 
     # 2. Find and migrate bar data from backtest runs
     backtest_dir = root / "backtest"
