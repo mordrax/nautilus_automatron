@@ -3,6 +3,7 @@
   "private": true,
   "workspaces": ["packages/*"],
   "scripts": {
+    "kill": "lsof -t -i :${VITE_PORT:-5173} -i :${NAUTILUS_PORT:-8000} | xargs kill 2>/dev/null; echo 'Ports freed'",
     "dev": "concurrently \"bun run dev:client\" \"bun run dev:server\"",
     "dev:client": "cd packages/client && bun run dev",
     "dev:server": "cd packages/server && uvicorn server.main:app --reload --port ${NAUTILUS_PORT:-8000}",
