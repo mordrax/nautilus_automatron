@@ -3,13 +3,15 @@ import { useLocation } from 'wouter'
 import { TabulatorFull as Tabulator } from 'tabulator-tables'
 import 'tabulator-tables/dist/css/tabulator.min.css'
 import type { RunSummary } from '@/types/api'
-import { createRunColumns } from '@/lib/run-columns'
+import { createRunColumns, createActionColumns } from '@/lib/run-columns'
 
 type RunListProps = {
   readonly runs: readonly RunSummary[]
+  readonly onRerun: (runId: string) => void
+  readonly onDelete: (runId: string) => void
 }
 
-export const RunList = ({ runs }: RunListProps) => {
+export const RunList = ({ runs, onRerun, onDelete }: RunListProps) => {
   const [, setLocation] = useLocation()
   const tableRef = useRef<HTMLDivElement>(null)
   const tabulatorRef = useRef<Tabulator | null>(null)
@@ -17,9 +19,10 @@ export const RunList = ({ runs }: RunListProps) => {
   useEffect(() => {
     if (!tableRef.current) return
 
-    const columns = createRunColumns((runId: string) => {
-      setLocation(`/runs/${runId}`)
-    })
+    const columns = [
+      ...createRunColumns((runId: string) => setLocation(`/runs/${runId}`)),
+      ...createActionColumns(onRerun, onDelete),
+    ]
 
     const table = new Tabulator(tableRef.current, {
       data: runs as RunSummary[],
@@ -38,7 +41,7 @@ export const RunList = ({ runs }: RunListProps) => {
       table.destroy()
       tabulatorRef.current = null
     }
-  }, [runs, setLocation])
+  }, [runs, setLocation, onRerun, onDelete])
 
   return <div ref={tableRef} />
 }
