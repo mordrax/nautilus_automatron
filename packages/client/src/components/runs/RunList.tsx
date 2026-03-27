@@ -56,6 +56,11 @@ export const RunList = ({ runs, title, onRerun, onDelete }: RunListProps) => {
       applyVisibility(table)
     })
 
+    table.on('rowClick', (_e: UIEvent, row: Tabulator.RowComponent) => {
+      const data = row.getData() as { run_id: string }
+      setLocation(`/runs/${data.run_id}`)
+    })
+
     tabulatorRef.current = table
 
     return () => {
