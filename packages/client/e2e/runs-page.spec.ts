@@ -7,23 +7,25 @@ test.describe('Runs Page', () => {
 
   test('page loads with app title', async ({ page }) => {
     await expect(page.getByRole('link', { name: 'Nautilus Automatron' })).toBeVisible()
-    await expect(page.getByRole('link', { name: 'Runs' })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Dashboard' })).toBeVisible()
   })
 
   test('runs table is visible with metric columns', async ({ page }) => {
     await expect(page.getByText('Backtest Runs')).toBeVisible()
 
-    const tabulator = page.locator('.tabulator')
+    const runsSection = page.locator('section', { has: page.getByText('Backtest Runs') })
+    const tabulator = runsSection.locator('.tabulator')
     await expect(tabulator).toBeVisible()
 
     // Verify key columns exist in header
-    for (const col of ['Run ID', 'Strategy', 'Total PnL', 'Win Rate', 'Sharpe', 'Avg Hold']) {
+    for (const col of ['Strategy', 'Total PnL', 'Win Rate', 'Sharpe', 'Avg Hold']) {
       await expect(tabulator.locator('.tabulator-col-title', { hasText: col }).first()).toBeVisible()
     }
   })
 
   test('strategy column shows actual names, not Unknown', async ({ page }) => {
-    const tabulator = page.locator('.tabulator')
+    const runsSection = page.locator('section', { has: page.getByText('Backtest Runs') })
+    const tabulator = runsSection.locator('.tabulator')
     await expect(tabulator).toBeVisible()
 
     // Wait for data rows to render
@@ -38,7 +40,8 @@ test.describe('Runs Page', () => {
   })
 
   test('metric columns display numeric values', async ({ page }) => {
-    const tabulator = page.locator('.tabulator')
+    const runsSection = page.locator('section', { has: page.getByText('Backtest Runs') })
+    const tabulator = runsSection.locator('.tabulator')
     await expect(tabulator.locator('.tabulator-row').first()).toBeVisible()
 
     // Total PnL column should have a colored value (+ or -)
@@ -51,7 +54,8 @@ test.describe('Runs Page', () => {
   })
 
   test('clicking View button navigates to detail page', async ({ page }) => {
-    const tabulator = page.locator('.tabulator')
+    const runsSection = page.locator('section', { has: page.getByText('Backtest Runs') })
+    const tabulator = runsSection.locator('.tabulator')
     await expect(tabulator.locator('.tabulator-row').first()).toBeVisible()
 
     // Click the View button in the first row
@@ -62,7 +66,8 @@ test.describe('Runs Page', () => {
   })
 
   test('columns are sortable', async ({ page }) => {
-    const tabulator = page.locator('.tabulator')
+    const runsSection = page.locator('section', { has: page.getByText('Backtest Runs') })
+    const tabulator = runsSection.locator('.tabulator')
     await expect(tabulator.locator('.tabulator-row').first()).toBeVisible()
 
     // Click Total PnL header to sort
@@ -74,7 +79,8 @@ test.describe('Runs Page', () => {
   })
 
   test('header filters are present and functional', async ({ page }) => {
-    const tabulator = page.locator('.tabulator')
+    const runsSection = page.locator('section', { has: page.getByText('Backtest Runs') })
+    const tabulator = runsSection.locator('.tabulator')
     await expect(tabulator.locator('.tabulator-row').first()).toBeVisible()
 
     // Type in the Strategy header filter
@@ -89,7 +95,8 @@ test.describe('Runs Page', () => {
   })
 
   test('Total PnL numeric filter works with eval predicate', async ({ page }) => {
-    const tabulator = page.locator('.tabulator')
+    const runsSection = page.locator('section', { has: page.getByText('Backtest Runs') })
+    const tabulator = runsSection.locator('.tabulator')
     await expect(tabulator.locator('.tabulator-row').first()).toBeVisible()
 
     const pnlCol = tabulator.locator('.tabulator-col', { hasText: 'Total' }).first()
@@ -110,5 +117,20 @@ test.describe('Runs Page', () => {
     await pnlFilter.fill('')
     await pnlFilter.press('Enter')
     await expect(tabulator.locator('.tabulator-row').first()).toBeVisible()
+  })
+
+  test('instrument data catalog table is visible', async ({ page }) => {
+    await expect(page.getByText('Instrument Data Catalog')).toBeVisible()
+
+    const catalogSection = page.locator('section', { has: page.getByText('Instrument Data Catalog') })
+    const tabulator = catalogSection.locator('.tabulator')
+    await expect(tabulator).toBeVisible()
+
+    for (const col of ['Instrument', 'Bar Count', 'Start Date', 'End Date', 'Timeframe']) {
+      await expect(tabulator.locator('.tabulator-col-title', { hasText: col }).first()).toBeVisible()
+    }
+
+    await expect(tabulator.locator('.tabulator-row').first()).toBeVisible()
+    await expect(tabulator.locator('.tabulator-cell', { hasText: 'AUD/USD.SIM' }).first()).toBeVisible()
   })
 })

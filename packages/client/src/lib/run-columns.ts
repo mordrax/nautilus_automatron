@@ -123,31 +123,18 @@ export const createRunColumns = (onViewRun: (runId: string) => void): ColumnDefi
     },
   },
   {
-    title: 'Run ID',
-    field: 'run_id',
-    sorter: 'string',
-    ...stringHeaderFilter,
-    width: 120,
-    formatter: (cell: CellComponent): string => {
-      const value = cell.getValue() as string
-      if (!value) return '—'
-      return `<span style="font-family:monospace; cursor:pointer; text-decoration:underline;">${value.slice(0, 8)}...</span>`
-    },
-    cellClick: (_e: UIEvent, cell: CellComponent) => {
-      onViewRun(cell.getValue() as string)
-    },
-  },
-  {
     title: 'Trader',
     field: 'trader_id',
     sorter: 'string',
     ...stringHeaderFilter,
+    minWidth: 150,
   },
   {
     title: 'Strategy',
     field: 'strategy',
     sorter: 'string',
     ...stringHeaderFilter,
+    minWidth: 150,
   },
   {
     title: 'Positions',

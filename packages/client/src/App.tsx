@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Route, Switch } from 'wouter'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AppLayout } from '@/components/layout/AppLayout'
-import { RunsPage } from '@/pages/RunsPage'
+import { DashboardPage } from '@/pages/DashboardPage'
 import { RunDetailPage } from '@/pages/RunDetailPage'
 
 const queryClient = new QueryClient()
@@ -12,7 +12,7 @@ const App = () => (
     <TooltipProvider>
       <AppLayout>
         <Switch>
-          <Route path="/" component={RunsPage} />
+          <Route path="/" component={DashboardPage} />
           <Route path="/runs/:runId">
             {(params) => <RunDetailPage runId={params.runId} />}
           </Route>

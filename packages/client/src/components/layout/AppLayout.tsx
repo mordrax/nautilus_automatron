@@ -7,7 +7,7 @@ import { getVersion, ping, runEffect } from '@/lib/api'
 type NavItem = { readonly href: string; readonly label: string }
 
 const NAV_ITEMS: readonly NavItem[] = [
-  { href: '/', label: 'Runs' },
+  { href: '/', label: 'Dashboard' },
 ]
 
 const NavLink = ({ href, label }: NavItem) => {

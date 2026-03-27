@@ -114,3 +114,11 @@ export type IndicatorResult = {
   readonly outputs: Readonly<Record<string, readonly (number | null)[]>>
   readonly datetime: readonly string[]
 }
+
+export type CatalogEntry = {
+  readonly instrument: string
+  readonly bar_count: number
+  readonly start_date: string
+  readonly end_date: string
+  readonly timeframe: string
+}
