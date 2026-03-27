@@ -76,6 +76,9 @@ def build_run_config(
     # e.g. "XAUUSD.IBCFD-1-MINUTE-MID-EXTERNAL" → instrument "XAUUSD.IBCFD"
     instrument_id = resolved_bar_type.split("-")[0]  # e.g. "XAUUSD.IBCFD" or "AUD/USD.SIM"
 
+    # Extract venue from instrument_id (e.g. "XAUUSD.IBCFD" → "IBCFD")
+    venue_name = instrument_id.split(".")[-1] if "." in instrument_id else "SIM"
+
     # Add instrument_id and bar_type to strategy params (required by BBBStrategyConfig)
     merged_params["instrument_id"] = instrument_id
     merged_params["bar_type"] = resolved_bar_type
@@ -87,7 +90,7 @@ def build_run_config(
     )
 
     venue_config = BacktestVenueConfig(
-        name="SIM",
+        name=venue_name,
         oms_type="NETTING",
         account_type="MARGIN",
         starting_balances=[starting_balance],
