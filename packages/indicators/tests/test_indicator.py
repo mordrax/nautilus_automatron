@@ -4,9 +4,11 @@ import math
 
 import pytest
 
+from indicators.key_levels.detectors.swing_cluster import SwingClusterDetector
+from indicators.key_levels.detectors.wick_rejection import WickRejectionDetector
 from indicators.key_levels.indicator import KeyLevelIndicator
 from indicators.key_levels.model import KeyLevel, SwingClusterMeta
-from tests.helpers.bar_factory import make_bar
+from tests.helpers.bar_factory import make_bar, make_bars_from_ohlcv
 
 
 class FakeDetector:
@@ -80,7 +82,7 @@ def test_indicator_levels_sorted_by_strength_desc():
     detector = FakeDetector(fixed_levels=levels, warmup=0)
     indicator = KeyLevelIndicator(detectors=[detector])
     indicator.handle_bar(make_bar(105.0, 110.0, 100.0, 105.0))
-    strengths = [l.strength for l in indicator.levels]
+    strengths = [lvl.strength for lvl in indicator.levels]
     assert strengths == [0.9, 0.6, 0.3]
 
 
@@ -156,10 +158,6 @@ def test_reset():
 
 
 # --- End-to-end with real detectors ---
-
-from indicators.key_levels.detectors.swing_cluster import SwingClusterDetector
-from indicators.key_levels.detectors.wick_rejection import WickRejectionDetector
-from tests.helpers.bar_factory import make_bars_from_ohlcv
 
 
 def _make_realistic_bars():

@@ -1,6 +1,5 @@
 """Tests for EqualHighsLowsDetector."""
 
-import pytest
 
 from indicators.key_levels.detectors.equal_highs_lows import EqualHighsLowsDetector
 from indicators.key_levels.model import EqualHighsLowsMeta
@@ -48,8 +47,8 @@ def _make_equal_highs_lows_bars():
         (95.0, 100.0, 94.0, 99.0, 100.0),
     ]
     return [
-        make_bar(o, h, l, c, v, ts_ns=_BASE_TS + i * _1H_NS)
-        for i, (o, h, l, c, v) in enumerate(data)
+        make_bar(o, h, lo, c, v, ts_ns=_BASE_TS + i * _1H_NS)
+        for i, (o, h, lo, c, v) in enumerate(data)
     ]
 
 

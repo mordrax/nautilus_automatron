@@ -47,8 +47,8 @@ def make_bars_from_ohlcv(
 ) -> list[Bar]:
     """Create a list of Bars from OHLCV tuples."""
     return [
-        make_bar(o, h, l, c, v, ts_ns=start_ts + i * interval_ns, bar_type=bar_type)
-        for i, (o, h, l, c, v) in enumerate(data)
+        make_bar(o, h, lo, c, v, ts_ns=start_ts + i * interval_ns, bar_type=bar_type)
+        for i, (o, h, lo, c, v) in enumerate(data)
     ]
 
 
