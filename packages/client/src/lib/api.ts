@@ -95,14 +95,9 @@ export const deleteBacktest = (runId: string) =>
 export const getIndicators = () =>
   fetchJson<readonly IndicatorMeta[]>('/api/indicators')
 
-export const getIndicatorResult = (runId: string, barType: string, ids: readonly string[]) =>
+export const getIndicatorResult = (barType: string, ids: readonly string[]) =>
   fetchJson<readonly IndicatorResult[]>(
-    `/api/runs/${runId}/bars/${encodeURIComponent(barType)}/indicators?ids=${ids.join(',')}`
-  )
-
-export const getCatalogIndicatorResult = (barType: string, ids: readonly string[]) =>
-  fetchJson<readonly IndicatorResult[]>(
-    `/api/catalog/bars/${encodeURIComponent(barType)}/indicators?ids=${ids.join(',')}`
+    `/api/bars/${encodeURIComponent(barType)}/indicators?ids=${ids.join(',')}`
   )
 
 export const runEffect = <T>(effect: Effect.Effect<T, ApiError>): Promise<T> =>

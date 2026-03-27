@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge'
 import { CandlestickChart } from '@/components/chart/CandlestickChart'
 import { IndicatorToggles } from '@/components/chart/IndicatorToggles'
 import { useCatalogBars } from '@/hooks/use-catalog-bars'
-import { useCatalogIndicators } from '@/hooks/use-catalog-indicators'
+import { useIndicators } from '@/hooks/use-indicators'
 
 type InstrumentPageProps = {
   readonly barType: string
@@ -12,7 +12,7 @@ type InstrumentPageProps = {
 export const InstrumentPage = ({ barType }: InstrumentPageProps) => {
   const decodedBarType = decodeURIComponent(barType)
   const { data: ohlc, isLoading, error } = useCatalogBars(decodedBarType)
-  const { available, data: indicatorData, enabledIds, toggle } = useCatalogIndicators(decodedBarType)
+  const { available, data: indicatorData, enabledIds, toggle } = useIndicators(decodedBarType)
 
   return (
     <div className="space-y-4">
