@@ -122,3 +122,21 @@ export type CatalogEntry = {
   readonly end_date: string
   readonly timeframe: string
 }
+
+export type StrategyInfo = {
+  readonly name: string
+  readonly label: string
+  readonly default_params: Readonly<Record<string, unknown>>
+}
+
+export type CreateBacktestRequest = {
+  readonly strategy: string
+  readonly bar_type: string
+  readonly params?: Record<string, unknown>
+  readonly starting_balance?: number
+}
+
+export type BacktestResponse = {
+  readonly run_id: string
+  readonly status: string
+}

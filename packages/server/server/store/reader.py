@@ -8,6 +8,7 @@ Provides:
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -114,3 +115,12 @@ def list_catalog_entries(
                 }
 
     return list(seen.values())
+
+
+def delete_run(store_path: Path, run_id: str) -> bool:
+    """Delete a backtest run directory. Returns True if deleted."""
+    run_dir = store_path / "backtest" / run_id
+    if not run_dir.exists():
+        return False
+    shutil.rmtree(run_dir)
+    return True

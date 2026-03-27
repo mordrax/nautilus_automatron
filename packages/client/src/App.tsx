@@ -4,6 +4,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { RunDetailPage } from '@/pages/RunDetailPage'
+import { CreateBacktestPage } from '@/pages/CreateBacktestPage'
 
 const queryClient = new QueryClient()
 
@@ -16,6 +17,7 @@ const App = () => (
           <Route path="/runs/:runId">
             {(params) => <RunDetailPage runId={params.runId} />}
           </Route>
+          <Route path="/create" component={CreateBacktestPage} />
         </Switch>
       </AppLayout>
     </TooltipProvider>
