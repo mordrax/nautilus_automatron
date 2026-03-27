@@ -7,6 +7,8 @@ lows separately by ATR-based tolerance. Groups with >= min_touches become levels
 
 from __future__ import annotations
 
+from typing import Literal
+
 from nautilus_trader.model.data import Bar
 
 from indicators.key_levels.model import EqualHighsLowsMeta, KeyLevel
@@ -92,7 +94,7 @@ class EqualHighsLowsDetector:
         self._levels = levels
 
     def _cluster_side(
-        self, prices: list[float], timestamps: list[int], side: str, tolerance: float,
+        self, prices: list[float], timestamps: list[int], side: Literal["high", "low"], tolerance: float,
     ) -> list[KeyLevel]:
         if len(prices) < self._min_touches:
             return []
