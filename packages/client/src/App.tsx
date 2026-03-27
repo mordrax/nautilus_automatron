@@ -5,6 +5,7 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { RunDetailPage } from '@/pages/RunDetailPage'
 import { CreateBacktestPage } from '@/pages/CreateBacktestPage'
+import { InstrumentPage } from '@/pages/InstrumentPage'
 
 const queryClient = new QueryClient()
 
@@ -18,6 +19,9 @@ const App = () => (
             {(params) => <RunDetailPage runId={params.runId} />}
           </Route>
           <Route path="/create" component={CreateBacktestPage} />
+          <Route path="/instruments/:barType">
+            {(params) => <InstrumentPage barType={params.barType} />}
+          </Route>
         </Switch>
       </AppLayout>
     </TooltipProvider>

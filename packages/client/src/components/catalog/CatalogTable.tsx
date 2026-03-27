@@ -9,9 +9,10 @@ import { ColumnVisibilityPopover } from '@/components/table/ColumnVisibilityPopo
 type CatalogTableProps = {
   readonly entries: readonly CatalogEntry[]
   readonly title: string
+  readonly onViewInstrument: (barType: string) => void
 }
 
-export const CatalogTable = ({ entries, title }: CatalogTableProps) => {
+export const CatalogTable = ({ entries, title, onViewInstrument }: CatalogTableProps) => {
   const tableRef = useRef<HTMLDivElement>(null)
   const tabulatorRef = useRef<Tabulator | null>(null)
   const { hiddenColumns, toggleColumn, applyVisibility } = useColumnVisibility('catalog-table')
@@ -41,13 +42,18 @@ export const CatalogTable = ({ entries, title }: CatalogTableProps) => {
       applyVisibility(table)
     })
 
+    table.on('rowClick', (_e: UIEvent, row: Tabulator.RowComponent) => {
+      const data = row.getData() as { bar_type: string }
+      onViewInstrument(data.bar_type)
+    })
+
     tabulatorRef.current = table
 
     return () => {
       table.destroy()
       tabulatorRef.current = null
     }
-  }, [entries, columns, applyVisibility])
+  }, [entries, columns, applyVisibility, onViewInstrument])
 
   return (
     <div>

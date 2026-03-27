@@ -117,6 +117,7 @@ export type IndicatorResult = {
 
 export type CatalogEntry = {
   readonly instrument: string
+  readonly bar_type: string
   readonly bar_count: number
   readonly start_date: string
   readonly end_date: string

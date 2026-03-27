@@ -221,6 +221,7 @@ def catalog_entry_to_dict(entry: dict) -> dict:
     """Convert a raw catalog entry from the reader into an API-ready dict."""
     return {
         "instrument": entry["instrument_id"],
+        "bar_type": entry["bar_type"],
         "bar_count": entry["bar_count"],
         "start_date": _ns_to_iso(entry["ts_min"]),
         "end_date": _ns_to_iso(entry["ts_max"]),
