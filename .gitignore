@@ -16,3 +16,4 @@ playwright-report/
 test-results/
 .ipynb_checkpoints/
 backtest_catalog/
+strategies_local.py
