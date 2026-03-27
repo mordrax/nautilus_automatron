@@ -7,7 +7,7 @@ test.describe('Runs Page', () => {
 
   test('page loads with app title', async ({ page }) => {
     await expect(page.getByRole('link', { name: 'Nautilus Automatron' })).toBeVisible()
-    await expect(page.getByRole('link', { name: 'Runs' })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Dashboard' })).toBeVisible()
   })
 
   test('runs table is visible with metric columns', async ({ page }) => {
@@ -110,5 +110,20 @@ test.describe('Runs Page', () => {
     await pnlFilter.fill('')
     await pnlFilter.press('Enter')
     await expect(tabulator.locator('.tabulator-row').first()).toBeVisible()
+  })
+
+  test('instrument data catalog table is visible', async ({ page }) => {
+    await expect(page.getByText('Instrument Data Catalog')).toBeVisible()
+
+    const catalogSection = page.locator('section', { has: page.getByText('Instrument Data Catalog') })
+    const tabulator = catalogSection.locator('.tabulator')
+    await expect(tabulator).toBeVisible()
+
+    for (const col of ['Instrument', 'Bar Count', 'Start Date', 'End Date', 'Timeframe']) {
+      await expect(tabulator.locator('.tabulator-col-title', { hasText: col }).first()).toBeVisible()
+    }
+
+    await expect(tabulator.locator('.tabulator-row').first()).toBeVisible()
+    await expect(tabulator.locator('.tabulator-cell', { hasText: 'AUD/USD.SIM' }).first()).toBeVisible()
   })
 })
