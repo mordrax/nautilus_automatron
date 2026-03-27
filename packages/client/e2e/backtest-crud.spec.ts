@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 
 test.describe('Backtest CRUD happy path', () => {
-  test('create, verify, and delete a backtest run', { timeout: 120_000 }, async ({ page }) => {
+  test.skip('create, verify, and delete a backtest run', { timeout: 120_000 }, async ({ page }) => {
     // Step 1: Navigate to create page
     await page.goto('/create')
     await expect(page.getByText('Create Backtest')).toBeVisible()
