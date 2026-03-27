@@ -202,3 +202,26 @@ def _extract_strategy_name(config: dict, positions_opened: "pa.Table | None") ->
         return strategies[0].get("strategy_path", "Unknown")
 
     return "Unknown"
+
+
+def _parse_timeframe(bar_type: str, instrument_id: str) -> str:
+    """Extract timeframe from bar_type by removing the instrument prefix.
+
+    Example: 'AUD/USD.SIM-100-TICK-MID-INTERNAL' with instrument 'AUD/USD.SIM'
+    returns '100-TICK-MID-INTERNAL'.
+    """
+    prefix = instrument_id + "-"
+    if bar_type.startswith(prefix):
+        return bar_type[len(prefix):]
+    return bar_type
+
+
+def catalog_entry_to_dict(entry: dict) -> dict:
+    """Convert a raw catalog entry from the reader into an API-ready dict."""
+    return {
+        "instrument": entry["instrument_id"],
+        "bar_count": entry["bar_count"],
+        "start_date": _ns_to_iso(entry["ts_min"]),
+        "end_date": _ns_to_iso(entry["ts_max"]),
+        "timeframe": _parse_timeframe(entry["bar_type"], entry["instrument_id"]),
+    }
