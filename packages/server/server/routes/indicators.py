@@ -4,8 +4,10 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
+from nautilus_trader.persistence.catalog.parquet import ParquetDataCatalog
+
 from server.config import get_settings
-from server.store import reader
+from server.store.catalog_reader import get_bars, read_backtest_data
 from server.store.indicators import (
     IndicatorMeta,
     IndicatorResult,
@@ -16,8 +18,8 @@ from server.store.indicators import (
 router = APIRouter()
 
 
-def _store_path() -> Path:
-    return Path(get_settings().store_path)
+def _catalog() -> ParquetDataCatalog:
+    return ParquetDataCatalog(str(Path(get_settings().store_path)))
 
 
 @router.get("/indicators")
@@ -30,16 +32,12 @@ def get_indicators(
     run_id: str,
     bar_type: str,
     ids: str = Query(..., description="Comma-separated indicator IDs"),
-    store_path: Path = Depends(_store_path),
+    catalog: ParquetDataCatalog = Depends(_catalog),
 ) -> list[IndicatorResult]:
-    raw_table = reader.read_bars_raw(store_path, run_id, bar_type)
-    if raw_table is None:
+    data = read_backtest_data(catalog, run_id)
+    bars = get_bars(data, bar_type)
+    if not bars:
         raise HTTPException(status_code=404, detail=f"No bar data for {bar_type}")
-
-    from nautilus_trader.model.data import Bar
-    from nautilus_trader.serialization.arrow.serializer import ArrowSerializer
-
-    bars = ArrowSerializer.deserialize(Bar, raw_table)
 
     indicator_ids = [i.strip() for i in ids.split(",") if i.strip()]
     results = []
