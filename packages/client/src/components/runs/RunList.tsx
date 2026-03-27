@@ -3,27 +3,31 @@ import { useLocation } from 'wouter'
 import { TabulatorFull as Tabulator } from 'tabulator-tables'
 import 'tabulator-tables/dist/css/tabulator.min.css'
 import type { RunSummary } from '@/types/api'
-import { createRunColumns } from '@/lib/run-columns'
+import { createRunColumns, createActionColumns } from '@/lib/run-columns'
 import { useColumnVisibility } from '@/hooks/use-column-visibility'
 import { ColumnVisibilityPopover } from '@/components/table/ColumnVisibilityPopover'
 
 type RunListProps = {
   readonly runs: readonly RunSummary[]
   readonly title: string
+  readonly onRerun: (runId: string) => void
+  readonly onDelete: (runId: string) => void
 }
 
-export const RunList = ({ runs, title }: RunListProps) => {
+export const RunList = ({ runs, title, onRerun, onDelete }: RunListProps) => {
   const [, setLocation] = useLocation()
   const tableRef = useRef<HTMLDivElement>(null)
   const tabulatorRef = useRef<Tabulator | null>(null)
   const { hiddenColumns, toggleColumn, applyVisibility } = useColumnVisibility('run-list')
 
   const columns = useMemo(
-    () =>
-      createRunColumns((runId: string) => {
+    () => [
+      ...createRunColumns((runId: string) => {
         setLocation(`/runs/${runId}`)
       }),
-    [setLocation]
+      ...createActionColumns(onRerun, onDelete),
+    ],
+    [setLocation, onRerun, onDelete]
   )
 
   const toggleableColumns = useMemo(

@@ -109,6 +109,36 @@ export const stringHeaderFilter = {
 
 // --- Column Definitions ---
 
+export const createActionColumns = (
+  onRerun: (runId: string) => void,
+  onDelete: (runId: string) => void,
+): ColumnDefinition[] => [
+  {
+    title: '',
+    formatter: (): string => '<button title="Rerun" style="cursor:pointer">↻</button>',
+    headerSort: false,
+    hozAlign: 'center',
+    width: 40,
+    cellClick: (_e: UIEvent, cell: CellComponent) => {
+      const data = cell.getRow().getData() as { run_id: string }
+      onRerun(data.run_id)
+    },
+  },
+  {
+    title: '',
+    formatter: (): string => '<button title="Delete" style="cursor:pointer;color:red">✕</button>',
+    headerSort: false,
+    hozAlign: 'center',
+    width: 40,
+    cellClick: (_e: UIEvent, cell: CellComponent) => {
+      const data = cell.getRow().getData() as { run_id: string }
+      if (confirm(`Delete run ${data.run_id.slice(0, 8)}...?`)) {
+        onDelete(data.run_id)
+      }
+    },
+  },
+]
+
 export const createRunColumns = (onViewRun: (runId: string) => void): ColumnDefinition[] => [
   {
     title: '',

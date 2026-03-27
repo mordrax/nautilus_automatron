@@ -1,5 +1,5 @@
 import { Effect, pipe } from 'effect'
-import type { RunsResponse, RunDetail, Trade, OhlcData, EquityPoint, Position, IndicatorMeta, IndicatorResult, CatalogEntry } from '@/types/api'
+import type { RunsResponse, RunDetail, Trade, OhlcData, EquityPoint, Position, IndicatorMeta, IndicatorResult, CatalogEntry, StrategyInfo, CreateBacktestRequest, BacktestResponse } from '@/types/api'
 
 export type ApiError = {
   readonly _tag: 'ApiError'
@@ -16,6 +16,28 @@ const makeApiError = (url: string, cause: unknown): ApiError => ({
 const fetchJson = <T>(url: string): Effect.Effect<T, ApiError> =>
   Effect.tryPromise({
     try: () => fetch(url).then((r) => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`)
+      return r.json() as Promise<T>
+    }),
+    catch: (e) => makeApiError(url, e),
+  })
+
+const fetchJsonPost = <T>(url: string, body: unknown): Effect.Effect<T, ApiError> =>
+  Effect.tryPromise({
+    try: () => fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }).then((r) => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`)
+      return r.json() as Promise<T>
+    }),
+    catch: (e) => makeApiError(url, e),
+  })
+
+const fetchDelete = <T>(url: string): Effect.Effect<T, ApiError> =>
+  Effect.tryPromise({
+    try: () => fetch(url, { method: 'DELETE' }).then((r) => {
       if (!r.ok) throw new Error(`HTTP ${r.status}`)
       return r.json() as Promise<T>
     }),
@@ -51,6 +73,21 @@ export const getBarTypes = (runId: string) =>
 
 export const getCatalog = () =>
   fetchJson<readonly CatalogEntry[]>('/api/catalog')
+
+export const getStrategies = () =>
+  fetchJson<readonly StrategyInfo[]>('/api/strategies')
+
+export const getCatalogBarTypes = () =>
+  fetchJson<readonly string[]>('/api/bar-types')
+
+export const createBacktest = (request: CreateBacktestRequest) =>
+  fetchJsonPost<BacktestResponse>('/api/runs', request)
+
+export const rerunBacktest = (runId: string) =>
+  fetchJsonPost<BacktestResponse>(`/api/runs/${runId}/rerun`, {})
+
+export const deleteBacktest = (runId: string) =>
+  fetchDelete<BacktestResponse>(`/api/runs/${runId}`)
 
 export const getIndicators = () =>
   fetchJson<readonly IndicatorMeta[]>('/api/indicators')
