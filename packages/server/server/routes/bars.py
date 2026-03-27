@@ -17,7 +17,7 @@ def list_bar_types(run_id: str, catalog: ParquetDataCatalog = Depends(_catalog))
     return list_bar_types_from_data(data)
 
 
-@router.get("/runs/{run_id}/bars/{bar_type}")
+@router.get("/runs/{run_id}/bars/{bar_type:path}")
 def get_bars_route(run_id: str, bar_type: str, catalog: ParquetDataCatalog = Depends(_catalog)):
     data = read_backtest_data(catalog, run_id)
     bars = get_bars(data, bar_type)

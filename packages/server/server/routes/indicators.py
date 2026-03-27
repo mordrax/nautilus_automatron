@@ -21,7 +21,7 @@ def get_available_indicators() -> list[IndicatorMeta]:
     return list_available_indicators()
 
 
-@router.get("/runs/{run_id}/bars/{bar_type}/indicators")
+@router.get("/runs/{run_id}/bars/{bar_type:path}/indicators")
 def get_indicators(
     run_id: str,
     bar_type: str,
