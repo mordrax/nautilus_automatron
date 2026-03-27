@@ -74,6 +74,9 @@ export const getBarTypes = (runId: string) =>
 export const getCatalog = () =>
   fetchJson<readonly CatalogEntry[]>('/api/catalog')
 
+export const getCatalogBars = (barType: string) =>
+  fetchJson<OhlcData>(`/api/catalog/bars/${encodeURIComponent(barType)}`)
+
 export const getStrategies = () =>
   fetchJson<readonly StrategyInfo[]>('/api/strategies')
 
@@ -95,6 +98,11 @@ export const getIndicators = () =>
 export const getIndicatorResult = (runId: string, barType: string, ids: readonly string[]) =>
   fetchJson<readonly IndicatorResult[]>(
     `/api/runs/${runId}/bars/${encodeURIComponent(barType)}/indicators?ids=${ids.join(',')}`
+  )
+
+export const getCatalogIndicatorResult = (barType: string, ids: readonly string[]) =>
+  fetchJson<readonly IndicatorResult[]>(
+    `/api/catalog/bars/${encodeURIComponent(barType)}/indicators?ids=${ids.join(',')}`
   )
 
 export const runEffect = <T>(effect: Effect.Effect<T, ApiError>): Promise<T> =>

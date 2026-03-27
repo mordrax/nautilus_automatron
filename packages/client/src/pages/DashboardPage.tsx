@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import { RunList } from '@/components/runs/RunList'
 import { CatalogTable } from '@/components/catalog/CatalogTable'
 import { useRuns } from '@/hooks/use-runs'
@@ -13,13 +14,22 @@ export const DashboardPage = () => {
   const deleteMutation = useDeleteBacktest()
   const [, setLocation] = useLocation()
 
+  const handleViewInstrument = useCallback(
+    (barType: string) => setLocation(`/instruments/${encodeURIComponent(barType)}`),
+    [setLocation],
+  )
+
   return (
     <div className="px-2 py-4 space-y-8">
       <section>
         {catalogLoading && <div className="text-muted-foreground p-4">Loading catalog...</div>}
         {catalogError && <div className="text-destructive p-4">Error loading catalog</div>}
         {catalogData && catalogData.length > 0 && (
-          <CatalogTable entries={catalogData} title="Instrument Data Catalog" />
+          <CatalogTable
+            entries={catalogData}
+            title="Instrument Data Catalog"
+            onViewInstrument={handleViewInstrument}
+          />
         )}
         {catalogData && catalogData.length === 0 && (
           <div className="text-muted-foreground p-4">No instrument data in catalog</div>
