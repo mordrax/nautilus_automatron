@@ -42,6 +42,11 @@ export const CatalogTable = ({ entries, title, onViewInstrument }: CatalogTableP
       applyVisibility(table)
     })
 
+    table.on('rowClick', (_e: UIEvent, row: Tabulator.RowComponent) => {
+      const data = row.getData() as { bar_type: string }
+      onViewInstrument(data.bar_type)
+    })
+
     tabulatorRef.current = table
 
     return () => {

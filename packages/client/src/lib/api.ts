@@ -100,6 +100,11 @@ export const getIndicatorResult = (runId: string, barType: string, ids: readonly
     `/api/runs/${runId}/bars/${encodeURIComponent(barType)}/indicators?ids=${ids.join(',')}`
   )
 
+export const getCatalogIndicatorResult = (barType: string, ids: readonly string[]) =>
+  fetchJson<readonly IndicatorResult[]>(
+    `/api/catalog/bars/${encodeURIComponent(barType)}/indicators?ids=${ids.join(',')}`
+  )
+
 export const runEffect = <T>(effect: Effect.Effect<T, ApiError>): Promise<T> =>
   Effect.runPromise(
     pipe(

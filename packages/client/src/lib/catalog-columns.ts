@@ -3,6 +3,18 @@ import { stringHeaderFilter, numericHeaderFilter } from '@/lib/run-columns'
 
 export const createCatalogColumns = (onViewInstrument: (barType: string) => void): ColumnDefinition[] => [
   {
+    title: '',
+    formatter: (): string => '<button>View</button>',
+    headerSort: false,
+    hozAlign: 'center',
+    width: 60,
+    frozen: true,
+    cellClick: (_e: UIEvent, cell: CellComponent) => {
+      const data = cell.getRow().getData() as { bar_type: string }
+      onViewInstrument(data.bar_type)
+    },
+  },
+  {
     title: 'Instrument',
     field: 'instrument',
     sorter: 'string',
@@ -46,16 +58,5 @@ export const createCatalogColumns = (onViewInstrument: (barType: string) => void
     field: 'timeframe',
     sorter: 'string',
     ...stringHeaderFilter,
-  },
-  {
-    title: '',
-    formatter: () => '<button class="text-blue-500 hover:underline text-sm">View</button>',
-    width: 80,
-    hozAlign: 'center',
-    headerSort: false,
-    cellClick: (_e: UIEvent, cell: CellComponent) => {
-      const data = cell.getRow().getData() as { bar_type: string }
-      onViewInstrument(data.bar_type)
-    },
   },
 ]
