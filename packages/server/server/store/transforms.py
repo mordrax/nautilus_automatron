@@ -197,6 +197,11 @@ def _extract_strategy_name(config: dict, positions_opened: "pa.Table | None") ->
         if "strategy_id" in positions_opened.column_names:
             return positions_opened.column("strategy_id")[0].as_py()
 
+    # Check for run_config.json metadata (new runs have this)
+    strategy_name = config.get("strategy_name")
+    if strategy_name:
+        return strategy_name
+
     strategies = config.get("strategies", [])
     if strategies:
         return strategies[0].get("strategy_path", "Unknown")

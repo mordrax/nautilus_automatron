@@ -10,6 +10,7 @@ from server.routes.account import router as account_router
 from server.routes.indicators import router as indicators_router
 from server.routes.catalog import router as catalog_router
 from server.routes.version import VERSION, router as version_router
+from server.routes.strategies import router as strategies_router
 
 
 def create_app() -> FastAPI:
@@ -33,6 +34,7 @@ def create_app() -> FastAPI:
     app.include_router(indicators_router, prefix="/api")
     app.include_router(catalog_router, prefix="/api")
     app.include_router(version_router, prefix="/api")
+    app.include_router(strategies_router, prefix="/api")
 
     return app
 
