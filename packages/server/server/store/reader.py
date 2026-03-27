@@ -5,11 +5,17 @@ Provides:
   - list_catalog_entries: scan all runs to build a deduplicated catalog of bar data
 """
 
+from __future__ import annotations
+
 import json
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pyarrow as pa
 import pyarrow.compute as pc
+
+if TYPE_CHECKING:
+    from nautilus_trader.persistence.catalog.parquet import ParquetDataCatalog
 
 
 def read_run_config(store_path: Path, run_id: str) -> dict:
@@ -35,7 +41,7 @@ def _read_ipc_stream(path: Path) -> pa.Table | None:
 
 def list_catalog_entries(
     store_path: Path,
-    catalog: "ParquetDataCatalog | None" = None,
+    catalog: ParquetDataCatalog | None = None,
 ) -> list[dict]:
     """Scan all runs to build a deduplicated catalog of available instrument data.
 

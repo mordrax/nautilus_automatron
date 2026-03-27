@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from nautilus_trader.persistence.catalog.parquet import ParquetDataCatalog
 
-from server.config import get_settings
+from server.routes.dependencies import _catalog, _store_path
 from server.store import reader, transforms
 from server.store.catalog_reader import (
     get_fills,
@@ -17,14 +17,6 @@ from server.store.catalog_reader import (
 )
 
 router = APIRouter()
-
-
-def _store_path() -> Path:
-    return Path(get_settings().store_path)
-
-
-def _catalog() -> ParquetDataCatalog:
-    return ParquetDataCatalog(str(Path(get_settings().store_path)))
 
 
 @router.get("/runs")

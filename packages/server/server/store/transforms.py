@@ -1,7 +1,7 @@
-"""Pure functions for transforming raw Arrow data into API-ready dicts.
+"""Pure functions for transforming NautilusTrader objects into API-ready dicts.
 
-All functions take Arrow tables or lists of dicts and return plain Python
-structures suitable for JSON serialization.
+All functions take deserialized Nautilus objects or lists of dicts and return
+plain Python structures suitable for JSON serialization.
 """
 
 from datetime import datetime, timezone

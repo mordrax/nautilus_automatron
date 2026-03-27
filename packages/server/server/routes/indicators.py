@@ -1,12 +1,10 @@
 """Routes for technical indicator data."""
 
-from pathlib import Path
-
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from nautilus_trader.persistence.catalog.parquet import ParquetDataCatalog
 
-from server.config import get_settings
+from server.routes.dependencies import _catalog
 from server.store.catalog_reader import get_bars, read_backtest_data
 from server.store.indicators import (
     IndicatorMeta,
@@ -16,10 +14,6 @@ from server.store.indicators import (
 )
 
 router = APIRouter()
-
-
-def _catalog() -> ParquetDataCatalog:
-    return ParquetDataCatalog(str(Path(get_settings().store_path)))
 
 
 @router.get("/indicators")
