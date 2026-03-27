@@ -27,11 +27,11 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(runs_router, prefix="/api")
+    app.include_router(indicators_router, prefix="/api")  # Before bars — indicators path must match before {bar_type:path}
     app.include_router(bars_router, prefix="/api")
     app.include_router(fills_router, prefix="/api")
     app.include_router(positions_router, prefix="/api")
     app.include_router(account_router, prefix="/api")
-    app.include_router(indicators_router, prefix="/api")
     app.include_router(catalog_router, prefix="/api")
     app.include_router(version_router, prefix="/api")
     app.include_router(strategies_router, prefix="/api")
