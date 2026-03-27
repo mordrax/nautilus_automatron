@@ -4,7 +4,6 @@ version = "0.1.0"
 requires-python = ">=3.12,<3.14"
 dependencies = [
     "nautilus_trader",
-    "nautilus_strategies @ file:///Users/mordrax/code/nautilus_strategies",
     "nautilus-ibapi==10.43.2",
     "nautilus-automatron-data @ file:///Users/mordrax/code/nautilus_automatron/packages/data",
     "protobuf==5.29.5",
