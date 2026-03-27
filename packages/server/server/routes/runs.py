@@ -93,9 +93,9 @@ def create_run(
     result = run_backtest(config)
 
     # Save the run config for future reruns
-    save_run_config(config, str(store_path), result.run_id)
+    save_run_config(config, str(store_path), result.instance_id)
 
-    return {"run_id": result.run_id, "status": "completed"}
+    return {"run_id": result.instance_id, "status": "completed"}
 
 
 @router.post("/runs/{run_id}/rerun")
@@ -109,9 +109,9 @@ def rerun(run_id: str, store_path: Path = Depends(_store_path)):
         )
 
     result = run_backtest(config)
-    save_run_config(config, str(store_path), result.run_id)
+    save_run_config(config, str(store_path), result.instance_id)
 
-    return {"run_id": result.run_id, "status": "completed"}
+    return {"run_id": result.instance_id, "status": "completed"}
 
 
 @router.delete("/runs/{run_id}")
