@@ -31,9 +31,10 @@ Backtest analysis dashboard for NautilusTrader.
 - E2e test data is separate at `packages/client/e2e/test-data/`
 
 ## Strategies
-- Trading strategies live in a separate private package: `nautilus_strategies` at `/Users/mordrax/code/nautilus_strategies`
-- `nautilus_strategies` is a pure library — strategies only, no data, no I/O. Depends on `nautilus_trader` for base classes.
-- Dependency chain: `nautilus_trader` ← `nautilus_strategies` ← `nautilus_automatron`
-- nautilus_automatron imports strategies and handles all data loading and engine orchestration
-- The runner package (`packages/runner`) orchestrates backtests via Jupyter notebooks
-- To run a backtest: open `packages/runner/runner/run_backtest.ipynb`
+- Built-in: EMACross from nautilus_trader (always available, used in CI)
+- Private strategies: imported via `packages/runner/runner/strategies_local.py` (gitignored)
+- To add private strategies: run `./scripts/setup-local.sh` or manually:
+  1. `uv pip install -e /path/to/nautilus_strategies`
+  2. Copy `strategies_local.py.example` to `strategies_local.py` and uncomment
+- The runner package has NO dependency on nautilus_strategies in pyproject.toml
+- CI uses only the built-in EMACross strategy

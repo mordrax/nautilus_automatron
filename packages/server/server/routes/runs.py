@@ -7,7 +7,6 @@ from pydantic import BaseModel
 
 from nautilus_trader.persistence.catalog.parquet import ParquetDataCatalog
 
-from runner.backtest import build_run_config, load_run_config, run_backtest, save_run_config
 from server.routes.dependencies import _catalog, _store_path
 from server.store import reader, transforms
 from server.store.catalog_reader import (
@@ -17,7 +16,6 @@ from server.store.catalog_reader import (
     list_bar_types_from_data,
     read_backtest_data,
 )
-from server.store.reader import delete_run
 
 router = APIRouter()
 
@@ -94,6 +92,7 @@ def create_run(
     store_path: Path = Depends(_store_path),
 ):
     """Create and execute a new backtest."""
+    from runner.backtest import build_run_config, run_backtest, save_run_config
     try:
         config = build_run_config(
             strategy_name=request.strategy,
@@ -116,6 +115,7 @@ def create_run(
 @router.post("/runs/{run_id}/rerun")
 def rerun(run_id: str, store_path: Path = Depends(_store_path)):
     """Rerun a backtest using its saved BacktestRunConfig."""
+    from runner.backtest import load_run_config, run_backtest, save_run_config
     config = load_run_config(str(store_path), run_id)
     if config is None:
         raise HTTPException(
@@ -132,7 +132,7 @@ def rerun(run_id: str, store_path: Path = Depends(_store_path)):
 @router.delete("/runs/{run_id}")
 def delete_run_endpoint(run_id: str, store_path: Path = Depends(_store_path)):
     """Delete a backtest run from the catalog."""
-    deleted = delete_run(store_path, run_id)
+    deleted = reader.delete_run(store_path, run_id)
     if not deleted:
         raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
     return {"status": "deleted", "run_id": run_id}

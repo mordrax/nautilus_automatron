@@ -1,27 +1,30 @@
-"""Registry of available strategies for backtesting."""
+"""Registry of available strategies for backtesting.
 
-STRATEGIES = {
-    "BBBStrategy": {
-        "label": "Bollinger Band Breakout",
-        "strategy_path": "strategies.bbb_strategy:BBBStrategy",
-        "config_path": "strategies.bbb_strategy:BBBStrategyConfig",
+Ships with NautilusTrader's built-in EMACross strategy.
+Additional strategies can be added via strategies_local.py (gitignored).
+"""
+
+STRATEGIES: dict[str, dict] = {
+    "EMACross": {
+        "label": "EMA Crossover",
+        "strategy_path": "nautilus_trader.examples.strategies.ema_cross:EMACross",
+        "config_path": "nautilus_trader.examples.strategies.ema_cross:EMACrossConfig",
         "default_params": {
             "trade_size": "1",
-            "buy_array_kind": "close",
-            "buy_band_kind": "top",
-            "buy_period": 20,
-            "buy_sd": 2.0,
-            "sell_array_kind": "close",
-            "sell_band_kind": "top",
-            "sell_period": 20,
-            "sell_sd": 3.0,
-            "frequency_bars": 10,
-            "signal_variant": "baseline",
-            "ma_trend_kind": "normal",
+            "fast_ema_period": 10,
+            "slow_ema_period": 20,
             "close_positions_on_stop": True,
         },
     },
 }
+
+# Load additional strategies from local (gitignored) config
+try:
+    from runner.strategies_local import STRATEGIES as _LOCAL
+
+    STRATEGIES.update(_LOCAL)
+except ImportError:
+    pass
 
 
 def get_strategy_info(name: str) -> dict:

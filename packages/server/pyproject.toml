@@ -9,8 +9,4 @@ dependencies = [
     "pandas>=2.2.0",
     "pydantic-settings>=2.6.0",
     "nautilus_trader",
-    "nautilus-automatron-runner @ file:///Users/mordrax/code/nautilus_automatron/packages/runner",
 ]
-
-[tool.hatch.metadata]
-allow-direct-references = true

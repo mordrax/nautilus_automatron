@@ -4,7 +4,6 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends
 
-from runner.registry import STRATEGIES
 from server.config import get_settings
 
 router = APIRouter()
@@ -17,6 +16,7 @@ def _store_path() -> Path:
 @router.get("/strategies")
 def list_strategies():
     """Return available strategies with their default params."""
+    from runner.registry import STRATEGIES
     return [
         {
             "name": name,
