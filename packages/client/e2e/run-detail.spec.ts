@@ -16,7 +16,7 @@ test.describe('Run Detail Page', () => {
     await expect(page.getByRole('heading', { name: /Run [a-f0-9]+/ })).toBeVisible()
     await expect(page.getByText(/\d+ positions/)).toBeVisible()
     await expect(page.getByText(/\d+ fills/)).toBeVisible()
-    await expect(page.getByText(/AUDUSD/)).toBeVisible()
+    await expect(page.getByText(/AUD\/USD/)).toBeVisible()
   })
 
   test('candlestick chart renders with data', async ({ page }) => {
