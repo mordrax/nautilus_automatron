@@ -1,11 +1,10 @@
 [project]
-name = "nautilus-automatron-runner"
+name = "nautilus-automatron-data"
 version = "0.1.0"
 requires-python = ">=3.12,<3.14"
 dependencies = [
     "nautilus_trader",
     "nautilus-ibapi==10.43.2",
-    "nautilus-automatron-data",
     "protobuf==5.29.5",
     "pandas>=2.2.0",
     "pyarrow>=18.0.0",
@@ -19,7 +18,7 @@ dev = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["runner"]
+packages = ["data"]
 
 [build-system]
 requires = ["hatchling"]
