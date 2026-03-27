@@ -95,7 +95,7 @@ export const RunDetailPage = ({ runId }: RunDetailPageProps) => {
     ),
   })
 
-  const { available, data: indicatorData, enabledIds, toggle } = useIndicators(runId, barType)
+  const { available, data: indicatorData, enabledIds, toggle } = useIndicators(barType)
 
   if (!runDetail) return <div className="text-muted-foreground">Loading...</div>
 
