@@ -1,6 +1,6 @@
 import { useRef, useEffect, useMemo } from 'react'
 import { useLocation } from 'wouter'
-import { TabulatorFull as Tabulator } from 'tabulator-tables'
+import { TabulatorFull as Tabulator, type RowComponent } from 'tabulator-tables'
 import 'tabulator-tables/dist/css/tabulator.min.css'
 import type { RunSummary } from '@/types/api'
 import { createRunColumns, createActionColumns } from '@/lib/run-columns'
@@ -56,7 +56,7 @@ export const RunList = ({ runs, title, onRerun, onDelete }: RunListProps) => {
       applyVisibility(table)
     })
 
-    table.on('rowClick', (_e: UIEvent, row: Tabulator.RowComponent) => {
+    table.on('rowClick', (_e: UIEvent, row: RowComponent) => {
       const data = row.getData() as { run_id: string }
       setLocation(`/runs/${data.run_id}`)
     })

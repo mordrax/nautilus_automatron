@@ -1,5 +1,5 @@
 import { useRef, useEffect, useMemo } from 'react'
-import { TabulatorFull as Tabulator } from 'tabulator-tables'
+import { TabulatorFull as Tabulator, type RowComponent } from 'tabulator-tables'
 import 'tabulator-tables/dist/css/tabulator.min.css'
 import type { CatalogEntry } from '@/types/api'
 import { createCatalogColumns } from '@/lib/catalog-columns'
@@ -42,7 +42,7 @@ export const CatalogTable = ({ entries, title, onViewInstrument }: CatalogTableP
       applyVisibility(table)
     })
 
-    table.on('rowClick', (_e: UIEvent, row: Tabulator.RowComponent) => {
+    table.on('rowClick', (_e: UIEvent, row: RowComponent) => {
       const data = row.getData() as { bar_type: string }
       onViewInstrument(data.bar_type)
     })
