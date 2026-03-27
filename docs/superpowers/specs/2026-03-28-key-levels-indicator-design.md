@@ -1,6 +1,6 @@
 # Key Levels Indicator System
 
-**Trello:** TBD
+**Trello:** Card #108 — Key Levels Indicator System
 **Date:** 2026-03-28
 
 ## Overview
