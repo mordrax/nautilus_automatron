@@ -3,6 +3,14 @@ import { stringHeaderFilter, numericHeaderFilter } from '@/lib/run-columns'
 
 export const createCatalogColumns = (): ColumnDefinition[] => [
   {
+    title: '',
+    formatter: (): string => '<button>View</button>',
+    headerSort: false,
+    hozAlign: 'center',
+    width: 60,
+    frozen: true,
+  },
+  {
     title: 'Instrument',
     field: 'instrument',
     sorter: 'string',

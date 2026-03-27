@@ -6,10 +6,10 @@ import type { OhlcData, Trade, IndicatorResult } from '@/types/api'
 
 type CandlestickChartProps = {
   readonly ohlc: OhlcData
-  readonly trades: readonly Trade[]
+  readonly trades?: readonly Trade[]
   readonly indicators?: readonly IndicatorResult[]
-  readonly currentTradeIndex: number
-  readonly onSelectTrade: (index: number) => void
+  readonly currentTradeIndex?: number
+  readonly onSelectTrade?: (index: number) => void
   readonly onChartReady?: (chart: echarts.ECharts) => void
 }
 
@@ -267,7 +267,7 @@ const TradeTooltip = ({ trade }: { readonly trade: Trade | undefined }) => {
 
 export const CandlestickChart = ({
   ohlc,
-  trades,
+  trades = [],
   indicators = [],
   currentTradeIndex,
   onSelectTrade,
@@ -284,7 +284,7 @@ export const CandlestickChart = ({
   const panelCount = indicators.filter(i => i.display === 'panel').length
   const chartHeight = 600 + panelCount * 150
 
-  // Init chart and bindClick on ohlc/trades change (destroys + recreates)
+  // Init chart and bind click on ohlc/trades change (destroys + recreates)
   useEffect(() => {
     if (!chartDivRef.current) return
 
@@ -299,13 +299,15 @@ export const CandlestickChart = ({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(window as any).__ECHARTS_INSTANCE__ = chart
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    chart.on('click', { componentType: 'markLine' }, (params: any) => {
-      const trade = params.data?.trade
-      if (!trade) return
-      const idx = trades.findIndex((t) => t.relative_id === trade.relative_id)
-      if (idx >= 0) selectTradeRef.current(idx)
-    })
+    if (selectTradeRef.current) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      chart.on('click', { componentType: 'markLine' }, (params: any) => {
+        const trade = params.data?.trade
+        if (!trade) return
+        const idx = trades.findIndex((t) => t.relative_id === trade.relative_id)
+        if (idx >= 0) selectTradeRef.current?.(idx)
+      })
+    }
 
     const handleResize = () => chart.resize()
     window.addEventListener('resize', handleResize)
@@ -339,12 +341,13 @@ export const CandlestickChart = ({
     chartRef.current.resize()
   }, [ohlc, trades, indicators])
 
-  const currentTrade = trades[currentTradeIndex]
+  const showTooltip = trades.length > 0 && currentTradeIndex !== undefined
+  const currentTrade = showTooltip ? trades[currentTradeIndex] : undefined
 
   return (
     <div data-testid="chart-container" style={{ position: 'relative', width: '100%', height: `${chartHeight}px` }}>
       <div ref={chartDivRef} style={{ width: '100%', height: '100%' }} />
-      <TradeTooltip trade={currentTrade} />
+      {showTooltip && <TradeTooltip trade={currentTrade} />}
     </div>
   )
 }
