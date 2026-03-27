@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import type { TabulatorFull as Tabulator } from 'tabulator-tables'
 
 const STORAGE_PREFIX = 'column-visibility:'
@@ -43,13 +43,16 @@ export const useColumnVisibility = (storageKey: string) => {
     [storageKey]
   )
 
+  const hiddenColumnsRef = useRef(hiddenColumns)
+  hiddenColumnsRef.current = hiddenColumns
+
   const applyVisibility = useCallback(
     (table: Tabulator) => {
-      for (const field of hiddenColumns) {
+      for (const field of hiddenColumnsRef.current) {
         table.hideColumn(field)
       }
     },
-    [hiddenColumns]
+    []
   )
 
   return { hiddenColumns, toggleColumn, applyVisibility } as const
