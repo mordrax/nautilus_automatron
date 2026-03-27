@@ -153,3 +153,61 @@ def test_reset():
     indicator.reset()
     assert indicator.levels == []
     assert not indicator.initialized
+
+
+# --- End-to-end with real detectors ---
+
+from indicators.key_levels.detectors.swing_cluster import SwingClusterDetector
+from indicators.key_levels.detectors.wick_rejection import WickRejectionDetector
+from tests.helpers.bar_factory import make_bars_from_ohlcv
+
+
+def _make_realistic_bars():
+    """Create a realistic price series with swings and wick rejections."""
+    data = []
+    # 14 warmup bars around 100
+    for i in range(14):
+        data.append((100.0, 102.0, 98.0, 100.0, 100.0))
+
+    # Swing up to 115
+    for p in [102, 105, 108, 112, 115, 112, 108]:
+        data.append((float(p), float(p + 2), float(p - 2), float(p), 100.0))
+
+    # Wick rejection at 105 (long lower wick)
+    data.append((108.0, 108.0, 105.0, 107.5, 100.0))
+
+    # Swing down to 90
+    for p in [105, 102, 98, 95, 90, 93, 96]:
+        data.append((float(p), float(p + 2), float(p - 1), float(p), 100.0))
+
+    # Swing back up
+    for p in [99, 103, 107, 114, 110, 106]:
+        data.append((float(p), float(p + 2), float(p - 2), float(p), 100.0))
+
+    return make_bars_from_ohlcv(data)
+
+
+def test_end_to_end_with_real_detectors():
+    """Full integration: KeyLevelIndicator with SwingCluster + WickRejection."""
+    detectors = [
+        SwingClusterDetector(period=2, cluster_distance=1.5),
+        WickRejectionDetector(min_wick_ratio=1.5, zone_atr_multiple=1.0, min_rejections=1),
+    ]
+    indicator = KeyLevelIndicator(detectors=detectors)
+    bars = _make_realistic_bars()
+    for bar in bars:
+        indicator.handle_bar(bar)
+
+    # Should have found some levels
+    assert len(indicator.levels) > 0
+
+    # All levels should satisfy invariants
+    for level in indicator.levels:
+        assert level.zone_lower <= level.price <= level.zone_upper
+        assert 0.0 <= level.strength <= 1.0
+        assert level.bounce_count >= 0
+        assert level.first_seen_ts <= level.last_touched_ts
+
+    # Scalar summaries should be available
+    assert not math.isnan(indicator.level_count)
+    assert indicator.level_count > 0
