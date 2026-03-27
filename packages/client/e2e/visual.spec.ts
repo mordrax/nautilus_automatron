@@ -3,7 +3,8 @@ import { test, expect } from '@playwright/test'
 test.describe('Visual Regression', () => {
   test('runs page', async ({ page }) => {
     await page.goto('/')
-    await expect(page.locator('.tabulator')).toBeVisible()
+    const runsSection = page.locator('section', { has: page.getByText('Backtest Runs') })
+    await expect(runsSection.locator('.tabulator')).toBeVisible()
     // Wait for data to render
     await expect(page.getByText('EMACross-000').first()).toBeVisible()
 
@@ -15,7 +16,8 @@ test.describe('Visual Regression', () => {
 
   test('chart with no indicators', async ({ page }) => {
     await page.goto('/')
-    await page.locator('.tabulator-row').first().locator('button', { hasText: 'View' }).click()
+    const runsSection = page.locator('section', { has: page.getByText('Backtest Runs') })
+    await runsSection.locator('.tabulator-row').first().locator('button', { hasText: 'View' }).click()
     await expect(page).toHaveURL(/\/runs\/[a-f0-9-]+/)
     // Wait for chart to render with data
     await expect(page.getByRole('button', { name: /Prev/ })).toBeVisible()
@@ -29,7 +31,8 @@ test.describe('Visual Regression', () => {
 
   test('chart with SMA overlay', async ({ page }) => {
     await page.goto('/')
-    await page.locator('.tabulator-row').first().locator('button', { hasText: 'View' }).click()
+    const runsSection = page.locator('section', { has: page.getByText('Backtest Runs') })
+    await runsSection.locator('.tabulator-row').first().locator('button', { hasText: 'View' }).click()
     await expect(page).toHaveURL(/\/runs\/[a-f0-9-]+/)
     await expect(page.getByRole('button', { name: /Prev/ })).toBeVisible()
     await expect(page.getByText(/Jan-\d+|Feb-\d+/).first()).toBeVisible()
@@ -52,7 +55,8 @@ test.describe('Visual Regression', () => {
 
   test('chart with RSI panel', async ({ page }) => {
     await page.goto('/')
-    await page.locator('.tabulator-row').first().locator('button', { hasText: 'View' }).click()
+    const runsSection = page.locator('section', { has: page.getByText('Backtest Runs') })
+    await runsSection.locator('.tabulator-row').first().locator('button', { hasText: 'View' }).click()
     await expect(page).toHaveURL(/\/runs\/[a-f0-9-]+/)
     await expect(page.getByRole('button', { name: /Prev/ })).toBeVisible()
     await expect(page.getByText(/Jan-\d+|Feb-\d+/).first()).toBeVisible()
@@ -73,7 +77,8 @@ test.describe('Visual Regression', () => {
 
   test('chart with multiple panels', async ({ page }) => {
     await page.goto('/')
-    await page.locator('.tabulator-row').first().locator('button', { hasText: 'View' }).click()
+    const runsSection = page.locator('section', { has: page.getByText('Backtest Runs') })
+    await runsSection.locator('.tabulator-row').first().locator('button', { hasText: 'View' }).click()
     await expect(page).toHaveURL(/\/runs\/[a-f0-9-]+/)
     await expect(page.getByRole('button', { name: /Prev/ })).toBeVisible()
     await expect(page.getByText(/Jan-\d+|Feb-\d+/).first()).toBeVisible()

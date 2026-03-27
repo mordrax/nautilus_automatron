@@ -30,7 +30,8 @@ const waitForZoomIn = async (page: import('@playwright/test').Page, maxWidth = 9
 test.describe('Trade Zoom', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
-    const grid = page.locator('[role="grid"]')
+    const runsSection = page.locator('section', { has: page.getByText('Backtest Runs') })
+    const grid = runsSection.locator('[role="grid"]')
     await expect(grid).toBeVisible()
     await grid.getByRole('button', { name: 'View' }).first().click()
     await expect(page).toHaveURL(/\/runs\/[a-f0-9-]+/)
