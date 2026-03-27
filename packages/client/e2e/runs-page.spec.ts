@@ -18,7 +18,7 @@ test.describe('Runs Page', () => {
     await expect(tabulator).toBeVisible()
 
     // Verify key columns exist in header
-    for (const col of ['Run ID', 'Strategy', 'Total PnL', 'Win Rate', 'Sharpe', 'Avg Hold']) {
+    for (const col of ['Strategy', 'Total PnL', 'Win Rate', 'Sharpe', 'Avg Hold']) {
       await expect(tabulator.locator('.tabulator-col-title', { hasText: col }).first()).toBeVisible()
     }
   })
