@@ -74,6 +74,9 @@ export const getBarTypes = (runId: string) =>
 export const getCatalog = () =>
   fetchJson<readonly CatalogEntry[]>('/api/catalog')
 
+export const getCatalogBars = (barType: string) =>
+  fetchJson<OhlcData>(`/api/catalog/bars/${encodeURIComponent(barType)}`)
+
 export const getStrategies = () =>
   fetchJson<readonly StrategyInfo[]>('/api/strategies')
 
