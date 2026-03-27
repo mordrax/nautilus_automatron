@@ -47,7 +47,7 @@ export const CatalogTable = ({ entries, title }: CatalogTableProps) => {
       table.destroy()
       tabulatorRef.current = null
     }
-  }, [entries, columns])
+  }, [entries, columns, applyVisibility])
 
   return (
     <div>

@@ -58,7 +58,7 @@ export const RunList = ({ runs, title }: RunListProps) => {
       table.destroy()
       tabulatorRef.current = null
     }
-  }, [runs, columns])
+  }, [runs, columns, applyVisibility])
 
   return (
     <div>
