@@ -3,15 +3,15 @@ import pytest
 from runner.registry import STRATEGIES, get_strategy_info
 
 
-def test_strategies_registry_has_bbb():
-    assert "BBBStrategy" in STRATEGIES
-    assert STRATEGIES["BBBStrategy"]["label"] == "Bollinger Band Breakout"
+def test_strategies_registry_has_ema_cross():
+    assert "EMACross" in STRATEGIES
+    assert STRATEGIES["EMACross"]["label"] == "EMA Crossover"
 
 
-def test_get_strategy_info_returns_bbb():
-    info = get_strategy_info("BBBStrategy")
-    assert info["strategy_path"] == "strategies.bbb_strategy.BBBStrategy"
-    assert info["config_path"] == "strategies.bbb_strategy.BBBStrategyConfig"
+def test_get_strategy_info_returns_ema_cross():
+    info = get_strategy_info("EMACross")
+    assert info["strategy_path"] == "nautilus_trader.examples.strategies.ema_cross:EMACross"
+    assert info["config_path"] == "nautilus_trader.examples.strategies.ema_cross:EMACrossConfig"
     assert "default_params" in info
 
 
@@ -21,9 +21,8 @@ def test_get_strategy_info_unknown_raises():
 
 
 def test_default_params_complete():
-    info = get_strategy_info("BBBStrategy")
+    info = get_strategy_info("EMACross")
     params = info["default_params"]
     assert params["trade_size"] == "1"
-    assert params["buy_sd"] == 2.0
-    assert params["sell_sd"] == 3.0
-    assert params["frequency_bars"] == 10
+    assert params["fast_ema_period"] == 10
+    assert params["slow_ema_period"] == 20
