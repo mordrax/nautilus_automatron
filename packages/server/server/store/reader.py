@@ -14,6 +14,7 @@ import json
 from pathlib import Path
 
 import pyarrow as pa
+import pyarrow.compute as pc
 
 
 def list_run_ids(store_path: Path) -> list[str]:
@@ -104,3 +105,64 @@ def read_bars_raw(store_path: Path, run_id: str, bar_type: str) -> pa.Table | No
         return None
 
     return pa.concat_tables(tables) if len(tables) > 1 else tables[0]
+
+
+def list_catalog_entries(store_path: Path) -> list[dict]:
+    """Scan all runs to build a deduplicated catalog of available instrument data.
+
+    For each unique bar_type directory across all runs, reads all feather files
+    to extract instrument ID, total bar count, and date range.
+    Returns one entry per unique bar_type.
+    """
+    seen: dict[str, dict] = {}
+
+    for run_id in list_run_ids(store_path):
+        bar_dir = store_path / "backtest" / run_id / "bar"
+        if not bar_dir.exists():
+            continue
+
+        for bar_type_dir in sorted(bar_dir.iterdir()):
+            if not bar_type_dir.is_dir():
+                continue
+
+            bar_type_name = bar_type_dir.name
+            if bar_type_name in seen:
+                continue
+
+            total_bars = 0
+            ts_min: int | None = None
+            ts_max: int | None = None
+            instrument_id = ""
+            bar_type_str = ""
+
+            for feather_file in sorted(bar_type_dir.glob("*.feather")):
+                table = _read_ipc_stream(feather_file)
+                if table is None:
+                    continue
+
+                total_bars += len(table)
+
+                if not instrument_id:
+                    metadata = table.schema.metadata or {}
+                    instrument_id = metadata.get(b"instrument_id", b"").decode()
+                    bar_type_str = metadata.get(b"bar_type", b"").decode()
+
+                ts_init = table.column("ts_init")
+                file_min = pc.min(ts_init).as_py()
+                file_max = pc.max(ts_init).as_py()
+
+                if ts_min is None or file_min < ts_min:
+                    ts_min = file_min
+                if ts_max is None or file_max > ts_max:
+                    ts_max = file_max
+
+            if total_bars > 0:
+                seen[bar_type_name] = {
+                    "instrument_id": instrument_id,
+                    "bar_type": bar_type_str or bar_type_name,
+                    "bar_count": total_bars,
+                    "ts_min": ts_min,
+                    "ts_max": ts_max,
+                }
+
+    return list(seen.values())
