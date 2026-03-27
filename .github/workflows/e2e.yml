@@ -48,7 +48,9 @@ jobs:
         run: bun install
 
       - name: Install backend dependencies
-        run: cd packages/server && uv sync
+        run: |
+          cd packages/runner && uv venv && uv pip install -e .
+          cd ../server && uv venv && uv pip install -e ../runner && uv pip install -e .
 
       - name: Install Playwright browsers
         run: cd packages/client && bunx playwright install chromium --with-deps
