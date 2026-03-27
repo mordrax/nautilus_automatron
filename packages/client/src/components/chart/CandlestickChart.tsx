@@ -322,8 +322,20 @@ export const CandlestickChart = ({
   useEffect(() => {
     if (!chartRef.current) return
     const fullOption = buildOption(ohlc, trades, indicators)
-    const { dataZoom: _, ...optionWithoutZoom } = fullOption // eslint-disable-line @typescript-eslint/no-unused-vars
-    chartRef.current.setOption(optionWithoutZoom, { replaceMerge: ['series', 'grid', 'xAxis', 'yAxis'] })
+
+    // Preserve current zoom position but update xAxisIndex for new/removed panels
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const currentOption = chartRef.current.getOption() as Record<string, any>
+    const currentStart = currentOption.dataZoom?.[0]?.start ?? 0
+    const currentEnd = currentOption.dataZoom?.[0]?.end ?? 100
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    fullOption.dataZoom = fullOption.dataZoom.map((dz: any) => ({
+      ...dz,
+      start: currentStart,
+      end: currentEnd,
+    }))
+
+    chartRef.current.setOption(fullOption, { replaceMerge: ['series', 'grid', 'xAxis', 'yAxis'] })
     chartRef.current.resize()
   }, [ohlc, trades, indicators])
 
