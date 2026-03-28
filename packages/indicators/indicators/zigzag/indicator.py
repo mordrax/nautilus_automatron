@@ -208,6 +208,9 @@ class ZigZagIndicator(Indicator):
         return self._atr.value * self.threshold  # type: ignore[union-attr]
 
     def _confirm_initial_pivot(
+        # The initial extreme is stored as the first pivot to provide a complete
+        # zigzag line from the start of data. This means pivots[0] is a starting
+        # reference point, not a reversal.
         self,
         pivot_price: float,
         pivot_ts: int,

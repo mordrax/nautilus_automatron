@@ -220,6 +220,27 @@ class TestZigZagThresholdBase:
         assert zz.direction == -1
 
 
+    def test_atr_mode_ignores_threshold_base(self):
+        # ATR mode: threshold is always atr.value * threshold, regardless of threshold_base
+        zz_pivot = ZigZagIndicator(2.0, mode="ATR", atr_period=3, threshold_base="PIVOT")
+        zz_tentative = ZigZagIndicator(2.0, mode="ATR", atr_period=3, threshold_base="TENTATIVE")
+
+        bars = make_bars_from_ohlcv([
+            (100.0, 102.0, 98.0, 100.0, 100),
+            (100.0, 101.0, 99.0, 100.0, 100),
+            (105.0, 110.0, 100.0, 105.0, 100),
+            (100.0, 105.0, 98.0, 100.0, 100),
+        ])
+        for bar in bars:
+            zz_pivot.handle_bar(bar)
+            zz_tentative.handle_bar(bar)
+
+        # Both should produce identical results
+        assert zz_pivot.pivot_count == zz_tentative.pivot_count
+        assert zz_pivot.direction == zz_tentative.direction
+        assert zz_pivot.pivot_price == zz_tentative.pivot_price
+
+
 class TestZigZagMaxPivots:
     def test_evicts_oldest_when_full(self):
         zz = ZigZagIndicator(0.05, max_pivots=2)
