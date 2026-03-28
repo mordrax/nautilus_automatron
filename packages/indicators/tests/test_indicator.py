@@ -209,3 +209,37 @@ def test_end_to_end_with_real_detectors():
     # Scalar summaries should be available
     assert not math.isnan(indicator.level_count)
     assert indicator.level_count > 0
+
+
+def test_end_to_end_phase2_formulaic_detectors():
+    """Integration: KeyLevelIndicator with formulaic detectors."""
+    from indicators.key_levels.detectors.atr_volatility import AtrVolatilityDetector
+    from indicators.key_levels.detectors.fibonacci import FibonacciRetracementDetector
+    from indicators.key_levels.detectors.pivot_points import PivotPointDetector
+    from indicators.key_levels.detectors.psychological import PsychologicalLevelDetector
+
+    detectors = [
+        PivotPointDetector(variant="standard", period_bars=5),
+        FibonacciRetracementDetector(swing_period=2, min_swing_atr_multiple=1.0),
+        AtrVolatilityDetector(atr_period=5, multipliers=(1.0, 2.0)),
+        PsychologicalLevelDetector(
+            tier_steps={"major": 10.0, "minor": 5.0}, range_levels=3
+        ),
+    ]
+    indicator = KeyLevelIndicator(detectors=detectors)
+
+    # Create bars with clear structure: rise to 115, drop to 90, stabilize at 100
+    bars = _make_realistic_bars()  # reuse existing helper
+    for bar in bars:
+        indicator.handle_bar(bar)
+
+    assert len(indicator.levels) > 0
+
+    # Should have levels from multiple sources
+    sources = {lvl.source for lvl in indicator.levels}
+    assert len(sources) >= 2  # At least 2 detector types found levels
+
+    # All invariants hold
+    for lvl in indicator.levels:
+        assert lvl.zone_lower <= lvl.price <= lvl.zone_upper
+        assert 0.0 <= lvl.strength <= 1.0
