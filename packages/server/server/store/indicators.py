@@ -280,7 +280,10 @@ def _compute_zigzag(indicator_id: str, bars: list[Bar]) -> IndicatorResult:
     )
 
 
-_ZIGZAG_IDS = frozenset({"ZigZag_5pct", "ZigZag_3pct", "ZigZag_01pct"})
+_ZIGZAG_IDS = frozenset(
+    k for k, v in INDICATOR_REGISTRY.items()
+    if v.indicator_class is ZigZagIndicator  # type: ignore[comparison-overlap]
+)
 
 
 def compute_indicator(indicator_id: str, bars: list[Bar]) -> IndicatorResult:

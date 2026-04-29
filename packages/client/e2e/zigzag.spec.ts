@@ -6,8 +6,11 @@ const waitForIndicatorData = async (page: Page) => {
     (resp) => resp.url().includes('/indicators?ids=') && resp.status() === 200,
     { timeout: 15_000 },
   )
-  // Give chart a moment to merge the new series
-  await page.waitForTimeout(500)
+  // Wait for chart to merge the new series
+  await page.waitForFunction(() => {
+    const chart = (window as any).__ECHARTS_INSTANCE__
+    return chart?.getOption()?.series?.some((s: any) => s.name?.includes('ZigZag'))
+  }, { timeout: 10_000 })
 }
 
 const getSeriesNames = (page: Page) =>
@@ -92,8 +95,11 @@ test.describe('ZigZag Indicator', () => {
 
     // Toggle off
     await page.getByText('ZigZag(0.1%)').click()
-    // Wait for chart to update (no API call on toggle-off, just re-render)
-    await page.waitForTimeout(500)
+    // Wait for chart to remove the series
+    await page.waitForFunction(() => {
+      const chart = (window as any).__ECHARTS_INSTANCE__
+      return !chart?.getOption()?.series?.some((s: any) => s.name?.includes('ZigZag'))
+    }, { timeout: 10_000 })
 
     const names = await getSeriesNames(page)
     const hasZigZag = names.some((n: string) => n?.includes('ZigZag') || n?.includes('zigzag'))
