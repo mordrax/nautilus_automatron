@@ -8,15 +8,19 @@ const waitForIndicatorData = async (page: Page) => {
   )
   // Wait for chart to merge the new series
   await page.waitForFunction(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const chart = (window as any).__ECHARTS_INSTANCE__
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return chart?.getOption()?.series?.some((s: any) => s.name?.includes('ZigZag'))
   }, { timeout: 10_000 })
 }
 
 const getSeriesNames = (page: Page) =>
   page.evaluate(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const chart = (window as any).__ECHARTS_INSTANCE__
     if (!chart?.getOption) return []
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return chart.getOption().series?.map((s: any) => s.name) ?? []
   })
 
@@ -41,32 +45,33 @@ test.describe('ZigZag Indicator', () => {
     await waitForIndicatorData(page)
 
     const seriesInfo = await page.evaluate(() => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const chart = (window as any).__ECHARTS_INSTANCE__
       if (!chart?.getOption) return null
       const option = chart.getOption()
-      // Find zigzag series — label is "ZigZag(0.1%)"
       const series = option.series ?? []
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const zigzag = series.find((s: any) =>
         s.name && (s.name.includes('ZigZag') || s.name.includes('zigzag')),
       )
       if (!zigzag) {
-        // Return all series names for debugging
-        return { found: false, allNames: series.map((s: any) => s.name) }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return { found: false as const, allNames: series.map((s: any) => s.name) }
       }
       const data = zigzag.data ?? []
       return {
-        found: true,
+        found: true as const,
         name: zigzag.name,
         type: zigzag.type,
         connectNulls: zigzag.connectNulls,
         totalPoints: data.length,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         nonNullCount: data.filter((d: any) => d !== null && d !== undefined).length,
       }
     })
 
     expect(seriesInfo).not.toBeNull()
     if (!seriesInfo!.found) {
-      // Fail with helpful debug info
       throw new Error(`ZigZag series not found. Available series: ${JSON.stringify(seriesInfo!.allNames)}`)
     }
     expect(seriesInfo!.type).toBe('line')
@@ -95,9 +100,10 @@ test.describe('ZigZag Indicator', () => {
 
     // Toggle off
     await page.getByText('ZigZag(0.1%)').click()
-    // Wait for chart to remove the series
     await page.waitForFunction(() => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const chart = (window as any).__ECHARTS_INSTANCE__
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return !chart?.getOption()?.series?.some((s: any) => s.name?.includes('ZigZag'))
     }, { timeout: 10_000 })
 
