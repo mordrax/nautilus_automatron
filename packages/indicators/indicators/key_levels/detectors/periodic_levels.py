@@ -7,7 +7,7 @@ When a period boundary is crossed, the completed period's stats become levels.
 from __future__ import annotations
 
 import datetime
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Literal
 
 from nautilus_trader.model.data import Bar

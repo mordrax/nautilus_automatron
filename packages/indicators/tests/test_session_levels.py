@@ -1,7 +1,5 @@
 """Tests for SessionLevelDetector."""
 
-from datetime import date
-
 from indicators.key_levels.detectors.session_levels import SessionLevelDetector
 from indicators.key_levels.model import SessionLevelMeta
 from tests.helpers.bar_factory import make_bar, _BASE_TS, _1H_NS
