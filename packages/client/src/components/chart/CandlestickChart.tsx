@@ -32,6 +32,7 @@ const buildIndicatorOverlaySeries = (
         data: ind.outputs[field],
         smooth: false,
         showSymbol: false,
+        connectNulls: true,
         lineStyle: { width: 1.5, color },
         itemStyle: { color },
         xAxisIndex: 0,
