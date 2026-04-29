@@ -58,7 +58,6 @@ class OrderBlockDetector:
         low = float(bar.low)
         close = float(bar.close)
         open_ = float(bar.open)
-        ts = bar.ts_event
 
         self._atr.update(high, low, close)
 
