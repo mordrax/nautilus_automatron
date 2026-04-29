@@ -4,7 +4,7 @@ import math
 
 import pytest
 
-from indicators.key_levels.detectors.swing_cluster import SwingClusterDetector
+from indicators.key_levels.detectors.equal_highs_lows import EqualHighsLowsDetector
 from indicators.key_levels.detectors.wick_rejection import WickRejectionDetector
 from indicators.key_levels.indicator import KeyLevelIndicator
 from indicators.key_levels.model import KeyLevel, SwingClusterMeta
@@ -188,7 +188,7 @@ def _make_realistic_bars():
 def test_end_to_end_with_real_detectors():
     """Full integration: KeyLevelIndicator with SwingCluster + WickRejection."""
     detectors = [
-        SwingClusterDetector(period=2, cluster_distance=1.5),
+        EqualHighsLowsDetector(period=2, tolerance_atr_multiple=1.5, min_touches=1),
         WickRejectionDetector(min_wick_ratio=1.5, zone_atr_multiple=1.0, min_rejections=1),
     ]
     indicator = KeyLevelIndicator(detectors=detectors)

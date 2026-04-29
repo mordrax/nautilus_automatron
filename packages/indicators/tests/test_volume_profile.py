@@ -2,7 +2,7 @@
 
 from indicators.key_levels.detectors.volume_profile import VolumeProfileDetector
 from indicators.key_levels.model import VolumeProfileMeta
-from tests.helpers.bar_factory import make_bar, make_bars_from_ohlcv, _BASE_TS, _1H_NS
+from tests.helpers.bar_factory import make_bar, _BASE_TS, _1H_NS
 
 
 def _make_warmup_bars(count: int = 50) -> list:
@@ -79,7 +79,7 @@ def test_finds_poc_level():
     assert len(levels) > 0, "Expected at least one volume profile level"
 
     # Find POC level
-    poc_levels = [l for l in levels if isinstance(l.meta, VolumeProfileMeta) and l.meta.node_type == "poc"]
+    poc_levels = [lv for lv in levels if isinstance(lv.meta, VolumeProfileMeta) and lv.meta.node_type == "poc"]
     assert len(poc_levels) == 1, f"Expected exactly one POC, got {len(poc_levels)}"
 
     poc = poc_levels[0]
@@ -100,11 +100,11 @@ def test_finds_value_area():
         detector.update(bar)
 
     levels = detector.levels()
-    va_levels = [l for l in levels if isinstance(l.meta, VolumeProfileMeta) and l.meta.node_type in ("va_high", "va_low")]
+    va_levels = [lv for lv in levels if isinstance(lv.meta, VolumeProfileMeta) and lv.meta.node_type in ("va_high", "va_low")]
     assert len(va_levels) == 2, f"Expected VA high and VA low, got {len(va_levels)}"
 
-    va_high = [l for l in va_levels if l.meta.node_type == "va_high"][0]
-    va_low = [l for l in va_levels if l.meta.node_type == "va_low"][0]
+    va_high = [lv for lv in va_levels if lv.meta.node_type == "va_high"][0]
+    va_low = [lv for lv in va_levels if lv.meta.node_type == "va_low"][0]
     assert va_high.price > va_low.price
     assert va_high.strength == 0.8
     assert va_low.strength == 0.8
