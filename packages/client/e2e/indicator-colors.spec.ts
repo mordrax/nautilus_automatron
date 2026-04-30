@@ -46,11 +46,6 @@ test.describe('Indicator Colors', () => {
     const firstSwatch = page.locator('button[title="Change color"]').first()
     await expect(firstSwatch).toBeVisible()
 
-    // Get initial color
-    const initialColor = await firstSwatch.evaluate(
-      (el) => (el as HTMLElement).style.backgroundColor
-    )
-
     // Open popover and click a different preset
     await firstSwatch.click()
     const popover = page.locator('[data-radix-popper-content-wrapper]')
