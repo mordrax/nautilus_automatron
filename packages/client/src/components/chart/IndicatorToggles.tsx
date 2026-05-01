@@ -33,6 +33,8 @@ const ColorPicker = ({
         {INDICATOR_COLORS.map(c => (
           <button
             key={c}
+            type="button"
+            aria-label={`Use color ${c}`}
             className="w-5 h-5 rounded-sm border border-border cursor-pointer hover:scale-110 transition-transform"
             style={{ backgroundColor: c }}
             onClick={() => { onChange(c); setHex(c) }}
@@ -71,6 +73,8 @@ export const IndicatorToggles = ({
               <Popover>
                 <PopoverTrigger asChild>
                   <button
+                    type="button"
+                    aria-label={`Change color for ${ind.label}`}
                     className="w-4 h-4 rounded-sm border border-border cursor-pointer shrink-0 hover:scale-110 transition-transform"
                     style={{ backgroundColor: getColor(ind.id) }}
                     title="Change color"

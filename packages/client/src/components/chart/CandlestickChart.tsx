@@ -336,7 +336,7 @@ export const CandlestickChart = ({
 
     chartRef.current.setOption(fullOption, { replaceMerge: ['series', 'grid', 'xAxis', 'yAxis'] })
     chartRef.current.resize()
-  }, [ohlc, trades, indicators])
+  }, [ohlc, trades, indicators, getIndicatorColor])
 
   const showTooltip = trades.length > 0 && currentTradeIndex !== undefined
   const currentTrade = showTooltip ? trades[currentTradeIndex] : undefined

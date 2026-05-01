@@ -88,4 +88,69 @@ test.describe('Indicator Colors', () => {
     )
     expect(color2).toBe(color1)
   })
+
+  test('picked color is applied to the eCharts overlay series', async ({ page }) => {
+    // Enable SMA(20) so it renders as a series
+    const smaCheckbox = page.getByRole('checkbox', { name: 'SMA(20)' })
+    await smaCheckbox.click()
+    await expect(smaCheckbox).toBeChecked()
+
+    // Open color picker for SMA(20)
+    const smaSwatch = page.getByRole('button', { name: 'Change color for SMA(20)' })
+    await expect(smaSwatch).toBeVisible()
+    await smaSwatch.click()
+
+    const popover = page.locator('[data-radix-popper-content-wrapper]')
+    await expect(popover).toBeVisible()
+
+    // Pick the last preset
+    const lastPreset = popover.locator('button').last()
+    const targetHex = await lastPreset.getAttribute('title')
+    expect(targetHex).toMatch(/^#[0-9A-Fa-f]{6}$/)
+    await lastPreset.click()
+
+    // Wait until the SMA series in eCharts reflects the picked color
+    await expect
+      .poll(async () =>
+        page.evaluate((label) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const chart = (window as any).__ECHARTS_INSTANCE__
+          if (!chart) return null
+          const opt = chart.getOption()
+          const match = (opt.series as Array<{ name?: string; lineStyle?: { color?: string } }>)
+            .find((s) => s.name === label)
+          return match?.lineStyle?.color ?? null
+        }, 'SMA(20)'),
+      )
+      .toBe(targetHex)
+  })
+
+  test('color persists across page reload via localStorage', async ({ page }) => {
+    const firstSwatch = page.locator('button[title="Change color"]').first()
+    await expect(firstSwatch).toBeVisible()
+    await firstSwatch.click()
+
+    const popover = page.locator('[data-radix-popper-content-wrapper]')
+    await expect(popover).toBeVisible()
+
+    const lastPreset = popover.locator('button').last()
+    const targetBg = await lastPreset.evaluate((el) => (el as HTMLElement).style.backgroundColor)
+    const targetHex = await lastPreset.getAttribute('title')
+    await lastPreset.click()
+
+    // Verify localStorage was written
+    const stored = await page.evaluate(() => localStorage.getItem('indicator-colors'))
+    expect(stored).toBeTruthy()
+    expect(stored).toContain(targetHex!)
+
+    // Reload and assert swatch retains the picked color
+    await page.reload()
+    await expect(page.getByRole('button', { name: /Prev/ })).toBeVisible()
+    const swatchAfterReload = page.locator('button[title="Change color"]').first()
+    await expect(swatchAfterReload).toBeVisible()
+    const colorAfterReload = await swatchAfterReload.evaluate(
+      (el) => (el as HTMLElement).style.backgroundColor,
+    )
+    expect(colorAfterReload).toBe(targetBg)
+  })
 })
