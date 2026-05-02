@@ -89,9 +89,13 @@ def test_pivot_point_meta():
         period_high=110.0,
         period_low=90.0,
         period_close=105.0,
+        side="high",
+        touch_count=0,
     )
     assert meta.variant == "fibonacci"
     assert meta.level_name == "R1"
+    assert meta.side == "high"
+    assert meta.touch_count == 0
 
 
 def test_fibonacci_meta():
@@ -100,9 +104,13 @@ def test_fibonacci_meta():
         swing_high=110.0,
         swing_low=90.0,
         direction="retracement",
+        side="low",
+        touch_count=0,
     )
     assert meta.ratio == 0.618
     assert meta.direction == "retracement"
+    assert meta.side == "low"
+    assert meta.touch_count == 0
 
 
 def test_equal_highs_lows_meta_has_touch_count():

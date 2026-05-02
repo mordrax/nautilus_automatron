@@ -78,6 +78,8 @@ class PivotPointMeta:
     period_high: float
     period_low: float
     period_close: float
+    side: Literal["high", "low"]
+    touch_count: int
 
 
 @dataclass(frozen=True)
@@ -86,12 +88,16 @@ class FibonacciMeta:
     swing_high: float
     swing_low: float
     direction: Literal["retracement", "extension"]
+    side: Literal["high", "low"]
+    touch_count: int
 
 
 @dataclass(frozen=True)
 class PsychologicalMeta:
     tier: Literal["major", "minor", "micro"]
     round_value: float
+    side: Literal["high", "low"]
+    touch_count: int
 
 
 @dataclass(frozen=True)
@@ -99,6 +105,8 @@ class AtrVolatilityMeta:
     atr_value: float
     multiplier: float
     anchor_price: float
+    side: Literal["high", "low"]
+    touch_count: int
 
 
 @dataclass(frozen=True)

@@ -172,15 +172,33 @@ def test_detectors_endpoint_returns_equal_highs_lows():
     assert isinstance(data, list)
     assert len(data) >= 1
 
+    expected_ids = {
+        "equal_highs_lows",
+        "wick_rejection",
+        "atr_volatility",
+        "fib_retracement",
+        "fib_extension",
+        "pivot_standard",
+        "pivot_fibonacci",
+        "pivot_camarilla",
+        "pivot_woodie",
+        "pivot_demark",
+        "psychological",
+    }
+    returned_ids = {d["id"] for d in data}
+    assert expected_ids.issubset(returned_ids)
+
+    for d in data:
+        assert d["color"].startswith("#")
+        assert d["label"]
+
     eql = next((d for d in data if d["id"] == "equal_highs_lows"), None)
     assert eql is not None
     assert eql["label"] == "Equal Highs/Lows"
-    assert eql["color"].startswith("#")
 
     wick = next((d for d in data if d["id"] == "wick_rejection"), None)
     assert wick is not None
     assert wick["label"] == "Wick Rejection"
-    assert wick["color"].startswith("#")
 
 
 # ---------------------------------------------------------------------------
@@ -276,6 +294,118 @@ def test_key_levels_unknown_detector_returns_400():
     )
     assert res.status_code == 400
     assert "not_a_detector" in res.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
+# Smoke tests for the migrated detectors (#120) — verify the route returns
+# valid DTOs with the matching `meta.kind` discriminator.
+# ---------------------------------------------------------------------------
+
+
+def _make_stable_bars(count: int = 60, base_price: float = 1075.0) -> list[Bar]:
+    """Stable bars around `base_price` — enough for any detector to warm up."""
+    bars: list[Bar] = []
+    for i in range(count):
+        # Small oscillation so swings can form for fib/atr_volatility.
+        center = base_price + (i % 5 - 2) * 1.5
+        o = center
+        c = center + 0.5
+        h = max(o, c) + 1.0
+        lo = min(o, c) - 1.0
+        bars.append(_make_bar(o, h, lo, c, ts_ns=_BASE_TS + i * _1H_NS))
+    return bars
+
+
+def test_key_levels_atr_volatility_route():
+    bars = _make_stable_bars(count=30)
+    client = _client_with_catalog(_StubCatalog(bars_by_type={_DEFAULT_BAR_TYPE_STR: bars}))
+    res = client.get(
+        f"/api/bars/{_DEFAULT_BAR_TYPE_STR}/key-levels",
+        params={"detectors": "atr_volatility"},
+    )
+    assert res.status_code == 200, res.text
+    levels = res.json()
+    assert isinstance(levels, list)
+    assert len(levels) > 0
+    for lvl in levels:
+        assert lvl["source"] == "atr_volatility"
+        assert lvl["meta"]["kind"] == "atr_volatility"
+        assert lvl["meta"]["side"] in ("high", "low")
+
+
+def test_key_levels_fib_retracement_route():
+    # Build a clear swing pattern for fib retracement.
+    bars = _make_stable_bars(count=30)
+    # Append a clear swing-low then swing-high.
+    idx = len(bars)
+    for o, h, lo, c in [
+        (1090, 1090, 1075, 1080),
+        (1080, 1080, 1060, 1065),
+        (1065, 1065, 1050, 1055),  # forming low
+        (1055, 1070, 1050, 1068),  # bounce
+        (1068, 1085, 1066, 1083),
+        (1083, 1100, 1080, 1098),
+        (1098, 1115, 1095, 1112),  # forming high
+        (1112, 1115, 1100, 1102),
+        (1102, 1108, 1095, 1098),
+        (1098, 1100, 1085, 1090),
+        (1090, 1095, 1080, 1085),
+    ]:
+        bars.append(_make_bar(o, h, lo, c, ts_ns=_BASE_TS + idx * _1H_NS))
+        idx += 1
+    client = _client_with_catalog(_StubCatalog(bars_by_type={_DEFAULT_BAR_TYPE_STR: bars}))
+    res = client.get(
+        f"/api/bars/{_DEFAULT_BAR_TYPE_STR}/key-levels",
+        params={"detectors": "fib_retracement"},
+    )
+    assert res.status_code == 200, res.text
+    levels = res.json()
+    assert isinstance(levels, list)
+    # Even if no fan emits, the response must be a valid list.
+    for lvl in levels:
+        assert lvl["source"] == "fib_retracement"
+        assert lvl["meta"]["kind"] == "fibonacci"
+        assert lvl["meta"]["direction"] == "retracement"
+
+
+def test_key_levels_pivot_standard_route():
+    # period_bars=24 default → need at least 24 bars for one pivot set.
+    bars = _make_stable_bars(count=30)
+    client = _client_with_catalog(_StubCatalog(bars_by_type={_DEFAULT_BAR_TYPE_STR: bars}))
+    res = client.get(
+        f"/api/bars/{_DEFAULT_BAR_TYPE_STR}/key-levels",
+        params={"detectors": "pivot_standard"},
+    )
+    assert res.status_code == 200, res.text
+    levels = res.json()
+    assert isinstance(levels, list)
+    assert len(levels) > 0
+    for lvl in levels:
+        assert lvl["source"] == "pivot_standard"
+        assert lvl["meta"]["kind"] == "pivot_point"
+        assert lvl["meta"]["variant"] == "standard"
+
+
+def test_key_levels_psychological_route():
+    bars = _make_stable_bars(count=30, base_price=1075.0)
+    client = _client_with_catalog(_StubCatalog(bars_by_type={_DEFAULT_BAR_TYPE_STR: bars}))
+    res = client.get(
+        f"/api/bars/{_DEFAULT_BAR_TYPE_STR}/key-levels",
+        params={"detectors": "psychological"},
+    )
+    assert res.status_code == 200, res.text
+    levels = res.json()
+    assert isinstance(levels, list)
+    assert len(levels) > 0
+    for lvl in levels:
+        assert lvl["source"] == "psychological"
+        assert lvl["meta"]["kind"] == "psychological"
+        assert lvl["meta"]["tier"] in ("major", "minor", "micro")
+
+
+# ---------------------------------------------------------------------------
+# Errors
+# ---------------------------------------------------------------------------
 
 
 def test_key_levels_missing_bar_type_returns_404():

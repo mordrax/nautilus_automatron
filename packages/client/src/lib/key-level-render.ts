@@ -20,6 +20,15 @@ type KeyLevelStyle = {
 const SOURCE_STYLE: Record<string, KeyLevelStyle> = {
   equal_highs_lows: { color: '#5470c6', baseWidth: 1.5 },
   wick_rejection: { color: '#ee6666', baseWidth: 1.5 },
+  atr_volatility: { color: '#fac858', baseWidth: 1.5 },
+  fib_retracement: { color: '#91cc75', baseWidth: 1.5 },
+  fib_extension: { color: '#91cc75', baseWidth: 1.5 },
+  pivot_standard: { color: '#73c0de', baseWidth: 1.5 },
+  pivot_fibonacci: { color: '#73c0de', baseWidth: 1.5 },
+  pivot_camarilla: { color: '#73c0de', baseWidth: 1.5 },
+  pivot_woodie: { color: '#73c0de', baseWidth: 1.5 },
+  pivot_demark: { color: '#73c0de', baseWidth: 1.5 },
+  psychological: { color: '#9a60b4', baseWidth: 1.5 },
 }
 
 const DEFAULT_STYLE: KeyLevelStyle = { color: '#888', baseWidth: 1.5 }
