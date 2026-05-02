@@ -58,6 +58,41 @@ export type PsychologicalMetaDto = {
   readonly touch_count: number
 }
 
+export type VolumeProfileMetaDto = {
+  readonly kind: 'volume_profile'
+  readonly volume_concentration: number
+  readonly node_type: 'poc' | 'hvn' | 'lvn' | 'va_high' | 'va_low'
+  readonly bin_volume: number
+  readonly side: 'high' | 'low'
+  readonly touch_count: number
+}
+
+export type VolumeDistributionMetaDto = {
+  readonly kind: 'volume_distribution'
+  readonly context: 'consolidation' | 'peak' | 'trough' | 'range'
+  readonly volume_concentration: number
+  readonly context_bar_count: number
+  readonly side: 'high' | 'low'
+  readonly touch_count: number
+}
+
+export type AnchoredVwapMetaDto = {
+  readonly kind: 'anchored_vwap'
+  readonly anchor_ts: number
+  readonly anchor_type: 'swing_high' | 'swing_low' | 'gap' | 'volume_spike'
+  readonly cumulative_volume: number
+  readonly side: 'high' | 'low'
+  readonly touch_count: number
+}
+
+export type CvdMetaDto = {
+  readonly kind: 'cvd'
+  readonly cvd_value: number
+  readonly divergence: 'bullish' | 'bearish' | 'none'
+  readonly side: 'high' | 'low'
+  readonly touch_count: number
+}
+
 export type SourceMetaDto =
   | EqualHighsLowsMetaDto
   | WickRejectionMetaDto
@@ -65,6 +100,10 @@ export type SourceMetaDto =
   | FibonacciMetaDto
   | PivotPointMetaDto
   | PsychologicalMetaDto
+  | VolumeProfileMetaDto
+  | VolumeDistributionMetaDto
+  | AnchoredVwapMetaDto
+  | CvdMetaDto
 
 export type KeyLevelSource =
   | 'equal_highs_lows'
@@ -78,6 +117,10 @@ export type KeyLevelSource =
   | 'pivot_woodie'
   | 'pivot_demark'
   | 'psychological'
+  | 'volume_profile'
+  | 'volume_distribution'
+  | 'anchored_vwap'
+  | 'cvd'
 
 export type KeyLevelDto = {
   readonly price: number

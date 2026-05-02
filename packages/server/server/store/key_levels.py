@@ -13,7 +13,9 @@ from pydantic import BaseModel, Field
 
 from nautilus_trader.model.data import Bar
 
+from indicators.key_levels.detectors.anchored_vwap import AnchoredVwapDetector
 from indicators.key_levels.detectors.atr_volatility import AtrVolatilityDetector
+from indicators.key_levels.detectors.cvd import CvdDetector
 from indicators.key_levels.detectors.equal_highs_lows import EqualHighsLowsDetector
 from indicators.key_levels.detectors.fibonacci import (
     FibonacciExtensionDetector,
@@ -21,14 +23,22 @@ from indicators.key_levels.detectors.fibonacci import (
 )
 from indicators.key_levels.detectors.pivot_points import PivotPointDetector
 from indicators.key_levels.detectors.psychological import PsychologicalLevelDetector
+from indicators.key_levels.detectors.volume_distribution import (
+    VolumeDistributionDetector,
+)
+from indicators.key_levels.detectors.volume_profile import VolumeProfileDetector
 from indicators.key_levels.detectors.wick_rejection import WickRejectionDetector
 from indicators.key_levels.model import (
+    AnchoredVwapMeta,
     AtrVolatilityMeta,
+    CvdMeta,
     EqualHighsLowsMeta,
     FibonacciMeta,
     KeyLevel,
     PivotPointMeta,
     PsychologicalMeta,
+    VolumeDistributionMeta,
+    VolumeProfileMeta,
     WickRejectionMeta,
 )
 
@@ -104,6 +114,41 @@ class PsychologicalMetaDto(BaseModel):
     touch_count: int
 
 
+class VolumeProfileMetaDto(BaseModel):
+    kind: Literal["volume_profile"] = "volume_profile"
+    volume_concentration: float
+    node_type: Literal["poc", "hvn", "lvn", "va_high", "va_low"]
+    bin_volume: float
+    side: Literal["high", "low"]
+    touch_count: int
+
+
+class VolumeDistributionMetaDto(BaseModel):
+    kind: Literal["volume_distribution"] = "volume_distribution"
+    context: Literal["consolidation", "peak", "trough", "range"]
+    volume_concentration: float
+    context_bar_count: int
+    side: Literal["high", "low"]
+    touch_count: int
+
+
+class AnchoredVwapMetaDto(BaseModel):
+    kind: Literal["anchored_vwap"] = "anchored_vwap"
+    anchor_ts: int
+    anchor_type: Literal["swing_high", "swing_low", "gap", "volume_spike"]
+    cumulative_volume: float
+    side: Literal["high", "low"]
+    touch_count: int
+
+
+class CvdMetaDto(BaseModel):
+    kind: Literal["cvd"] = "cvd"
+    cvd_value: float
+    divergence: Literal["bullish", "bearish", "none"]
+    side: Literal["high", "low"]
+    touch_count: int
+
+
 SourceMetaDto = Annotated[
     Union[
         EqualHighsLowsMetaDto,
@@ -112,6 +157,10 @@ SourceMetaDto = Annotated[
         FibonacciMetaDto,
         PivotPointMetaDto,
         PsychologicalMetaDto,
+        VolumeProfileMetaDto,
+        VolumeDistributionMetaDto,
+        AnchoredVwapMetaDto,
+        CvdMetaDto,
     ],
     Field(discriminator="kind"),
 ]
@@ -134,6 +183,10 @@ class KeyLevelDto(BaseModel):
         "pivot_woodie",
         "pivot_demark",
         "psychological",
+        "volume_profile",
+        "volume_distribution",
+        "anchored_vwap",
+        "cvd",
     ]
     bounce_count: int
     zone_upper: float | None
@@ -166,6 +219,10 @@ DETECTOR_REGISTRY: dict[str, Callable[[], DetectorProto]] = {
     "psychological": lambda: PsychologicalLevelDetector(
         tier_steps=_DEFAULT_PSYCH_TIERS,
     ),
+    "volume_profile": lambda: VolumeProfileDetector(),
+    "volume_distribution": lambda: VolumeDistributionDetector(),
+    "anchored_vwap": lambda: AnchoredVwapDetector(),
+    "cvd": lambda: CvdDetector(),
 }
 
 
@@ -181,6 +238,10 @@ DETECTOR_META: list[dict[str, str]] = [
     {"id": "pivot_woodie", "label": "Pivot (Woodie)", "color": "#73c0de"},
     {"id": "pivot_demark", "label": "Pivot (DeMark)", "color": "#73c0de"},
     {"id": "psychological", "label": "Psychological", "color": "#9a60b4"},
+    {"id": "volume_profile", "label": "Volume Profile", "color": "#ea7ccc"},
+    {"id": "volume_distribution", "label": "Volume Distribution", "color": "#3ba272"},
+    {"id": "anchored_vwap", "label": "Anchored VWAP", "color": "#fc8452"},
+    {"id": "cvd", "label": "CVD", "color": "#27727b"},
 ]
 
 
@@ -235,6 +296,37 @@ def _meta_to_dto(meta: object) -> SourceMetaDto:
         return PsychologicalMetaDto(
             tier=meta.tier,
             round_value=meta.round_value,
+            side=meta.side,
+            touch_count=meta.touch_count,
+        )
+    if isinstance(meta, VolumeProfileMeta):
+        return VolumeProfileMetaDto(
+            volume_concentration=meta.volume_concentration,
+            node_type=meta.node_type,
+            bin_volume=meta.bin_volume,
+            side=meta.side,
+            touch_count=meta.touch_count,
+        )
+    if isinstance(meta, VolumeDistributionMeta):
+        return VolumeDistributionMetaDto(
+            context=meta.context,
+            volume_concentration=meta.volume_concentration,
+            context_bar_count=meta.context_bar_count,
+            side=meta.side,
+            touch_count=meta.touch_count,
+        )
+    if isinstance(meta, AnchoredVwapMeta):
+        return AnchoredVwapMetaDto(
+            anchor_ts=meta.anchor_ts,
+            anchor_type=meta.anchor_type,
+            cumulative_volume=meta.cumulative_volume,
+            side=meta.side,
+            touch_count=meta.touch_count,
+        )
+    if isinstance(meta, CvdMeta):
+        return CvdMetaDto(
+            cvd_value=meta.cvd_value,
+            divergence=meta.divergence,
             side=meta.side,
             touch_count=meta.touch_count,
         )
