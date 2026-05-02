@@ -1,12 +1,16 @@
 import { test, expect, Page } from '@playwright/test'
 
-const waitForIndicatorData = async (page: Page) => {
-  // Wait for the indicator API response
-  await page.waitForResponse(
+// Toggle the ZigZag(0.1%) checkbox and wait for the indicator data to load
+// and the chart series to render. The waitForResponse listener must be
+// registered BEFORE the click — the indicator fetch can resolve before the
+// listener is set up otherwise (race condition observed in CI).
+const toggleZigZagAndWait = async (page: Page) => {
+  const responsePromise = page.waitForResponse(
     (resp) => resp.url().includes('/indicators?ids=') && resp.status() === 200,
     { timeout: 15_000 },
   )
-  // Wait for chart to merge the new series
+  await page.getByText('ZigZag(0.1%)').click()
+  await responsePromise
   await page.waitForFunction(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const chart = (window as any).__ECHARTS_INSTANCE__
@@ -41,8 +45,7 @@ test.describe('ZigZag Indicator', () => {
   })
 
   test('toggling ZigZag(0.1%) renders a sparse overlay line', async ({ page }) => {
-    await page.getByText('ZigZag(0.1%)').click()
-    await waitForIndicatorData(page)
+    await toggleZigZagAndWait(page)
 
     const seriesInfo = await page.evaluate(() => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -85,8 +88,7 @@ test.describe('ZigZag Indicator', () => {
     const initialBox = await chartContainer.boundingBox()
     expect(initialBox).not.toBeNull()
 
-    await page.getByText('ZigZag(0.1%)').click()
-    await waitForIndicatorData(page)
+    await toggleZigZagAndWait(page)
 
     const newBox = await chartContainer.boundingBox()
     expect(newBox).not.toBeNull()
@@ -95,8 +97,7 @@ test.describe('ZigZag Indicator', () => {
 
   test('toggling ZigZag off removes the overlay', async ({ page }) => {
     // Toggle on
-    await page.getByText('ZigZag(0.1%)').click()
-    await waitForIndicatorData(page)
+    await toggleZigZagAndWait(page)
 
     // Toggle off
     await page.getByText('ZigZag(0.1%)').click()
