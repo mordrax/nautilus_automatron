@@ -144,15 +144,10 @@ class EqualHighsLowsDetector:
         ts: int,
         tolerance: float,
     ) -> None:
-        # Bar-level touch: bar's high/low range overlaps the tolerance band
-        # around the centroid.
-        band_upper = lvl.centroid + tolerance
-        band_lower = lvl.centroid - tolerance
-        if low <= band_upper and high >= band_lower:
-            lvl.touch_count += 1
-            lvl.last_touch_ts = ts
-
-        # Break check: a close strongly beyond the level for K consecutive bars.
+        # Break check first: a close strongly beyond the level for K consecutive
+        # bars. Done before the touch update so the bar that breaks the level
+        # does not inflate touch_count — that bar is the breaking bar, not a
+        # confirming touch.
         atr_value = self._atr.value
         if lvl.side == "high":
             beyond = close > lvl.centroid + self._break_atr_multiple * atr_value
@@ -167,6 +162,14 @@ class EqualHighsLowsDetector:
         if lvl.bars_through >= self._break_consecutive_bars:
             lvl.end_ts = ts
             return
+
+        # Bar-level touch: bar's high/low range overlaps the tolerance band
+        # around the centroid. Only counted when the bar is not breaking.
+        band_upper = lvl.centroid + tolerance
+        band_lower = lvl.centroid - tolerance
+        if low <= band_upper and high >= band_lower:
+            lvl.touch_count += 1
+            lvl.last_touch_ts = ts
 
         # Aged-out check: no touch for too long. Use detected bar interval, or
         # fall back to a 1-bar approximation when we haven't seen two bars yet.
@@ -185,22 +188,34 @@ class EqualHighsLowsDetector:
         """If the just-confirmed swing matches an active level, fold it in
         and drop it from the pending buffer. Otherwise leave it buffered for
         later promotion via `_try_promote_pending`.
+
+        When multiple active levels' tolerance bands overlap, attach to the
+        closest centroid — not the first match in insertion order — so a new
+        swing is associated with the level it's actually closest to.
         """
+        best: _TrackedLevel | None = None
+        best_dist = tolerance
         for lvl in self._tracked:
             if lvl.end_ts is not None or lvl.side != side:
                 continue
-            if abs(price - lvl.centroid) <= tolerance:
-                lvl.members.append(price)
-                lvl.member_ts.append(ts)
-                lvl.centroid = sum(lvl.members) / len(lvl.members)
-                lvl.bounce_count += 1
-                lvl.last_touch_ts = ts
-                # Remove the matching swing from the pending buffer (it was
-                # just appended in `update`, so it's at the tail).
-                buf = self._pending_swings[side]
-                if buf and buf[-1] == (price, ts):
-                    buf.pop()
-                return
+            dist = abs(price - lvl.centroid)
+            if dist <= best_dist:
+                best = lvl
+                best_dist = dist
+
+        if best is None:
+            return
+
+        best.members.append(price)
+        best.member_ts.append(ts)
+        best.centroid = sum(best.members) / len(best.members)
+        best.bounce_count += 1
+        best.last_touch_ts = ts
+        # Remove the matching swing from the pending buffer (it was just
+        # appended in `update`, so it's at the tail).
+        buf = self._pending_swings[side]
+        if buf and buf[-1] == (price, ts):
+            buf.pop()
 
     def _try_promote_pending(
         self, side: Literal["high", "low"], tolerance: float,
