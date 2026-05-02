@@ -193,6 +193,11 @@ def test_detectors_endpoint_returns_equal_highs_lows():
         "opening_range",
         "market_profile_tpo",
         "swing_cluster",
+        "order_block",
+        "fair_value_gap",
+        "price_gap",
+        "darvas_box",
+        "consolidation_zone",
     }
     returned_ids = {d["id"] for d in data}
     assert expected_ids.issubset(returned_ids)
@@ -689,6 +694,187 @@ def test_key_levels_swing_cluster_route():
         assert lvl["meta"]["kind"] == "swing_cluster"
         assert lvl["meta"]["side"] in ("high", "low")
         assert isinstance(lvl["meta"]["pivot_indices"], list)
+
+
+# ---------------------------------------------------------------------------
+# Smoke tests for the migrated detectors (#123) — Phase 5 (price action).
+# ---------------------------------------------------------------------------
+
+
+def _make_displacement_bars() -> list[Bar]:
+    """Stable warmup, then a bearish candle followed by a strong bullish
+    displacement — should yield a bullish order block AND likely a bullish FVG.
+    """
+    bars: list[Bar] = []
+    for i in range(20):
+        ts = _BASE_TS + i * _1H_NS
+        bars.append(_make_bar(100.0, 100.5, 99.5, 100.0, ts_ns=ts))
+    idx = len(bars)
+    bars.append(_make_bar(102.0, 102.5, 99.5, 100.0,
+                          ts_ns=_BASE_TS + idx * _1H_NS))
+    idx += 1
+    bars.append(_make_bar(100.0, 110.5, 100.0, 110.0,
+                          ts_ns=_BASE_TS + idx * _1H_NS))
+    return bars
+
+
+def test_key_levels_order_block_route():
+    bars = _make_displacement_bars()
+    client = _client_with_catalog(_StubCatalog(bars_by_type={_DEFAULT_BAR_TYPE_STR: bars}))
+    res = client.get(
+        f"/api/bars/{_DEFAULT_BAR_TYPE_STR}/key-levels",
+        params={"detectors": "order_block"},
+    )
+    assert res.status_code == 200, res.text
+    levels = res.json()
+    assert isinstance(levels, list)
+    assert len(levels) > 0
+    for lvl in levels:
+        assert lvl["source"] == "order_block"
+        assert lvl["meta"]["kind"] == "order_block"
+        assert lvl["meta"]["block_side"] in ("bullish", "bearish")
+        assert lvl["meta"]["side"] in ("high", "low")
+        assert isinstance(lvl["meta"]["displacement_atr_multiple"], float)
+        assert isinstance(lvl["meta"]["mitigation_pct"], float)
+
+
+def _make_fvg_bars() -> list[Bar]:
+    bars: list[Bar] = []
+    for i in range(20):
+        ts = _BASE_TS + i * _1H_NS
+        bars.append(_make_bar(100.0, 100.5, 99.5, 100.0, ts_ns=ts))
+    idx = len(bars)
+    bars.append(_make_bar(100.0, 100.5, 99.5, 100.0,
+                          ts_ns=_BASE_TS + idx * _1H_NS))
+    idx += 1
+    bars.append(_make_bar(101.0, 105.0, 100.5, 104.0,
+                          ts_ns=_BASE_TS + idx * _1H_NS))
+    idx += 1
+    bars.append(_make_bar(106.0, 108.0, 105.0, 107.0,
+                          ts_ns=_BASE_TS + idx * _1H_NS))
+    return bars
+
+
+def test_key_levels_fair_value_gap_route():
+    bars = _make_fvg_bars()
+    client = _client_with_catalog(_StubCatalog(bars_by_type={_DEFAULT_BAR_TYPE_STR: bars}))
+    res = client.get(
+        f"/api/bars/{_DEFAULT_BAR_TYPE_STR}/key-levels",
+        params={"detectors": "fair_value_gap"},
+    )
+    assert res.status_code == 200, res.text
+    levels = res.json()
+    assert isinstance(levels, list)
+    assert len(levels) > 0
+    for lvl in levels:
+        assert lvl["source"] == "fair_value_gap"
+        assert lvl["meta"]["kind"] == "fair_value_gap"
+        assert lvl["meta"]["gap_side"] in ("bullish", "bearish")
+        assert lvl["meta"]["side"] in ("high", "low")
+        assert isinstance(lvl["meta"]["gap_size"], float)
+        assert isinstance(lvl["meta"]["fill_percentage"], float)
+
+
+def _make_price_gap_bars() -> list[Bar]:
+    bars: list[Bar] = []
+    for i in range(25):
+        ts = _BASE_TS + i * _1H_NS
+        bars.append(_make_bar(100.0, 100.5, 99.5, 100.0, ts_ns=ts))
+    idx = len(bars)
+    bars.append(_make_bar(106.0, 108.0, 105.0, 107.0,
+                          ts_ns=_BASE_TS + idx * _1H_NS))
+    return bars
+
+
+def test_key_levels_price_gap_route():
+    bars = _make_price_gap_bars()
+    client = _client_with_catalog(_StubCatalog(bars_by_type={_DEFAULT_BAR_TYPE_STR: bars}))
+    res = client.get(
+        f"/api/bars/{_DEFAULT_BAR_TYPE_STR}/key-levels",
+        params={"detectors": "price_gap"},
+    )
+    assert res.status_code == 200, res.text
+    levels = res.json()
+    assert isinstance(levels, list)
+    assert len(levels) > 0
+    for lvl in levels:
+        assert lvl["source"] == "price_gap"
+        assert lvl["meta"]["kind"] == "price_gap"
+        assert lvl["meta"]["gap_type"] in (
+            "breakaway", "runaway", "exhaustion", "common",
+        )
+        assert lvl["meta"]["level_type"] in ("upper", "lower")
+        assert lvl["meta"]["side"] in ("high", "low")
+
+
+def _make_darvas_bars() -> list[Bar]:
+    bars: list[Bar] = []
+    for i in range(19):
+        price = 100.0 + i * 0.5
+        ts = _BASE_TS + i * _1H_NS
+        bars.append(_make_bar(price - 0.1, price + 0.5, price - 0.5,
+                              price + 0.3, ts_ns=ts))
+    bars.append(_make_bar(109.5, 112.0, 109.0, 111.0,
+                          ts_ns=_BASE_TS + 19 * _1H_NS))
+    for j in range(5):
+        ts = _BASE_TS + (20 + j) * _1H_NS
+        bars.append(_make_bar(109.0, 110.5, 108.0, 109.5, ts_ns=ts))
+    return bars
+
+
+def test_key_levels_darvas_box_route():
+    bars = _make_darvas_bars()
+    client = _client_with_catalog(_StubCatalog(bars_by_type={_DEFAULT_BAR_TYPE_STR: bars}))
+    res = client.get(
+        f"/api/bars/{_DEFAULT_BAR_TYPE_STR}/key-levels",
+        params={"detectors": "darvas_box"},
+    )
+    assert res.status_code == 200, res.text
+    levels = res.json()
+    assert isinstance(levels, list)
+    assert len(levels) > 0
+    for lvl in levels:
+        assert lvl["source"] == "darvas_box"
+        assert lvl["meta"]["kind"] == "darvas_box"
+        assert isinstance(lvl["meta"]["confirmed"], bool)
+        assert lvl["meta"]["side"] in ("high", "low")
+
+
+def _make_consolidation_bars() -> list[Bar]:
+    bars: list[Bar] = []
+    # Active period (loads long_atr).
+    for i in range(60):
+        ts = _BASE_TS + i * _1H_NS
+        center = 100.0 + (i % 10) * 0.5
+        bars.append(_make_bar(center, center + 1.5, center - 1.5,
+                              center + 0.1, ts_ns=ts))
+    # Tightly bounded flat zone.
+    base_idx = len(bars)
+    for j in range(40):
+        ts = _BASE_TS + (base_idx + j) * _1H_NS
+        center = 100.0 + (0.05 if j % 2 == 0 else -0.05)
+        bars.append(_make_bar(center, center + 0.1, center - 0.1,
+                              center + 0.02, ts_ns=ts))
+    return bars
+
+
+def test_key_levels_consolidation_zone_route():
+    bars = _make_consolidation_bars()
+    client = _client_with_catalog(_StubCatalog(bars_by_type={_DEFAULT_BAR_TYPE_STR: bars}))
+    res = client.get(
+        f"/api/bars/{_DEFAULT_BAR_TYPE_STR}/key-levels",
+        params={"detectors": "consolidation_zone"},
+    )
+    assert res.status_code == 200, res.text
+    levels = res.json()
+    assert isinstance(levels, list)
+    assert len(levels) > 0
+    for lvl in levels:
+        assert lvl["source"] == "consolidation_zone"
+        assert lvl["meta"]["kind"] == "consolidation_zone"
+        assert isinstance(lvl["meta"]["duration_bars"], int)
+        assert isinstance(lvl["meta"]["range_atr_multiple"], float)
+        assert lvl["meta"]["side"] in ("high", "low")
 
 
 # ---------------------------------------------------------------------------

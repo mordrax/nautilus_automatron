@@ -15,16 +15,23 @@ from nautilus_trader.model.data import Bar
 
 from indicators.key_levels.detectors.anchored_vwap import AnchoredVwapDetector
 from indicators.key_levels.detectors.atr_volatility import AtrVolatilityDetector
+from indicators.key_levels.detectors.consolidation_zone import (
+    ConsolidationZoneDetector,
+)
 from indicators.key_levels.detectors.cvd import CvdDetector
+from indicators.key_levels.detectors.darvas_box import DarvasBoxDetector
 from indicators.key_levels.detectors.equal_highs_lows import EqualHighsLowsDetector
+from indicators.key_levels.detectors.fair_value_gaps import FairValueGapDetector
 from indicators.key_levels.detectors.fibonacci import (
     FibonacciExtensionDetector,
     FibonacciRetracementDetector,
 )
 from indicators.key_levels.detectors.market_profile import MarketProfileDetector
 from indicators.key_levels.detectors.opening_range import OpeningRangeDetector
+from indicators.key_levels.detectors.order_blocks import OrderBlockDetector
 from indicators.key_levels.detectors.periodic_levels import PeriodicLevelDetector
 from indicators.key_levels.detectors.pivot_points import PivotPointDetector
+from indicators.key_levels.detectors.price_gaps import PriceGapDetector
 from indicators.key_levels.detectors.psychological import PsychologicalLevelDetector
 from indicators.key_levels.detectors.session_levels import SessionLevelDetector
 from indicators.key_levels.detectors.swing_cluster import SwingClusterDetector
@@ -36,14 +43,19 @@ from indicators.key_levels.detectors.wick_rejection import WickRejectionDetector
 from indicators.key_levels.model import (
     AnchoredVwapMeta,
     AtrVolatilityMeta,
+    ConsolidationZoneMeta,
     CvdMeta,
+    DarvasBoxMeta,
     EqualHighsLowsMeta,
+    FairValueGapMeta,
     FibonacciMeta,
     KeyLevel,
     MarketProfileMeta,
     OpeningRangeMeta,
+    OrderBlockMeta,
     PeriodicLevelMeta,
     PivotPointMeta,
+    PriceGapMeta,
     PsychologicalMeta,
     SessionLevelMeta,
     SwingClusterMeta,
@@ -202,6 +214,58 @@ class SwingClusterMetaDto(BaseModel):
     touch_count: int
 
 
+class OrderBlockMetaDto(BaseModel):
+    kind: Literal["order_block"] = "order_block"
+    block_side: Literal["bullish", "bearish"]
+    displacement_atr_multiple: float
+    block_open: float
+    block_close: float
+    mitigation_pct: float
+    side: Literal["high", "low"]
+    touch_count: int
+
+
+class FairValueGapMetaDto(BaseModel):
+    kind: Literal["fair_value_gap"] = "fair_value_gap"
+    gap_side: Literal["bullish", "bearish"]
+    gap_size: float
+    fill_percentage: float
+    side: Literal["high", "low"]
+    touch_count: int
+
+
+class PriceGapMetaDto(BaseModel):
+    kind: Literal["price_gap"] = "price_gap"
+    gap_type: Literal["breakaway", "runaway", "exhaustion", "common"]
+    gap_size: float
+    fill_percentage: float
+    level_type: Literal["upper", "lower"]
+    side: Literal["high", "low"]
+    touch_count: int
+
+
+class DarvasBoxMetaDto(BaseModel):
+    kind: Literal["darvas_box"] = "darvas_box"
+    box_top: float
+    box_bottom: float
+    confirmed: bool
+    bars_in_box: int
+    side: Literal["high", "low"]
+    touch_count: int
+
+
+class ConsolidationZoneMetaDto(BaseModel):
+    kind: Literal["consolidation_zone"] = "consolidation_zone"
+    range_high: float
+    range_low: float
+    slope: float
+    bar_count: int
+    duration_bars: int
+    range_atr_multiple: float
+    side: Literal["high", "low"]
+    touch_count: int
+
+
 SourceMetaDto = Annotated[
     Union[
         EqualHighsLowsMetaDto,
@@ -219,6 +283,11 @@ SourceMetaDto = Annotated[
         OpeningRangeMetaDto,
         MarketProfileMetaDto,
         SwingClusterMetaDto,
+        OrderBlockMetaDto,
+        FairValueGapMetaDto,
+        PriceGapMetaDto,
+        DarvasBoxMetaDto,
+        ConsolidationZoneMetaDto,
     ],
     Field(discriminator="kind"),
 ]
@@ -250,6 +319,11 @@ class KeyLevelDto(BaseModel):
         "opening_range",
         "market_profile_tpo",
         "swing_cluster",
+        "order_block",
+        "fair_value_gap",
+        "price_gap",
+        "darvas_box",
+        "consolidation_zone",
     ]
     bounce_count: int
     zone_upper: float | None
@@ -291,6 +365,11 @@ DETECTOR_REGISTRY: dict[str, Callable[[], DetectorProto]] = {
     "opening_range": lambda: OpeningRangeDetector(),
     "market_profile_tpo": lambda: MarketProfileDetector(),
     "swing_cluster": lambda: SwingClusterDetector(),
+    "order_block": lambda: OrderBlockDetector(),
+    "fair_value_gap": lambda: FairValueGapDetector(),
+    "price_gap": lambda: PriceGapDetector(),
+    "darvas_box": lambda: DarvasBoxDetector(),
+    "consolidation_zone": lambda: ConsolidationZoneDetector(),
 }
 
 
@@ -315,6 +394,11 @@ DETECTOR_META: list[dict[str, str]] = [
     {"id": "opening_range", "label": "Opening Range", "color": "#759aa0"},
     {"id": "market_profile_tpo", "label": "Market Profile (TPO)", "color": "#c1232b"},
     {"id": "swing_cluster", "label": "Swing Cluster", "color": "#b5c334"},
+    {"id": "order_block", "label": "Order Block", "color": "#dd6b66"},
+    {"id": "fair_value_gap", "label": "Fair Value Gap", "color": "#e69d87"},
+    {"id": "price_gap", "label": "Price Gap", "color": "#8dc1a9"},
+    {"id": "darvas_box", "label": "Darvas Box", "color": "#ea7e53"},
+    {"id": "consolidation_zone", "label": "Consolidation Zone", "color": "#eedd78"},
 ]
 
 
@@ -438,6 +522,53 @@ def _meta_to_dto(meta: object) -> SourceMetaDto:
         return SwingClusterMetaDto(
             cluster_radius=meta.cluster_radius,
             pivot_indices=tuple(meta.pivot_indices),
+            side=meta.side,
+            touch_count=meta.touch_count,
+        )
+    if isinstance(meta, OrderBlockMeta):
+        return OrderBlockMetaDto(
+            block_side=meta.block_side,
+            displacement_atr_multiple=meta.displacement_atr_multiple,
+            block_open=meta.block_open,
+            block_close=meta.block_close,
+            mitigation_pct=meta.mitigation_pct,
+            side=meta.side,
+            touch_count=meta.touch_count,
+        )
+    if isinstance(meta, FairValueGapMeta):
+        return FairValueGapMetaDto(
+            gap_side=meta.gap_side,
+            gap_size=meta.gap_size,
+            fill_percentage=meta.fill_percentage,
+            side=meta.side,
+            touch_count=meta.touch_count,
+        )
+    if isinstance(meta, PriceGapMeta):
+        return PriceGapMetaDto(
+            gap_type=meta.gap_type,
+            gap_size=meta.gap_size,
+            fill_percentage=meta.fill_percentage,
+            level_type=meta.level_type,
+            side=meta.side,
+            touch_count=meta.touch_count,
+        )
+    if isinstance(meta, DarvasBoxMeta):
+        return DarvasBoxMetaDto(
+            box_top=meta.box_top,
+            box_bottom=meta.box_bottom,
+            confirmed=meta.confirmed,
+            bars_in_box=meta.bars_in_box,
+            side=meta.side,
+            touch_count=meta.touch_count,
+        )
+    if isinstance(meta, ConsolidationZoneMeta):
+        return ConsolidationZoneMetaDto(
+            range_high=meta.range_high,
+            range_low=meta.range_low,
+            slope=meta.slope,
+            bar_count=meta.bar_count,
+            duration_bars=meta.duration_bars,
+            range_atr_multiple=meta.range_atr_multiple,
             side=meta.side,
             touch_count=meta.touch_count,
         )
