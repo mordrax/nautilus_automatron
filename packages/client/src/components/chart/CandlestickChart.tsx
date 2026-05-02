@@ -31,6 +31,7 @@ const buildIndicatorOverlaySeries = (
         data: ind.outputs[field],
         smooth: false,
         showSymbol: false,
+        connectNulls: true, // Required for ZigZag sparse series; harmless for continuous overlays (SMA, BB, etc.)
         lineStyle: { width: 1.5, color: baseColor },
         itemStyle: { color: baseColor },
         xAxisIndex: 0,

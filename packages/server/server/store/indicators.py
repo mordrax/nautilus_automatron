@@ -21,6 +21,8 @@ from nautilus_trader.indicators import (
 )
 from nautilus_trader.model.data import Bar
 
+from indicators.zigzag import ZigZagIndicator
+
 
 # ---------------------------------------------------------------------------
 # Protocols – structural types for Cython indicator classes
@@ -54,6 +56,10 @@ def update_hlc(indicator: IndicatorProto, bar: Bar) -> None:
 
 def update_hl(indicator: IndicatorProto, bar: Bar) -> None:
     indicator.update_raw(float(bar.high), float(bar.low))
+
+
+def update_bar(indicator: IndicatorProto, bar: Bar) -> None:
+    indicator.handle_bar(bar)  # type: ignore[attr-defined]
 
 
 # ---------------------------------------------------------------------------
@@ -179,6 +185,30 @@ INDICATOR_REGISTRY: dict[str, IndicatorConfig] = {
         label="Stoch(14,3)",
         update=update_hlc,
     ),
+    "ZigZag_5pct": IndicatorConfig(
+        indicator_class=ZigZagIndicator,  # type: ignore[arg-type]
+        params=(0.05,),
+        outputs=("zigzag",),
+        display="overlay",
+        label="ZigZag(5%)",
+        update=update_bar,
+    ),
+    "ZigZag_3pct": IndicatorConfig(
+        indicator_class=ZigZagIndicator,  # type: ignore[arg-type]
+        params=(0.03,),
+        outputs=("zigzag",),
+        display="overlay",
+        label="ZigZag(3%)",
+        update=update_bar,
+    ),
+    "ZigZag_01pct": IndicatorConfig(
+        indicator_class=ZigZagIndicator,  # type: ignore[arg-type]
+        params=(0.001,),
+        outputs=("zigzag",),
+        display="overlay",
+        label="ZigZag(0.1%)",
+        update=update_bar,
+    ),
 }
 
 
@@ -205,6 +235,57 @@ def list_available_indicators() -> list[IndicatorMeta]:
     ]
 
 
+def _compute_zigzag(indicator_id: str, bars: list[Bar]) -> IndicatorResult:
+    """Compute a ZigZag indicator, producing a sparse series for diagonal lines.
+
+    Values are emitted at the bars where the swing extremes occurred (not where
+    the reversal was confirmed), so the zigzag line aligns with candle highs/lows.
+    """
+    config = INDICATOR_REGISTRY[indicator_id]
+    indicator = config.indicator_class(*config.params, **config.kwargs)
+
+    # Build timestamp -> bar index map for placing pivots at the correct bar
+    ts_to_idx: dict[int, int] = {}
+    datetimes: list[str] = []
+
+    for i, bar in enumerate(bars):
+        ts_to_idx[bar.ts_init] = i
+        config.update(indicator, bar)
+        datetimes.append(_ns_to_iso(bar.ts_event))
+
+    # Build sparse zigzag line using pivot timestamps to find the correct bar
+    zigzag: list[float | None] = [None] * len(bars)
+
+    for pivot in indicator.pivots:  # type: ignore[attr-defined]
+        bar_idx = ts_to_idx.get(pivot.timestamp)
+        if bar_idx is not None:
+            zigzag[bar_idx] = pivot.price
+
+    # Add tentative (current) extreme at the bar where it occurred
+    if indicator.initialized and len(bars) > 0:  # type: ignore[attr-defined]
+        tentative_idx = ts_to_idx.get(
+            indicator.tentative_timestamp  # type: ignore[attr-defined]
+        )
+        if tentative_idx is not None:
+            zigzag[tentative_idx] = float(
+                indicator.tentative_price  # type: ignore[attr-defined]
+            )
+
+    return IndicatorResult(
+        id=indicator_id,
+        label=config.label,
+        display=config.display,
+        outputs={"zigzag": zigzag},
+        datetime=datetimes,
+    )
+
+
+_ZIGZAG_IDS = frozenset(
+    k for k, v in INDICATOR_REGISTRY.items()
+    if v.indicator_class is ZigZagIndicator  # type: ignore[comparison-overlap]
+)
+
+
 def compute_indicator(indicator_id: str, bars: list[Bar]) -> IndicatorResult:
     """Instantiate an indicator, feed it bars, and collect output series.
 
@@ -215,6 +296,9 @@ def compute_indicator(indicator_id: str, bars: list[Bar]) -> IndicatorResult:
     Returns:
         IndicatorResult with typed fields.
     """
+    if indicator_id in _ZIGZAG_IDS:
+        return _compute_zigzag(indicator_id, bars)
+
     config = INDICATOR_REGISTRY[indicator_id]
     indicator = config.indicator_class(*config.params, **config.kwargs)
 
