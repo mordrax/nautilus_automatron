@@ -57,7 +57,7 @@ export const RunDetailPage = ({ runId }: RunDetailPageProps) => {
     ),
   })
 
-  const { available, data: indicatorData, enabledIds, toggle } = useIndicators(barType)
+  const { available, data: indicatorData, enabledIds, toggle, getColor, setColor } = useIndicators(barType)
 
   if (!runDetail) return <div className="text-muted-foreground">Loading...</div>
 
@@ -91,6 +91,7 @@ export const RunDetailPage = ({ runId }: RunDetailPageProps) => {
                 ohlc={ohlc}
                 trades={trades}
                 indicators={indicatorData}
+                getIndicatorColor={getColor}
                 currentTradeIndex={currentIndex}
                 onSelectTrade={selectTrade}
                 onChartReady={onChartReady}
@@ -112,6 +113,8 @@ export const RunDetailPage = ({ runId }: RunDetailPageProps) => {
               indicators={available}
               enabledIds={enabledIds}
               onToggle={toggle}
+              getColor={getColor}
+              onColorChange={setColor}
             />
           </CardContent>
         </Card>

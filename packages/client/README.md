@@ -1,73 +1,116 @@
-# React + TypeScript + Vite
+# Nautilus Automatron — Client
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React frontend for the backtest analysis dashboard.
 
-Currently, two official plugins are available:
+## Tech Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **React 19** with TypeScript
+- **Vite** for build and dev server
+- **Effect-TS** for functional API composition
+- **TanStack React Query** for server state management
+- **eCharts** for all charting (candlestick, equity curve, P&L distribution, etc.)
+- **Tabulator** for sortable/filterable data tables
+- **shadcn/ui** (Radix UI primitives + Tailwind CSS v4) for UI components
+- **wouter** for client-side routing
 
-## React Compiler
+## Pages
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| Route | Component | Description |
+|-------|-----------|-------------|
+| `/` | `DashboardPage` | Lists all backtest runs with metrics table and instrument catalog |
+| `/runs/:runId` | `RunDetailPage` | Interactive chart with trade overlays, trade navigation, indicators, and analysis tabs |
+| `/create` | `CreateBacktestPage` | Form to create a new backtest (strategy + bar type + params) |
+| `/instruments/:barType` | `InstrumentPage` | View raw catalog bar data for an instrument |
 
-## Expanding the ESLint configuration
+## Components
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Charts
+- **CandlestickChart** — OHLCV candlestick chart with trade entry/exit markers, zoom/pan, and indicator overlays
+- **EquityCurveChart** — Account equity over time
+- **PnlDistributionChart** — Histogram of trade P&L values
+- **PnlHoldTimeChart** — Scatter plot: P&L vs hold duration
+- **PnlOverTimeChart** — Cumulative P&L progression
+- **TradesByMonthChart** — Bar chart grouping trades by month
+- **IndicatorToggles** — Checkbox controls for overlays (SMA, EMA, BB) and panels (RSI, MACD, ATR)
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### Tables
+- **RunList** — Tabulator table with all run metrics, View/Rerun/Delete buttons, column visibility control
+- **CatalogTable** — Instrument data catalog with bar counts and date ranges
+- **TradeTable** — All trades with entry/exit details, direction, P&L
+- **CategorisationTable** — Trade categorization with tags
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Navigation
+- **TradeNavigator** — Prev/Next buttons for stepping through trades on the chart
+- **AppLayout** — Header with version indicator and backend health check
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Hooks
+
+| Hook | Purpose |
+|------|---------|
+| `useRuns` | Paginated run list |
+| `useRunDetail` | Run metadata, bar types, trades, equity |
+| `useTrades` | Trade data for a run |
+| `useCatalog` | Instrument catalog entries |
+| `useCatalogBars` | Raw bar data from catalog |
+| `useStrategies` | Available strategies for create form |
+| `useCatalogBarTypes` | Bar types from data catalog |
+| `useIndicators` | Indicator toggle state and computation |
+| `useCreateBacktest` | Mutation: create new backtest |
+| `useRerunBacktest` | Mutation: rerun existing backtest |
+| `useDeleteBacktest` | Mutation: delete backtest run |
+| `useHotkeys` | Keyboard shortcuts (trade navigation) |
+| `useColumnVisibility` | Table column show/hide state |
+| `useCategorisation` | Trade categorization state |
+
+## API Client
+
+All API calls go through `lib/api.ts` using Effect-TS:
+
+```typescript
+// Fetch with error handling
+const fetchJson = <T>(url: string): Effect.Effect<T, ApiError> => ...
+
+// Run an Effect and convert to Promise (for React Query)
+export const runEffect = <T>(effect: Effect.Effect<T, ApiError>): Promise<T> => ...
+
+// Usage in hooks:
+export const useRuns = (page: number = 1) =>
+  useQuery({
+    queryKey: ['runs', page],
+    queryFn: () => api.runEffect(api.getRuns(page)),
+  })
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+The Vite dev server proxies `/api` requests to the backend (configured in `vite.config.ts`).
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Testing
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+# Headless (CI)
+npx playwright test --project=headless
+
+# UI mode (interactive)
+npx playwright test --ui
+
+# Headed (visible browser, slow motion)
+npx playwright test --project=headed
 ```
+
+Test data lives in `e2e/test-data/backtest_catalog/` — a small catalog with one AUDUSD backtest run.
+
+### Test Files
+
+| File | Tests |
+|------|-------|
+| `runs-page.spec.ts` | Dashboard rendering, filtering, sorting |
+| `run-detail.spec.ts` | Run detail page layout and badges |
+| `navigation.spec.ts` | Trade Prev/Next navigation |
+| `chart-analysis.spec.ts` | P&L charts rendering |
+| `trade-analysis-tabs.spec.ts` | Tab switching |
+| `trade-zoom.spec.ts` | Chart zoom on trade selection |
+| `indicators.spec.ts` | Indicator toggle and chart resize |
+| `trades-by-month.spec.ts` | Monthly trades chart |
+| `categorisation.spec.ts` | Trade categorization UI |
+| `column-visibility.spec.ts` | Column show/hide |
+| `visual.spec.ts` | Visual regression snapshots |
+| `backtest-crud.spec.ts` | Create/delete backtest flow |
