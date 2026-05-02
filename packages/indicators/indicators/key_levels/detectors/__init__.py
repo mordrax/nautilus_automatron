@@ -1,11 +1,8 @@
-"""Key level detector implementations.
+"""Key level detector implementations."""
 
-Only `equal_highs_lows` is fully migrated to the lifecycle-tracked KeyLevel
-model in this slice. Other detectors are stubbed (import-clean, produce no
-levels) until their migration cards land — see docstrings on each detector.
-"""
-
+from indicators.key_levels.detectors.anchored_vwap import AnchoredVwapDetector
 from indicators.key_levels.detectors.atr_volatility import AtrVolatilityDetector
+from indicators.key_levels.detectors.cvd import CvdDetector
 from indicators.key_levels.detectors.equal_highs_lows import EqualHighsLowsDetector
 from indicators.key_levels.detectors.fibonacci import (
     FibonacciExtensionDetector,
@@ -13,14 +10,22 @@ from indicators.key_levels.detectors.fibonacci import (
 )
 from indicators.key_levels.detectors.pivot_points import PivotPointDetector
 from indicators.key_levels.detectors.psychological import PsychologicalLevelDetector
+from indicators.key_levels.detectors.volume_distribution import (
+    VolumeDistributionDetector,
+)
+from indicators.key_levels.detectors.volume_profile import VolumeProfileDetector
 from indicators.key_levels.detectors.wick_rejection import WickRejectionDetector
 
 __all__ = [
+    "AnchoredVwapDetector",
     "AtrVolatilityDetector",
+    "CvdDetector",
     "EqualHighsLowsDetector",
     "FibonacciExtensionDetector",
     "FibonacciRetracementDetector",
     "PivotPointDetector",
     "PsychologicalLevelDetector",
+    "VolumeDistributionDetector",
+    "VolumeProfileDetector",
     "WickRejectionDetector",
 ]

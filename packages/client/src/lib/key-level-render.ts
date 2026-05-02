@@ -29,6 +29,10 @@ const SOURCE_STYLE: Record<string, KeyLevelStyle> = {
   pivot_woodie: { color: '#73c0de', baseWidth: 1.5 },
   pivot_demark: { color: '#73c0de', baseWidth: 1.5 },
   psychological: { color: '#9a60b4', baseWidth: 1.5 },
+  volume_profile: { color: '#ea7ccc', baseWidth: 1.5 },
+  volume_distribution: { color: '#3ba272', baseWidth: 1.5 },
+  anchored_vwap: { color: '#fc8452', baseWidth: 1.5 },
+  cvd: { color: '#27727b', baseWidth: 1.5 },
 }
 
 const DEFAULT_STYLE: KeyLevelStyle = { color: '#888', baseWidth: 1.5 }

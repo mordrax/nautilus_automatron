@@ -114,6 +114,8 @@ class VolumeProfileMeta:
     volume_concentration: float
     node_type: Literal["poc", "hvn", "lvn", "va_high", "va_low"]
     bin_volume: float
+    side: Literal["high", "low"]
+    touch_count: int
 
 
 @dataclass(frozen=True)
@@ -121,6 +123,8 @@ class VolumeDistributionMeta:
     context: Literal["consolidation", "peak", "trough", "range"]
     volume_concentration: float
     context_bar_count: int
+    side: Literal["high", "low"]
+    touch_count: int
 
 
 @dataclass(frozen=True)
@@ -128,12 +132,16 @@ class AnchoredVwapMeta:
     anchor_ts: int
     anchor_type: Literal["swing_high", "swing_low", "gap", "volume_spike"]
     cumulative_volume: float
+    side: Literal["high", "low"]
+    touch_count: int
 
 
 @dataclass(frozen=True)
 class CvdMeta:
     cvd_value: float
     divergence: Literal["bullish", "bearish", "none"]
+    side: Literal["high", "low"]
+    touch_count: int
 
 
 @dataclass(frozen=True)

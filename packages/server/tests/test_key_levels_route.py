@@ -184,6 +184,10 @@ def test_detectors_endpoint_returns_equal_highs_lows():
         "pivot_woodie",
         "pivot_demark",
         "psychological",
+        "volume_profile",
+        "volume_distribution",
+        "anchored_vwap",
+        "cvd",
     }
     returned_ids = {d["id"] for d in data}
     assert expected_ids.issubset(returned_ids)
@@ -401,6 +405,160 @@ def test_key_levels_psychological_route():
         assert lvl["source"] == "psychological"
         assert lvl["meta"]["kind"] == "psychological"
         assert lvl["meta"]["tier"] in ("major", "minor", "micro")
+
+
+# ---------------------------------------------------------------------------
+# Smoke tests for the migrated detectors (#121).
+# ---------------------------------------------------------------------------
+
+
+def _make_swing_bars(swing_count: int = 4, period: int = 5) -> list[Bar]:
+    """OHLCV bars with `swing_count` confirmed alternating fractal swings."""
+    bars: list[Bar] = []
+    centers = [100.0, 110.0, 95.0, 115.0, 90.0, 120.0, 88.0, 122.0]
+    centers = centers[:swing_count]
+
+    idx = 0
+    base = 100.0
+    for target in centers:
+        going_up = target > base
+        for j in range(period):
+            frac = (j + 1) / (period + 1)
+            price = base + (target - base) * frac
+            o = price - 0.3
+            cl = price + 0.3
+            h = max(o, cl) + 0.5
+            lo = min(o, cl) - 0.5
+            bars.append(_make_bar(o, h, lo, cl, ts_ns=_BASE_TS + idx * _1H_NS))
+            idx += 1
+        if going_up:
+            bars.append(_make_bar(target - 0.3, target + 1.0, target - 0.5, target,
+                                  ts_ns=_BASE_TS + idx * _1H_NS))
+        else:
+            bars.append(_make_bar(target + 0.3, target + 0.5, target - 1.0, target,
+                                  ts_ns=_BASE_TS + idx * _1H_NS))
+        idx += 1
+        base = target
+
+    last_dir = -1 if centers[-1] > centers[-2] else 1
+    for j in range(period):
+        price = base + last_dir * (j + 1) * 0.5
+        o = price - 0.3
+        cl = price + 0.3
+        h = max(o, cl) + 0.5
+        lo = min(o, cl) - 0.5
+        bars.append(_make_bar(o, h, lo, cl, ts_ns=_BASE_TS + idx * _1H_NS))
+        idx += 1
+    return bars
+
+
+def test_key_levels_volume_profile_route():
+    bars = _make_stable_bars(count=60)
+    client = _client_with_catalog(_StubCatalog(bars_by_type={_DEFAULT_BAR_TYPE_STR: bars}))
+    res = client.get(
+        f"/api/bars/{_DEFAULT_BAR_TYPE_STR}/key-levels",
+        params={"detectors": "volume_profile"},
+    )
+    assert res.status_code == 200, res.text
+    levels = res.json()
+    assert isinstance(levels, list)
+    assert len(levels) > 0
+    for lvl in levels:
+        assert lvl["source"] == "volume_profile"
+        assert lvl["meta"]["kind"] == "volume_profile"
+        assert lvl["meta"]["node_type"] in (
+            "poc", "hvn", "lvn", "va_high", "va_low",
+        )
+        assert lvl["meta"]["side"] in ("high", "low")
+
+
+def test_key_levels_volume_distribution_route():
+    bars = _make_swing_bars(swing_count=4, period=5)
+    client = _client_with_catalog(_StubCatalog(bars_by_type={_DEFAULT_BAR_TYPE_STR: bars}))
+    res = client.get(
+        f"/api/bars/{_DEFAULT_BAR_TYPE_STR}/key-levels",
+        params={"detectors": "volume_distribution"},
+    )
+    assert res.status_code == 200, res.text
+    levels = res.json()
+    assert isinstance(levels, list)
+    for lvl in levels:
+        assert lvl["source"] == "volume_distribution"
+        assert lvl["meta"]["kind"] == "volume_distribution"
+        assert lvl["meta"]["context"] in (
+            "consolidation", "peak", "trough", "range",
+        )
+        assert lvl["meta"]["side"] in ("high", "low")
+
+
+def test_key_levels_anchored_vwap_route():
+    bars = _make_swing_bars(swing_count=3, period=5)
+    client = _client_with_catalog(_StubCatalog(bars_by_type={_DEFAULT_BAR_TYPE_STR: bars}))
+    res = client.get(
+        f"/api/bars/{_DEFAULT_BAR_TYPE_STR}/key-levels",
+        params={"detectors": "anchored_vwap"},
+    )
+    assert res.status_code == 200, res.text
+    levels = res.json()
+    assert isinstance(levels, list)
+    for lvl in levels:
+        assert lvl["source"] == "anchored_vwap"
+        assert lvl["meta"]["kind"] == "anchored_vwap"
+        assert lvl["meta"]["anchor_type"] in (
+            "swing_high", "swing_low", "gap", "volume_spike",
+        )
+        assert lvl["meta"]["side"] in ("high", "low")
+
+
+def _make_cvd_bars() -> list[Bar]:
+    """Bars whose buy/sell volume estimate produces clear CVD swings."""
+    bars: list[Bar] = []
+    idx = 0
+
+    def push(o: float, h: float, lo: float, cl: float) -> None:
+        nonlocal idx
+        bars.append(_make_bar(o, h, lo, cl, ts_ns=_BASE_TS + idx * _1H_NS))
+        idx += 1
+
+    base = 100.0
+    for i in range(8):
+        o = base + i * 0.2
+        push(o, o + 1.0, o - 0.1, o + 1.0)
+
+    last_close = bars[-1].close.as_double()
+    for i in range(8):
+        o = last_close - i * 0.2
+        push(o, o + 0.1, o - 1.0, o - 1.0)
+
+    last_close = bars[-1].close.as_double()
+    for i in range(8):
+        o = last_close + i * 0.2
+        push(o, o + 1.0, o - 0.1, o + 1.0)
+
+    last_close = bars[-1].close.as_double()
+    for i in range(8):
+        o = last_close - i * 0.2
+        push(o, o + 0.1, o - 1.0, o - 1.0)
+
+    return bars
+
+
+def test_key_levels_cvd_route():
+    bars = _make_cvd_bars()
+    client = _client_with_catalog(_StubCatalog(bars_by_type={_DEFAULT_BAR_TYPE_STR: bars}))
+    res = client.get(
+        f"/api/bars/{_DEFAULT_BAR_TYPE_STR}/key-levels",
+        params={"detectors": "cvd"},
+    )
+    assert res.status_code == 200, res.text
+    levels = res.json()
+    assert isinstance(levels, list)
+    assert len(levels) > 0
+    for lvl in levels:
+        assert lvl["source"] == "cvd"
+        assert lvl["meta"]["kind"] == "cvd"
+        assert lvl["meta"]["divergence"] in ("bullish", "bearish", "none")
+        assert lvl["meta"]["side"] in ("high", "low")
 
 
 # ---------------------------------------------------------------------------
