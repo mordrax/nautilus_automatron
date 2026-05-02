@@ -19,6 +19,7 @@ type KeyLevelStyle = {
 
 const SOURCE_STYLE: Record<string, KeyLevelStyle> = {
   equal_highs_lows: { color: '#5470c6', baseWidth: 1.5 },
+  wick_rejection: { color: '#ee6666', baseWidth: 1.5 },
 }
 
 const DEFAULT_STYLE: KeyLevelStyle = { color: '#888', baseWidth: 1.5 }

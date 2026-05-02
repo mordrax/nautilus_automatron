@@ -87,6 +87,55 @@ def _make_equal_highs_lows_bars() -> list[Bar]:
     ]
 
 
+def _make_wick_rejection_bars() -> list[Bar]:
+    """Warmup bars near 100, then 3 lower-wick rejections at ~90 and 3
+    upper-wick rejections at ~110 — should yield wick_rejection levels for
+    both sides.
+    """
+    bars: list[Bar] = []
+    idx = 0
+    # Warmup: small-bodied bars near 100 (no significant wicks).
+    for i in range(14):
+        open_ = 100.0 + (i % 3) * 0.5
+        close = open_ + 0.5
+        high = max(open_, close) + 0.3
+        low = min(open_, close) - 0.3
+        bars.append(_make_bar(open_, high, low, close,
+                              ts_ns=_BASE_TS + idx * _1H_NS))
+        idx += 1
+
+    # Three lower-wick rejections near 90 (body=1, lower_wick=8 → ratio 8).
+    for i in range(3):
+        price_level = 90.0 + i * 0.2
+        open_ = price_level + 8.0
+        close = price_level + 9.0
+        high = close + 0.5
+        low = price_level
+        bars.append(_make_bar(open_, high, low, close,
+                              ts_ns=_BASE_TS + idx * _1H_NS))
+        idx += 1
+        # Normal bar between rejections.
+        bars.append(_make_bar(99.5, 101.0, 99.0, 100.5,
+                              ts_ns=_BASE_TS + idx * _1H_NS))
+        idx += 1
+
+    # Three upper-wick rejections near 110.
+    for i in range(3):
+        price_level = 110.0 + i * 0.2
+        close = price_level - 8.0
+        open_ = price_level - 9.0
+        low = open_ - 0.5
+        high = price_level
+        bars.append(_make_bar(open_, high, low, close,
+                              ts_ns=_BASE_TS + idx * _1H_NS))
+        idx += 1
+        bars.append(_make_bar(99.5, 101.0, 99.0, 100.5,
+                              ts_ns=_BASE_TS + idx * _1H_NS))
+        idx += 1
+
+    return bars
+
+
 # ---------------------------------------------------------------------------
 # Catalog stub — only needs the .bars() method shape used by the route.
 # ---------------------------------------------------------------------------
@@ -128,6 +177,11 @@ def test_detectors_endpoint_returns_equal_highs_lows():
     assert eql["label"] == "Equal Highs/Lows"
     assert eql["color"].startswith("#")
 
+    wick = next((d for d in data if d["id"] == "wick_rejection"), None)
+    assert wick is not None
+    assert wick["label"] == "Wick Rejection"
+    assert wick["color"].startswith("#")
+
 
 # ---------------------------------------------------------------------------
 # /api/bars/{bar_type}/key-levels — happy path
@@ -165,6 +219,45 @@ def test_key_levels_returns_dtos_for_valid_bar_type():
         assert meta["side"] in ("high", "low")
         assert isinstance(meta["touch_count"], int)
         assert isinstance(meta["touch_prices"], list)
+
+
+# ---------------------------------------------------------------------------
+# /api/bars/{bar_type}/key-levels — wick_rejection
+# ---------------------------------------------------------------------------
+
+
+def test_key_levels_returns_wick_rejection_dtos():
+    bars = _make_wick_rejection_bars()
+    catalog = _StubCatalog(bars_by_type={_DEFAULT_BAR_TYPE_STR: bars})
+    client = _client_with_catalog(catalog)
+
+    res = client.get(
+        f"/api/bars/{_DEFAULT_BAR_TYPE_STR}/key-levels",
+        params={"detectors": "wick_rejection"},
+    )
+    assert res.status_code == 200, res.text
+
+    levels = res.json()
+    assert isinstance(levels, list)
+    assert len(levels) > 0
+
+    for lvl in levels:
+        assert lvl["source"] == "wick_rejection"
+        assert isinstance(lvl["price"], float)
+        assert isinstance(lvl["strength"], float)
+        assert isinstance(lvl["start_ts"], str)
+        assert "T" in lvl["start_ts"]
+        if lvl["end_ts"] is not None:
+            assert isinstance(lvl["end_ts"], str)
+            assert "T" in lvl["end_ts"]
+        meta = lvl["meta"]
+        assert meta["kind"] == "wick_rejection"
+        assert meta["side"] in ("high", "low")
+        assert isinstance(meta["rejection_count"], int)
+        assert meta["rejection_count"] >= 2
+        assert isinstance(meta["avg_wick_ratio"], float)
+        assert meta["avg_wick_ratio"] > 0.0
+        assert isinstance(meta["touch_count"], int)
 
 
 # ---------------------------------------------------------------------------

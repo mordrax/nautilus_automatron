@@ -15,7 +15,12 @@ from pydantic import BaseModel, Field
 from nautilus_trader.model.data import Bar
 
 from indicators.key_levels.detectors.equal_highs_lows import EqualHighsLowsDetector
-from indicators.key_levels.model import EqualHighsLowsMeta, KeyLevel
+from indicators.key_levels.detectors.wick_rejection import WickRejectionDetector
+from indicators.key_levels.model import (
+    EqualHighsLowsMeta,
+    KeyLevel,
+    WickRejectionMeta,
+)
 
 from server.store.indicators import _ns_to_iso
 
@@ -43,8 +48,16 @@ class EqualHighsLowsMetaDto(BaseModel):
     touch_count: int
 
 
+class WickRejectionMetaDto(BaseModel):
+    kind: Literal["wick_rejection"] = "wick_rejection"
+    rejection_count: int
+    avg_wick_ratio: float
+    side: Literal["high", "low"]
+    touch_count: int
+
+
 SourceMetaDto = Annotated[
-    Union[EqualHighsLowsMetaDto],
+    Union[EqualHighsLowsMetaDto, WickRejectionMetaDto],
     Field(discriminator="kind"),
 ]
 
@@ -54,7 +67,7 @@ class KeyLevelDto(BaseModel):
     strength: float
     start_ts: str
     end_ts: str | None
-    source: Literal["equal_highs_lows"]
+    source: Literal["equal_highs_lows", "wick_rejection"]
     bounce_count: int
     zone_upper: float | None
     zone_lower: float | None
@@ -68,11 +81,13 @@ class KeyLevelDto(BaseModel):
 
 DETECTOR_REGISTRY: dict[str, Callable[[], DetectorProto]] = {
     "equal_highs_lows": lambda: EqualHighsLowsDetector(),
+    "wick_rejection": lambda: WickRejectionDetector(),
 }
 
 
 DETECTOR_META: list[dict[str, str]] = [
     {"id": "equal_highs_lows", "label": "Equal Highs/Lows", "color": "#5470c6"},
+    {"id": "wick_rejection", "label": "Wick Rejection", "color": "#ee6666"},
 ]
 
 
@@ -86,6 +101,13 @@ def _meta_to_dto(meta: object) -> SourceMetaDto:
     if isinstance(meta, EqualHighsLowsMeta):
         return EqualHighsLowsMetaDto(
             touch_prices=tuple(meta.touch_prices),
+            side=meta.side,
+            touch_count=meta.touch_count,
+        )
+    if isinstance(meta, WickRejectionMeta):
+        return WickRejectionMetaDto(
+            rejection_count=meta.rejection_count,
+            avg_wick_ratio=meta.avg_wick_ratio,
             side=meta.side,
             touch_count=meta.touch_count,
         )
