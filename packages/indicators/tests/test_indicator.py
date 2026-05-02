@@ -4,24 +4,29 @@ import math
 
 import pytest
 
-from indicators.key_levels.detectors.swing_cluster import SwingClusterDetector
-from indicators.key_levels.detectors.wick_rejection import WickRejectionDetector
+from indicators.key_levels.detectors.equal_highs_lows import EqualHighsLowsDetector
 from indicators.key_levels.indicator import KeyLevelIndicator
-from indicators.key_levels.model import KeyLevel, SwingClusterMeta
+from indicators.key_levels.model import EqualHighsLowsMeta, KeyLevel
 from tests.helpers.bar_factory import make_bar, make_bars_from_ohlcv
 
 
 class FakeDetector:
     """A trivial detector for testing the indicator shell."""
 
-    def __init__(self, fixed_levels: list[KeyLevel] | None = None, warmup: int = 0):
+    def __init__(
+        self,
+        fixed_levels: list[KeyLevel] | None = None,
+        warmup: int = 0,
+        name: str = "equal_highs_lows",
+    ):
         self._fixed_levels = fixed_levels or []
         self._warmup = warmup
         self._bar_count = 0
+        self._name = name
 
     @property
     def name(self):
-        return "swing_cluster"
+        return self._name
 
     @property
     def warmup_bars(self) -> int:
@@ -39,17 +44,26 @@ class FakeDetector:
         self._bar_count = 0
 
 
-def _make_level(price: float, strength: float) -> KeyLevel:
+def _make_level(
+    price: float,
+    strength: float,
+    end_ts: int | None = None,
+    side: str = "high",
+) -> KeyLevel:
     return KeyLevel(
         price=price,
         strength=strength,
-        bounce_count=1,
-        first_seen_ts=0,
-        last_touched_ts=0,
+        start_ts=0,
+        end_ts=end_ts,
+        source="equal_highs_lows",
+        bounce_count=2,
         zone_upper=price + 0.5,
         zone_lower=price - 0.5,
-        source="swing_cluster",
-        meta=SwingClusterMeta(cluster_radius=0.5, pivot_indices=(0,)),
+        meta=EqualHighsLowsMeta(
+            touch_prices=(price - 0.1, price + 0.1),
+            side=side,  # type: ignore[arg-type]
+            touch_count=2,
+        ),
     )
 
 
@@ -78,7 +92,11 @@ def test_indicator_levels_returned():
 
 
 def test_indicator_levels_sorted_by_strength_desc():
-    levels = [_make_level(100.0, 0.3), _make_level(110.0, 0.9), _make_level(105.0, 0.6)]
+    levels = [
+        _make_level(100.0, 0.3),
+        _make_level(110.0, 0.9),
+        _make_level(105.0, 0.6),
+    ]
     detector = FakeDetector(fixed_levels=levels, warmup=0)
     indicator = KeyLevelIndicator(detectors=[detector])
     indicator.handle_bar(make_bar(105.0, 110.0, 100.0, 105.0))
@@ -124,7 +142,7 @@ def test_levels_by_source():
     detector = FakeDetector(fixed_levels=levels, warmup=0)
     indicator = KeyLevelIndicator(detectors=[detector])
     indicator.handle_bar(make_bar(105.0, 110.0, 100.0, 105.0))
-    assert len(indicator.levels_by_source("swing_cluster")) == 1
+    assert len(indicator.levels_by_source("equal_highs_lows")) == 1
     assert len(indicator.levels_by_source("pivot_standard")) == 0
 
 
@@ -137,13 +155,14 @@ def test_level_count():
 
 
 def test_max_levels_truncates():
-    levels = [_make_level(90.0 + i, 0.1 * i) for i in range(20)]
+    # Strengths must be in [0, 1] for the new model; spread them to test sort.
+    levels = [_make_level(90.0 + i, i / 20.0) for i in range(20)]
     detector = FakeDetector(fixed_levels=levels, warmup=0)
     indicator = KeyLevelIndicator(detectors=[detector], max_levels=5)
     indicator.handle_bar(make_bar(100.0, 105.0, 95.0, 100.0))
     assert len(indicator.levels) == 5
     # Should keep the 5 strongest
-    assert indicator.levels[0].strength == pytest.approx(1.9, abs=0.01)
+    assert indicator.levels[0].strength == pytest.approx(0.95, abs=0.01)
 
 
 def test_reset():
@@ -157,55 +176,70 @@ def test_reset():
     assert not indicator.initialized
 
 
-# --- End-to-end with real detectors ---
+# -- Lifecycle-aware scalar summaries --
+
+
+def test_scalar_summaries_ignore_finalized_levels():
+    """Levels with end_ts set are excluded from nearest_support/resistance."""
+    active_below = _make_level(95.0, 0.4, end_ts=None)
+    finalized_below = _make_level(98.0, 0.9, end_ts=12345)  # closer but ended
+    detector = FakeDetector(
+        fixed_levels=[active_below, finalized_below], warmup=0,
+    )
+    indicator = KeyLevelIndicator(detectors=[detector])
+    indicator.handle_bar(make_bar(100.0, 105.0, 95.0, 100.0))
+
+    # The finalized closer level must be ignored.
+    assert indicator.nearest_support == pytest.approx(95.0, abs=0.01)
+
+
+# -- End-to-end with the real EqualHighsLows detector --
 
 
 def _make_realistic_bars():
-    """Create a realistic price series with swings and wick rejections."""
+    """Bars with clear repeated swing highs near 110 and lows near 90."""
     data = []
     # 14 warmup bars around 100
-    for i in range(14):
+    for _ in range(14):
         data.append((100.0, 102.0, 98.0, 100.0, 100.0))
 
-    # Swing up to 115
-    for p in [102, 105, 108, 112, 115, 112, 108]:
-        data.append((float(p), float(p + 2), float(p - 2), float(p), 100.0))
-
-    # Wick rejection at 105 (long lower wick)
-    data.append((108.0, 108.0, 105.0, 107.5, 100.0))
-
-    # Swing down to 90
-    for p in [105, 102, 98, 95, 90, 93, 96]:
-        data.append((float(p), float(p + 2), float(p - 1), float(p), 100.0))
-
-    # Swing back up
-    for p in [99, 103, 107, 114, 110, 106]:
-        data.append((float(p), float(p + 2), float(p - 2), float(p), 100.0))
+    # Two swing highs at ~110 and two swing lows at ~90
+    for cycle in range(3):
+        data.extend([
+            (100.0, 102.0, 98.0, 101.0, 100.0),
+            (101.0, 106.0, 100.0, 105.0, 100.0),
+            (105.0, 110.0, 104.0, 108.0, 100.0),  # swing high
+            (108.0, 108.0, 100.0, 102.0, 100.0),
+            (102.0, 103.0, 95.0, 96.0, 100.0),
+            (96.0, 97.0, 92.0, 93.0, 100.0),
+            (93.0, 94.0, 90.0, 91.0, 100.0),       # swing low
+            (91.0, 96.0, 91.0, 95.0, 100.0),
+            (95.0, 100.0, 94.0, 99.0, 100.0),
+        ])
 
     return make_bars_from_ohlcv(data)
 
 
-def test_end_to_end_with_real_detectors():
-    """Full integration: KeyLevelIndicator with SwingCluster + WickRejection."""
-    detectors = [
-        SwingClusterDetector(period=2, cluster_distance=1.5),
-        WickRejectionDetector(min_wick_ratio=1.5, zone_atr_multiple=1.0, min_rejections=1),
-    ]
-    indicator = KeyLevelIndicator(detectors=detectors)
+def test_end_to_end_with_real_detector():
+    """Full integration with the migrated EqualHighsLowsDetector."""
+    indicator = KeyLevelIndicator(detectors=[
+        EqualHighsLowsDetector(period=2, tolerance_atr_multiple=0.8, atr_period=14),
+    ])
     bars = _make_realistic_bars()
     for bar in bars:
         indicator.handle_bar(bar)
 
-    # Should have found some levels
     assert len(indicator.levels) > 0
 
-    # All levels should satisfy invariants
     for level in indicator.levels:
-        assert level.zone_lower <= level.price <= level.zone_upper
         assert 0.0 <= level.strength <= 1.0
         assert level.bounce_count >= 0
-        assert level.first_seen_ts <= level.last_touched_ts
+        # start_ts/end_ts ordering when ended
+        if level.end_ts is not None:
+            assert level.start_ts <= level.end_ts
+        # zone_lower <= price <= zone_upper when zone is populated
+        if level.zone_lower is not None and level.zone_upper is not None:
+            assert level.zone_lower <= level.price <= level.zone_upper
 
-    # Scalar summaries should be available
     assert not math.isnan(indicator.level_count)
     assert indicator.level_count > 0

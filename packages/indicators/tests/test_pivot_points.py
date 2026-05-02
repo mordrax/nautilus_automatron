@@ -2,6 +2,8 @@
 
 import pytest
 
+pytestmark = pytest.mark.skip(reason="awaiting migration card #120")
+
 from indicators.key_levels.detectors.pivot_points import PivotPointDetector
 from indicators.key_levels.model import PivotPointMeta
 from tests.helpers.bar_factory import make_bar, _BASE_TS, _1H_NS

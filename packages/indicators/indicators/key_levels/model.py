@@ -60,6 +60,7 @@ class SwingClusterMeta:
 class EqualHighsLowsMeta:
     touch_prices: tuple[float, ...]
     side: Literal["high", "low"]
+    touch_count: int
 
 
 @dataclass(frozen=True)
@@ -237,12 +238,22 @@ SourceMeta = (
 
 @dataclass(frozen=True)
 class KeyLevel:
+    """Lifecycle-tracked key level.
+
+    A level has a start timestamp (when it became valid) and an optional end
+    timestamp (when it was broken or aged out). `end_ts is None` means the
+    level is still active at the end of the data stream.
+
+    Zone fields are optional — only zoned detectors populate them; pure
+    horizontals leave them as None.
+    """
+
     price: float
     strength: float
-    bounce_count: int
-    first_seen_ts: int
-    last_touched_ts: int
-    zone_upper: float
-    zone_lower: float
+    start_ts: int
+    end_ts: int | None
     source: Source
+    bounce_count: int
+    zone_upper: float | None
+    zone_lower: float | None
     meta: SourceMeta

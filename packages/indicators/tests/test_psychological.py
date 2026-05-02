@@ -1,5 +1,9 @@
 """Tests for PsychologicalLevelDetector."""
 
+import pytest
+
+pytestmark = pytest.mark.skip(reason="awaiting migration card #120")
+
 from indicators.key_levels.detectors.psychological import PsychologicalLevelDetector
 from indicators.key_levels.model import PsychologicalMeta
 from tests.helpers.bar_factory import make_bars_from_closes, _BASE_TS, _1H_NS

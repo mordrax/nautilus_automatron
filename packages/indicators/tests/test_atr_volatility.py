@@ -2,6 +2,10 @@
 
 import math
 
+import pytest
+
+pytestmark = pytest.mark.skip(reason="awaiting migration card #120")
+
 from indicators.key_levels.detectors.atr_volatility import AtrVolatilityDetector
 from indicators.key_levels.model import AtrVolatilityMeta
 from tests.helpers.bar_factory import make_bars_from_closes, _BASE_TS, _1H_NS

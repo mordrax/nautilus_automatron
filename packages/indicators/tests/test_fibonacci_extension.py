@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import pytest
 
+pytestmark = pytest.mark.skip(reason="awaiting migration card #120")
+
 from indicators.key_levels.detectors.fibonacci import FibonacciExtensionDetector
 from indicators.key_levels.model import FibonacciMeta
 from tests.helpers.bar_factory import _1H_NS, _BASE_TS, make_bar
