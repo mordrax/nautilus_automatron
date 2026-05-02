@@ -18,6 +18,8 @@ import { useHotkeys } from '@/hooks/use-hotkeys'
 import { useCategorisation } from '@/hooks/use-categorisation'
 import { useIndicators } from '@/hooks/use-indicators'
 import { IndicatorToggles } from '@/components/chart/IndicatorToggles'
+import { KeyLevelsPanel } from '@/components/chart/KeyLevelsPanel'
+import { useKeyLevels } from '@/hooks/use-key-levels'
 
 type RunDetailPageProps = {
   readonly runId: string
@@ -59,6 +61,9 @@ export const RunDetailPage = ({ runId }: RunDetailPageProps) => {
 
   const { available, data: indicatorData, enabledIds, toggle, getColor, setColor } = useIndicators(barType)
 
+  const [selectedDetectors, setSelectedDetectors] = useState<readonly string[]>([])
+  const { data: keyLevels } = useKeyLevels(barType, selectedDetectors)
+
   if (!runDetail) return <div className="text-muted-foreground">Loading...</div>
 
   return (
@@ -91,6 +96,7 @@ export const RunDetailPage = ({ runId }: RunDetailPageProps) => {
                 ohlc={ohlc}
                 trades={trades}
                 indicators={indicatorData}
+                keyLevels={keyLevels ?? []}
                 getIndicatorColor={getColor}
                 currentTradeIndex={currentIndex}
                 onSelectTrade={selectTrade}
@@ -108,13 +114,17 @@ export const RunDetailPage = ({ runId }: RunDetailPageProps) => {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Indicators</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             <IndicatorToggles
               indicators={available}
               enabledIds={enabledIds}
               onToggle={toggle}
               getColor={getColor}
               onColorChange={setColor}
+            />
+            <KeyLevelsPanel
+              selectedDetectors={selectedDetectors}
+              onChange={setSelectedDetectors}
             />
           </CardContent>
         </Card>

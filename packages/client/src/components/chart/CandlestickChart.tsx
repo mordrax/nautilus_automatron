@@ -2,12 +2,15 @@ import { useRef, useEffect, useState, useCallback } from 'react'
 import * as echarts from 'echarts'
 import { CHART_COLORS, getDefaultIndicatorColor } from '@/lib/chart-config'
 import { buildTradeMarkLines, formatTradeTooltip, formatDatetime } from '@/lib/trade-utils'
+import { buildKeyLevelSeries } from '@/lib/key-level-render'
 import type { OhlcData, Trade, IndicatorResult } from '@/types/api'
+import type { KeyLevelDto } from '@/types/key-levels'
 
 type CandlestickChartProps = {
   readonly ohlc: OhlcData
   readonly trades?: readonly Trade[]
   readonly indicators?: readonly IndicatorResult[]
+  readonly keyLevels?: readonly KeyLevelDto[]
   readonly getIndicatorColor?: (id: string) => string
   readonly currentTradeIndex?: number
   readonly onSelectTrade?: (index: number) => void
@@ -113,6 +116,7 @@ const buildOption = (
   ohlc: OhlcData,
   trades: readonly Trade[],
   indicators: readonly IndicatorResult[],
+  keyLevels: readonly KeyLevelDto[],
   getColor: (id: string) => string,
 ): Record<string, any> => {
   const categoryData = ohlc.datetime
@@ -126,6 +130,7 @@ const buildOption = (
   const tradeMarkLines = buildTradeMarkLines(trades)
 
   const overlaySeries = buildIndicatorOverlaySeries(indicators, getColor)
+  const keyLevelSeries = buildKeyLevelSeries(keyLevels, ohlc.datetime)
   const panels = buildPanelConfig(indicators, getColor)
 
   const mainGridBottom = panels.panelCount > 0
@@ -203,6 +208,7 @@ const buildOption = (
         },
       },
       ...overlaySeries,
+      keyLevelSeries,
       ...panels.series,
     ],
   }
@@ -266,6 +272,7 @@ export const CandlestickChart = ({
   ohlc,
   trades = [],
   indicators = [],
+  keyLevels = [],
   getIndicatorColor = getDefaultIndicatorColor,
   currentTradeIndex,
   onSelectTrade,
@@ -290,7 +297,7 @@ export const CandlestickChart = ({
     chartRef.current = chart
     onChartReady?.(chart)
 
-    const option = buildOption(ohlc, trades, indicators, getIndicatorColor)
+    const option = buildOption(ohlc, trades, indicators, keyLevels, getIndicatorColor)
     chart.setOption(option)
 
     // Expose chart for e2e testing
@@ -321,7 +328,7 @@ export const CandlestickChart = ({
   // Update indicators without destroying chart (preserves zoom/state)
   useEffect(() => {
     if (!chartRef.current) return
-    const fullOption = buildOption(ohlc, trades, indicators, getIndicatorColor)
+    const fullOption = buildOption(ohlc, trades, indicators, keyLevels, getIndicatorColor)
 
     // Preserve current zoom position but update xAxisIndex for new/removed panels
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -337,7 +344,7 @@ export const CandlestickChart = ({
 
     chartRef.current.setOption(fullOption, { replaceMerge: ['series', 'grid', 'xAxis', 'yAxis'] })
     chartRef.current.resize()
-  }, [ohlc, trades, indicators, getIndicatorColor])
+  }, [ohlc, trades, indicators, keyLevels, getIndicatorColor])
 
   const showTooltip = trades.length > 0 && currentTradeIndex !== undefined
   const currentTrade = showTooltip ? trades[currentTradeIndex] : undefined
