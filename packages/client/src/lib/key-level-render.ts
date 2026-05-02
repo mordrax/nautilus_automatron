@@ -43,6 +43,8 @@ const SOURCE_STYLE: Record<string, KeyLevelStyle> = {
   price_gap: { color: '#8dc1a9', baseWidth: 1.5 },
   darvas_box: { color: '#ea7e53', baseWidth: 1.5 },
   consolidation_zone: { color: '#eedd78', baseWidth: 1.5 },
+  ma_confluence: { color: '#cf6171', baseWidth: 1.5 },
+  wyckoff_zone: { color: '#7d2e64', baseWidth: 1.5 },
 }
 
 const DEFAULT_STYLE: KeyLevelStyle = { color: '#888', baseWidth: 1.5 }

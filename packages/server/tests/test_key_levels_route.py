@@ -198,6 +198,8 @@ def test_detectors_endpoint_returns_equal_highs_lows():
         "price_gap",
         "darvas_box",
         "consolidation_zone",
+        "ma_confluence",
+        "wyckoff_zone",
     }
     returned_ids = {d["id"] for d in data}
     assert expected_ids.issubset(returned_ids)
@@ -875,6 +877,83 @@ def test_key_levels_consolidation_zone_route():
         assert isinstance(lvl["meta"]["duration_bars"], int)
         assert isinstance(lvl["meta"]["range_atr_multiple"], float)
         assert lvl["meta"]["side"] in ("high", "low")
+
+
+# ---------------------------------------------------------------------------
+# Smoke tests for the migrated detectors (#124) — Phase 6 (composite).
+# ---------------------------------------------------------------------------
+
+
+def _make_ma_confluence_bars() -> list[Bar]:
+    """Long flat sequence — every EMA collapses onto the same price, so MA
+    confluence emits a level."""
+    bars: list[Bar] = []
+    for i in range(220):
+        ts = _BASE_TS + i * _1H_NS
+        bars.append(_make_bar(100.0, 100.05, 99.95, 100.0, ts_ns=ts))
+    return bars
+
+
+def test_key_levels_ma_confluence_route():
+    bars = _make_ma_confluence_bars()
+    client = _client_with_catalog(_StubCatalog(bars_by_type={_DEFAULT_BAR_TYPE_STR: bars}))
+    res = client.get(
+        f"/api/bars/{_DEFAULT_BAR_TYPE_STR}/key-levels",
+        params={"detectors": "ma_confluence"},
+    )
+    assert res.status_code == 200, res.text
+    levels = res.json()
+    assert isinstance(levels, list)
+    assert len(levels) > 0
+    for lvl in levels:
+        assert lvl["source"] == "ma_confluence"
+        assert lvl["meta"]["kind"] == "ma_confluence"
+        assert lvl["meta"]["side"] in ("high", "low")
+        assert isinstance(lvl["meta"]["ma_count"], int)
+        assert isinstance(lvl["meta"]["ma_periods"], list)
+        assert isinstance(lvl["meta"]["spread_percent"], float)
+        assert isinstance(lvl["meta"]["touch_count"], int)
+
+
+def _make_wyckoff_bars() -> list[Bar]:
+    """Sharp drop then a tight sideways range — accumulation zone setup."""
+    bars: list[Bar] = []
+    idx = 0
+    price = 200.0
+    for i in range(40):
+        new_price = price - 1.0
+        bars.append(_make_bar(price, price + 0.3, new_price - 0.3, new_price,
+                              ts_ns=_BASE_TS + idx * _1H_NS))
+        price = new_price
+        idx += 1
+    range_center = price
+    for j in range(20):
+        bars.append(_make_bar(range_center, range_center + 0.2,
+                              range_center - 0.2, range_center,
+                              ts_ns=_BASE_TS + idx * _1H_NS))
+        idx += 1
+    return bars
+
+
+def test_key_levels_wyckoff_zone_route():
+    bars = _make_wyckoff_bars()
+    client = _client_with_catalog(_StubCatalog(bars_by_type={_DEFAULT_BAR_TYPE_STR: bars}))
+    res = client.get(
+        f"/api/bars/{_DEFAULT_BAR_TYPE_STR}/key-levels",
+        params={"detectors": "wyckoff_zone"},
+    )
+    assert res.status_code == 200, res.text
+    levels = res.json()
+    assert isinstance(levels, list)
+    assert len(levels) > 0
+    for lvl in levels:
+        assert lvl["source"] == "wyckoff_zone"
+        assert lvl["meta"]["kind"] == "wyckoff_zone"
+        assert lvl["meta"]["zone_type"] in ("accumulation", "distribution")
+        assert lvl["meta"]["phase"] in ("A", "B", "C", "D", "E")
+        assert isinstance(lvl["meta"]["confidence"], float)
+        assert lvl["meta"]["side"] in ("high", "low")
+        assert isinstance(lvl["meta"]["touch_count"], int)
 
 
 # ---------------------------------------------------------------------------

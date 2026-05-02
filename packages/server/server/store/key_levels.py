@@ -26,6 +26,7 @@ from indicators.key_levels.detectors.fibonacci import (
     FibonacciExtensionDetector,
     FibonacciRetracementDetector,
 )
+from indicators.key_levels.detectors.ma_confluence import MaConfluenceDetector
 from indicators.key_levels.detectors.market_profile import MarketProfileDetector
 from indicators.key_levels.detectors.opening_range import OpeningRangeDetector
 from indicators.key_levels.detectors.order_blocks import OrderBlockDetector
@@ -40,6 +41,7 @@ from indicators.key_levels.detectors.volume_distribution import (
 )
 from indicators.key_levels.detectors.volume_profile import VolumeProfileDetector
 from indicators.key_levels.detectors.wick_rejection import WickRejectionDetector
+from indicators.key_levels.detectors.wyckoff_zone import WyckoffZoneDetector
 from indicators.key_levels.model import (
     AnchoredVwapMeta,
     AtrVolatilityMeta,
@@ -50,6 +52,7 @@ from indicators.key_levels.model import (
     FairValueGapMeta,
     FibonacciMeta,
     KeyLevel,
+    MaConfluenceMeta,
     MarketProfileMeta,
     OpeningRangeMeta,
     OrderBlockMeta,
@@ -62,6 +65,7 @@ from indicators.key_levels.model import (
     VolumeDistributionMeta,
     VolumeProfileMeta,
     WickRejectionMeta,
+    WyckoffZoneMeta,
 )
 
 from server.store.indicators import _ns_to_iso
@@ -266,6 +270,24 @@ class ConsolidationZoneMetaDto(BaseModel):
     touch_count: int
 
 
+class MaConfluenceMetaDto(BaseModel):
+    kind: Literal["ma_confluence"] = "ma_confluence"
+    ma_count: int
+    ma_periods: tuple[int, ...]
+    spread_percent: float
+    side: Literal["high", "low"]
+    touch_count: int
+
+
+class WyckoffZoneMetaDto(BaseModel):
+    kind: Literal["wyckoff_zone"] = "wyckoff_zone"
+    zone_type: Literal["accumulation", "distribution"]
+    phase: Literal["A", "B", "C", "D", "E"]
+    confidence: float
+    side: Literal["high", "low"]
+    touch_count: int
+
+
 SourceMetaDto = Annotated[
     Union[
         EqualHighsLowsMetaDto,
@@ -288,6 +310,8 @@ SourceMetaDto = Annotated[
         PriceGapMetaDto,
         DarvasBoxMetaDto,
         ConsolidationZoneMetaDto,
+        MaConfluenceMetaDto,
+        WyckoffZoneMetaDto,
     ],
     Field(discriminator="kind"),
 ]
@@ -324,6 +348,8 @@ class KeyLevelDto(BaseModel):
         "price_gap",
         "darvas_box",
         "consolidation_zone",
+        "ma_confluence",
+        "wyckoff_zone",
     ]
     bounce_count: int
     zone_upper: float | None
@@ -370,6 +396,8 @@ DETECTOR_REGISTRY: dict[str, Callable[[], DetectorProto]] = {
     "price_gap": lambda: PriceGapDetector(),
     "darvas_box": lambda: DarvasBoxDetector(),
     "consolidation_zone": lambda: ConsolidationZoneDetector(),
+    "ma_confluence": lambda: MaConfluenceDetector(),
+    "wyckoff_zone": lambda: WyckoffZoneDetector(),
 }
 
 
@@ -399,6 +427,8 @@ DETECTOR_META: list[dict[str, str]] = [
     {"id": "price_gap", "label": "Price Gap", "color": "#8dc1a9"},
     {"id": "darvas_box", "label": "Darvas Box", "color": "#ea7e53"},
     {"id": "consolidation_zone", "label": "Consolidation Zone", "color": "#eedd78"},
+    {"id": "ma_confluence", "label": "MA Confluence", "color": "#cf6171"},
+    {"id": "wyckoff_zone", "label": "Wyckoff Zone", "color": "#7d2e64"},
 ]
 
 
@@ -569,6 +599,22 @@ def _meta_to_dto(meta: object) -> SourceMetaDto:
             bar_count=meta.bar_count,
             duration_bars=meta.duration_bars,
             range_atr_multiple=meta.range_atr_multiple,
+            side=meta.side,
+            touch_count=meta.touch_count,
+        )
+    if isinstance(meta, MaConfluenceMeta):
+        return MaConfluenceMetaDto(
+            ma_count=meta.ma_count,
+            ma_periods=tuple(meta.ma_periods),
+            spread_percent=meta.spread_percent,
+            side=meta.side,
+            touch_count=meta.touch_count,
+        )
+    if isinstance(meta, WyckoffZoneMeta):
+        return WyckoffZoneMetaDto(
+            zone_type=meta.zone_type,
+            phase=meta.phase,
+            confidence=meta.confidence,
             side=meta.side,
             touch_count=meta.touch_count,
         )
