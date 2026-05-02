@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import * as echarts from 'echarts'
-import { CHART_COLORS, INDICATOR_COLORS } from '@/lib/chart-config'
+import { CHART_COLORS, getDefaultIndicatorColor } from '@/lib/chart-config'
 import { buildTradeMarkLines, formatTradeTooltip, formatDatetime } from '@/lib/trade-utils'
 import type { OhlcData, Trade, IndicatorResult } from '@/types/api'
 
@@ -8,6 +8,7 @@ type CandlestickChartProps = {
   readonly ohlc: OhlcData
   readonly trades?: readonly Trade[]
   readonly indicators?: readonly IndicatorResult[]
+  readonly getIndicatorColor?: (id: string) => string
   readonly currentTradeIndex?: number
   readonly onSelectTrade?: (index: number) => void
   readonly onChartReady?: (chart: echarts.ECharts) => void
@@ -16,24 +17,22 @@ type CandlestickChartProps = {
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const buildIndicatorOverlaySeries = (
   indicators: readonly IndicatorResult[],
-  colorOffset: number,
+  getColor: (id: string) => string,
 ): any[] => {
   const series: any[] = []
-  let colorIdx = colorOffset
 
   for (const ind of indicators) {
     if (ind.display !== 'overlay') continue
+    const baseColor = getColor(ind.id)
     for (const field of Object.keys(ind.outputs)) {
-      const color = INDICATOR_COLORS[colorIdx % INDICATOR_COLORS.length]
-      colorIdx++
       series.push({
         name: Object.keys(ind.outputs).length > 1 ? `${ind.label} ${field}` : ind.label,
         type: 'line',
         data: ind.outputs[field],
         smooth: false,
         showSymbol: false,
-        lineStyle: { width: 1.5, color },
-        itemStyle: { color },
+        lineStyle: { width: 1.5, color: baseColor },
+        itemStyle: { color: baseColor },
         xAxisIndex: 0,
         yAxisIndex: 0,
       })
@@ -45,14 +44,13 @@ const buildIndicatorOverlaySeries = (
 
 const buildPanelConfig = (
   indicators: readonly IndicatorResult[],
-  colorOffset: number,
+  getColor: (id: string) => string,
 ) => {
   const panelIndicators = indicators.filter(i => i.display === 'panel')
   const grids: any[] = []
   const xAxes: any[] = []
   const yAxes: any[] = []
   const series: any[] = []
-  let colorIdx = colorOffset
 
   const dataZoomHeight = 40 // space for the slider at the bottom
   const panelHeight = 100
@@ -91,17 +89,16 @@ const buildPanelConfig = (
       nameTextStyle: { fontSize: 10, padding: [0, 40, 0, 0] },
     })
 
+    const baseColor = getColor(ind.id)
     for (const field of Object.keys(ind.outputs)) {
-      const color = INDICATOR_COLORS[colorIdx % INDICATOR_COLORS.length]
-      colorIdx++
       series.push({
         name: Object.keys(ind.outputs).length > 1 ? `${ind.label} ${field}` : ind.label,
         type: 'line',
         data: ind.outputs[field],
         smooth: false,
         showSymbol: false,
-        lineStyle: { width: 1.5, color },
-        itemStyle: { color },
+        lineStyle: { width: 1.5, color: baseColor },
+        itemStyle: { color: baseColor },
         xAxisIndex: gridIdx,
         yAxisIndex: gridIdx,
       })
@@ -115,6 +112,7 @@ const buildOption = (
   ohlc: OhlcData,
   trades: readonly Trade[],
   indicators: readonly IndicatorResult[],
+  getColor: (id: string) => string,
 ): Record<string, any> => {
   const categoryData = ohlc.datetime
   const ohlcValues = ohlc.open.map((_, i) => [
@@ -126,11 +124,8 @@ const buildOption = (
 
   const tradeMarkLines = buildTradeMarkLines(trades)
 
-  const overlaySeries = buildIndicatorOverlaySeries(indicators, 0)
-  const overlayColorCount = indicators
-    .filter(i => i.display === 'overlay')
-    .reduce((acc, ind) => acc + Object.keys(ind.outputs).length, 0)
-  const panels = buildPanelConfig(indicators, overlayColorCount)
+  const overlaySeries = buildIndicatorOverlaySeries(indicators, getColor)
+  const panels = buildPanelConfig(indicators, getColor)
 
   const mainGridBottom = panels.panelCount > 0
     ? `${40 + panels.panelCount * 130 + 40}px`
@@ -265,10 +260,12 @@ const TradeTooltip = ({ trade }: { readonly trade: Trade | undefined }) => {
   )
 }
 
+
 export const CandlestickChart = ({
   ohlc,
   trades = [],
   indicators = [],
+  getIndicatorColor = getDefaultIndicatorColor,
   currentTradeIndex,
   onSelectTrade,
   onChartReady,
@@ -292,7 +289,7 @@ export const CandlestickChart = ({
     chartRef.current = chart
     onChartReady?.(chart)
 
-    const option = buildOption(ohlc, trades, indicators)
+    const option = buildOption(ohlc, trades, indicators, getIndicatorColor)
     chart.setOption(option)
 
     // Expose chart for e2e testing
@@ -323,7 +320,7 @@ export const CandlestickChart = ({
   // Update indicators without destroying chart (preserves zoom/state)
   useEffect(() => {
     if (!chartRef.current) return
-    const fullOption = buildOption(ohlc, trades, indicators)
+    const fullOption = buildOption(ohlc, trades, indicators, getIndicatorColor)
 
     // Preserve current zoom position but update xAxisIndex for new/removed panels
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -339,7 +336,7 @@ export const CandlestickChart = ({
 
     chartRef.current.setOption(fullOption, { replaceMerge: ['series', 'grid', 'xAxis', 'yAxis'] })
     chartRef.current.resize()
-  }, [ohlc, trades, indicators])
+  }, [ohlc, trades, indicators, getIndicatorColor])
 
   const showTooltip = trades.length > 0 && currentTradeIndex !== undefined
   const currentTrade = showTooltip ? trades[currentTradeIndex] : undefined

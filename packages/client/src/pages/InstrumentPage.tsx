@@ -12,7 +12,7 @@ type InstrumentPageProps = {
 export const InstrumentPage = ({ barType }: InstrumentPageProps) => {
   const decodedBarType = decodeURIComponent(barType)
   const { data: ohlc, isLoading, error } = useCatalogBars(decodedBarType)
-  const { available, data: indicatorData, enabledIds, toggle } = useIndicators(decodedBarType)
+  const { available, data: indicatorData, enabledIds, toggle, getColor, setColor } = useIndicators(decodedBarType)
 
   return (
     <div className="space-y-4">
@@ -34,7 +34,7 @@ export const InstrumentPage = ({ barType }: InstrumentPageProps) => {
                 Error loading bar data
               </div>
             )}
-            {ohlc && <CandlestickChart ohlc={ohlc} indicators={indicatorData} />}
+            {ohlc && <CandlestickChart ohlc={ohlc} indicators={indicatorData} getIndicatorColor={getColor} />}
           </CardContent>
         </Card>
 
@@ -47,6 +47,8 @@ export const InstrumentPage = ({ barType }: InstrumentPageProps) => {
               indicators={available}
               enabledIds={enabledIds}
               onToggle={toggle}
+              getColor={getColor}
+              onColorChange={setColor}
             />
           </CardContent>
         </Card>
