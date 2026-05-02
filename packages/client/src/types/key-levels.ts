@@ -20,9 +20,64 @@ export type WickRejectionMetaDto = {
   readonly touch_count: number
 }
 
-export type SourceMetaDto = EqualHighsLowsMetaDto | WickRejectionMetaDto
+export type AtrVolatilityMetaDto = {
+  readonly kind: 'atr_volatility'
+  readonly atr_value: number
+  readonly multiplier: number
+  readonly anchor_price: number
+  readonly side: 'high' | 'low'
+  readonly touch_count: number
+}
 
-export type KeyLevelSource = 'equal_highs_lows' | 'wick_rejection'
+export type FibonacciMetaDto = {
+  readonly kind: 'fibonacci'
+  readonly ratio: number
+  readonly swing_high: number
+  readonly swing_low: number
+  readonly direction: 'retracement' | 'extension'
+  readonly side: 'high' | 'low'
+  readonly touch_count: number
+}
+
+export type PivotPointMetaDto = {
+  readonly kind: 'pivot_point'
+  readonly variant: 'standard' | 'fibonacci' | 'camarilla' | 'woodie' | 'demark'
+  readonly level_name: string
+  readonly period_high: number
+  readonly period_low: number
+  readonly period_close: number
+  readonly side: 'high' | 'low'
+  readonly touch_count: number
+}
+
+export type PsychologicalMetaDto = {
+  readonly kind: 'psychological'
+  readonly tier: 'major' | 'minor' | 'micro'
+  readonly round_value: number
+  readonly side: 'high' | 'low'
+  readonly touch_count: number
+}
+
+export type SourceMetaDto =
+  | EqualHighsLowsMetaDto
+  | WickRejectionMetaDto
+  | AtrVolatilityMetaDto
+  | FibonacciMetaDto
+  | PivotPointMetaDto
+  | PsychologicalMetaDto
+
+export type KeyLevelSource =
+  | 'equal_highs_lows'
+  | 'wick_rejection'
+  | 'atr_volatility'
+  | 'fib_retracement'
+  | 'fib_extension'
+  | 'pivot_standard'
+  | 'pivot_fibonacci'
+  | 'pivot_camarilla'
+  | 'pivot_woodie'
+  | 'pivot_demark'
+  | 'psychological'
 
 export type KeyLevelDto = {
   readonly price: number
