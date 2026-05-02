@@ -12,9 +12,17 @@ export type EqualHighsLowsMetaDto = {
   readonly touch_count: number
 }
 
-export type SourceMetaDto = EqualHighsLowsMetaDto
+export type WickRejectionMetaDto = {
+  readonly kind: 'wick_rejection'
+  readonly rejection_count: number
+  readonly avg_wick_ratio: number
+  readonly side: 'high' | 'low'
+  readonly touch_count: number
+}
 
-export type KeyLevelSource = 'equal_highs_lows'
+export type SourceMetaDto = EqualHighsLowsMetaDto | WickRejectionMetaDto
+
+export type KeyLevelSource = 'equal_highs_lows' | 'wick_rejection'
 
 export type KeyLevelDto = {
   readonly price: number

@@ -67,6 +67,8 @@ class EqualHighsLowsMeta:
 class WickRejectionMeta:
     rejection_count: int
     avg_wick_ratio: float
+    side: Literal["high", "low"]
+    touch_count: int
 
 
 @dataclass(frozen=True)
