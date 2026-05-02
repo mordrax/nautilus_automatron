@@ -21,8 +21,13 @@ from indicators.key_levels.detectors.fibonacci import (
     FibonacciExtensionDetector,
     FibonacciRetracementDetector,
 )
+from indicators.key_levels.detectors.market_profile import MarketProfileDetector
+from indicators.key_levels.detectors.opening_range import OpeningRangeDetector
+from indicators.key_levels.detectors.periodic_levels import PeriodicLevelDetector
 from indicators.key_levels.detectors.pivot_points import PivotPointDetector
 from indicators.key_levels.detectors.psychological import PsychologicalLevelDetector
+from indicators.key_levels.detectors.session_levels import SessionLevelDetector
+from indicators.key_levels.detectors.swing_cluster import SwingClusterDetector
 from indicators.key_levels.detectors.volume_distribution import (
     VolumeDistributionDetector,
 )
@@ -35,8 +40,13 @@ from indicators.key_levels.model import (
     EqualHighsLowsMeta,
     FibonacciMeta,
     KeyLevel,
+    MarketProfileMeta,
+    OpeningRangeMeta,
+    PeriodicLevelMeta,
     PivotPointMeta,
     PsychologicalMeta,
+    SessionLevelMeta,
+    SwingClusterMeta,
     VolumeDistributionMeta,
     VolumeProfileMeta,
     WickRejectionMeta,
@@ -149,6 +159,49 @@ class CvdMetaDto(BaseModel):
     touch_count: int
 
 
+class SessionLevelMetaDto(BaseModel):
+    kind: Literal["session_level"] = "session_level"
+    session: Literal["asian", "london", "new_york", "custom"]
+    role: Literal["high", "low"]
+    session_date_iso: str
+    side: Literal["high", "low"]
+    touch_count: int
+
+
+class PeriodicLevelMetaDto(BaseModel):
+    kind: Literal["periodic_level"] = "periodic_level"
+    period: Literal["daily", "weekly", "monthly"]
+    role: Literal["high", "low"]
+    period_start_iso: str
+    side: Literal["high", "low"]
+    touch_count: int
+
+
+class OpeningRangeMetaDto(BaseModel):
+    kind: Literal["opening_range"] = "opening_range"
+    range_minutes: int
+    role: Literal["high", "low"]
+    side: Literal["high", "low"]
+    touch_count: int
+
+
+class MarketProfileMetaDto(BaseModel):
+    kind: Literal["market_profile_tpo"] = "market_profile_tpo"
+    tpo_count: int
+    role: Literal["poc", "vah", "val"]
+    total_tpo_periods: int
+    side: Literal["high", "low"]
+    touch_count: int
+
+
+class SwingClusterMetaDto(BaseModel):
+    kind: Literal["swing_cluster"] = "swing_cluster"
+    cluster_radius: float
+    pivot_indices: tuple[int, ...]
+    side: Literal["high", "low"]
+    touch_count: int
+
+
 SourceMetaDto = Annotated[
     Union[
         EqualHighsLowsMetaDto,
@@ -161,6 +214,11 @@ SourceMetaDto = Annotated[
         VolumeDistributionMetaDto,
         AnchoredVwapMetaDto,
         CvdMetaDto,
+        SessionLevelMetaDto,
+        PeriodicLevelMetaDto,
+        OpeningRangeMetaDto,
+        MarketProfileMetaDto,
+        SwingClusterMetaDto,
     ],
     Field(discriminator="kind"),
 ]
@@ -187,6 +245,11 @@ class KeyLevelDto(BaseModel):
         "volume_distribution",
         "anchored_vwap",
         "cvd",
+        "session_level",
+        "periodic_level",
+        "opening_range",
+        "market_profile_tpo",
+        "swing_cluster",
     ]
     bounce_count: int
     zone_upper: float | None
@@ -223,6 +286,11 @@ DETECTOR_REGISTRY: dict[str, Callable[[], DetectorProto]] = {
     "volume_distribution": lambda: VolumeDistributionDetector(),
     "anchored_vwap": lambda: AnchoredVwapDetector(),
     "cvd": lambda: CvdDetector(),
+    "session_level": lambda: SessionLevelDetector(),
+    "periodic_level": lambda: PeriodicLevelDetector(),
+    "opening_range": lambda: OpeningRangeDetector(),
+    "market_profile_tpo": lambda: MarketProfileDetector(),
+    "swing_cluster": lambda: SwingClusterDetector(),
 }
 
 
@@ -242,6 +310,11 @@ DETECTOR_META: list[dict[str, str]] = [
     {"id": "volume_distribution", "label": "Volume Distribution", "color": "#3ba272"},
     {"id": "anchored_vwap", "label": "Anchored VWAP", "color": "#fc8452"},
     {"id": "cvd", "label": "CVD", "color": "#27727b"},
+    {"id": "session_level", "label": "Session Levels", "color": "#3d5499"},
+    {"id": "periodic_level", "label": "Periodic Levels", "color": "#d48265"},
+    {"id": "opening_range", "label": "Opening Range", "color": "#759aa0"},
+    {"id": "market_profile_tpo", "label": "Market Profile (TPO)", "color": "#c1232b"},
+    {"id": "swing_cluster", "label": "Swing Cluster", "color": "#b5c334"},
 ]
 
 
@@ -327,6 +400,44 @@ def _meta_to_dto(meta: object) -> SourceMetaDto:
         return CvdMetaDto(
             cvd_value=meta.cvd_value,
             divergence=meta.divergence,
+            side=meta.side,
+            touch_count=meta.touch_count,
+        )
+    if isinstance(meta, SessionLevelMeta):
+        return SessionLevelMetaDto(
+            session=meta.session,
+            role=meta.role,
+            session_date_iso=meta.session_date_iso,
+            side=meta.side,
+            touch_count=meta.touch_count,
+        )
+    if isinstance(meta, PeriodicLevelMeta):
+        return PeriodicLevelMetaDto(
+            period=meta.period,
+            role=meta.role,
+            period_start_iso=meta.period_start_iso,
+            side=meta.side,
+            touch_count=meta.touch_count,
+        )
+    if isinstance(meta, OpeningRangeMeta):
+        return OpeningRangeMetaDto(
+            range_minutes=meta.range_minutes,
+            role=meta.role,
+            side=meta.side,
+            touch_count=meta.touch_count,
+        )
+    if isinstance(meta, MarketProfileMeta):
+        return MarketProfileMetaDto(
+            tpo_count=meta.tpo_count,
+            role=meta.role,
+            total_tpo_periods=meta.total_tpo_periods,
+            side=meta.side,
+            touch_count=meta.touch_count,
+        )
+    if isinstance(meta, SwingClusterMeta):
+        return SwingClusterMetaDto(
+            cluster_radius=meta.cluster_radius,
+            pivot_indices=tuple(meta.pivot_indices),
             side=meta.side,
             touch_count=meta.touch_count,
         )

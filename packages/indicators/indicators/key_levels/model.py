@@ -8,7 +8,6 @@ without dict[str, Any] or mutation.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
 from typing import Literal
 
 # ---------------------------------------------------------------------------
@@ -54,6 +53,8 @@ Source = Literal[
 class SwingClusterMeta:
     cluster_radius: float
     pivot_indices: tuple[int, ...]
+    side: Literal["high", "low"]
+    touch_count: int
 
 
 @dataclass(frozen=True)
@@ -147,28 +148,36 @@ class CvdMeta:
 @dataclass(frozen=True)
 class SessionLevelMeta:
     session: Literal["asian", "london", "new_york", "custom"]
-    level_type: Literal["high", "low"]
-    session_date: date
+    role: Literal["high", "low"]
+    session_date_iso: str
+    side: Literal["high", "low"]
+    touch_count: int
 
 
 @dataclass(frozen=True)
 class PeriodicLevelMeta:
     period: Literal["daily", "weekly", "monthly"]
-    level_type: Literal["high", "low", "close"]
-    period_start: date
+    role: Literal["high", "low"]
+    period_start_iso: str
+    side: Literal["high", "low"]
+    touch_count: int
 
 
 @dataclass(frozen=True)
 class OpeningRangeMeta:
     range_minutes: int
-    level_type: Literal["high", "low"]
+    role: Literal["high", "low"]
+    side: Literal["high", "low"]
+    touch_count: int
 
 
 @dataclass(frozen=True)
 class MarketProfileMeta:
     tpo_count: int
-    node_type: Literal["poc", "va_high", "va_low"]
+    role: Literal["poc", "vah", "val"]
     total_tpo_periods: int
+    side: Literal["high", "low"]
+    touch_count: int
 
 
 @dataclass(frozen=True)

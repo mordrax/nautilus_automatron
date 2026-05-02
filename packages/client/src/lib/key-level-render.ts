@@ -33,6 +33,11 @@ const SOURCE_STYLE: Record<string, KeyLevelStyle> = {
   volume_distribution: { color: '#3ba272', baseWidth: 1.5 },
   anchored_vwap: { color: '#fc8452', baseWidth: 1.5 },
   cvd: { color: '#27727b', baseWidth: 1.5 },
+  session_level: { color: '#3d5499', baseWidth: 1.5 },
+  periodic_level: { color: '#d48265', baseWidth: 1.5 },
+  opening_range: { color: '#759aa0', baseWidth: 1.5 },
+  market_profile_tpo: { color: '#c1232b', baseWidth: 1.5 },
+  swing_cluster: { color: '#b5c334', baseWidth: 1.5 },
 }
 
 const DEFAULT_STYLE: KeyLevelStyle = { color: '#888', baseWidth: 1.5 }
