@@ -71,30 +71,45 @@ class KeyLevelIndicator(Indicator):
         return [lvl for lvl in self._levels if lvl.source == source]
 
     # -- Scalar summary outputs (for dashboard registry) --
+    #
+    # Scalars are proximity calculations against the current price, so they
+    # only consider *active* levels (end_ts is None). Finalized (broken or
+    # aged-out) levels remain in `self.levels` for charting / history.
+
+    @property
+    def _active_levels(self) -> list[KeyLevel]:
+        return [lvl for lvl in self._levels if lvl.end_ts is None]
 
     @property
     def nearest_support(self) -> float:
-        below = self.levels_below(self._current_price)
+        below = [lvl for lvl in self._active_levels if lvl.price < self._current_price]
         if not below:
             return float("nan")
         return max(below, key=lambda lvl: lvl.price).price
 
     @property
     def nearest_resistance(self) -> float:
-        above = self.levels_above(self._current_price)
+        above = [lvl for lvl in self._active_levels if lvl.price > self._current_price]
         if not above:
             return float("nan")
         return min(above, key=lambda lvl: lvl.price).price
 
     @property
     def strongest_support(self) -> float:
-        below = self.levels_below(self._current_price)
-        return below[0].price if below else float("nan")
+        below = [lvl for lvl in self._active_levels if lvl.price < self._current_price]
+        if not below:
+            return float("nan")
+        # _levels is sorted by strength desc — preserve order
+        below.sort(key=lambda lvl: self._levels.index(lvl))
+        return below[0].price
 
     @property
     def strongest_resistance(self) -> float:
-        above = self.levels_above(self._current_price)
-        return above[0].price if above else float("nan")
+        above = [lvl for lvl in self._active_levels if lvl.price > self._current_price]
+        if not above:
+            return float("nan")
+        above.sort(key=lambda lvl: self._levels.index(lvl))
+        return above[0].price
 
     @property
     def level_count(self) -> float:
