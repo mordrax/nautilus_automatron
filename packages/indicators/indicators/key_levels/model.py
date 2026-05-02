@@ -182,17 +182,22 @@ class MarketProfileMeta:
 
 @dataclass(frozen=True)
 class OrderBlockMeta:
-    side: Literal["bullish", "bearish"]
+    block_side: Literal["bullish", "bearish"]
     displacement_atr_multiple: float
     block_open: float
     block_close: float
+    mitigation_pct: float
+    side: Literal["high", "low"]
+    touch_count: int
 
 
 @dataclass(frozen=True)
 class FairValueGapMeta:
-    side: Literal["bullish", "bearish"]
+    gap_side: Literal["bullish", "bearish"]
     gap_size: float
     fill_percentage: float
+    side: Literal["high", "low"]
+    touch_count: int
 
 
 @dataclass(frozen=True)
@@ -201,6 +206,8 @@ class PriceGapMeta:
     gap_size: float
     fill_percentage: float
     level_type: Literal["upper", "lower"]
+    side: Literal["high", "low"]
+    touch_count: int
 
 
 @dataclass(frozen=True)
@@ -209,6 +216,8 @@ class DarvasBoxMeta:
     box_bottom: float
     confirmed: bool
     bars_in_box: int
+    side: Literal["high", "low"]
+    touch_count: int
 
 
 @dataclass(frozen=True)
@@ -217,6 +226,10 @@ class ConsolidationZoneMeta:
     range_low: float
     slope: float
     bar_count: int
+    duration_bars: int
+    range_atr_multiple: float
+    side: Literal["high", "low"]
+    touch_count: int
 
 
 @dataclass(frozen=True)

@@ -136,6 +136,58 @@ export type SwingClusterMetaDto = {
   readonly touch_count: number
 }
 
+export type OrderBlockMetaDto = {
+  readonly kind: 'order_block'
+  readonly block_side: 'bullish' | 'bearish'
+  readonly displacement_atr_multiple: number
+  readonly block_open: number
+  readonly block_close: number
+  readonly mitigation_pct: number
+  readonly side: 'high' | 'low'
+  readonly touch_count: number
+}
+
+export type FairValueGapMetaDto = {
+  readonly kind: 'fair_value_gap'
+  readonly gap_side: 'bullish' | 'bearish'
+  readonly gap_size: number
+  readonly fill_percentage: number
+  readonly side: 'high' | 'low'
+  readonly touch_count: number
+}
+
+export type PriceGapMetaDto = {
+  readonly kind: 'price_gap'
+  readonly gap_type: 'breakaway' | 'runaway' | 'exhaustion' | 'common'
+  readonly gap_size: number
+  readonly fill_percentage: number
+  readonly level_type: 'upper' | 'lower'
+  readonly side: 'high' | 'low'
+  readonly touch_count: number
+}
+
+export type DarvasBoxMetaDto = {
+  readonly kind: 'darvas_box'
+  readonly box_top: number
+  readonly box_bottom: number
+  readonly confirmed: boolean
+  readonly bars_in_box: number
+  readonly side: 'high' | 'low'
+  readonly touch_count: number
+}
+
+export type ConsolidationZoneMetaDto = {
+  readonly kind: 'consolidation_zone'
+  readonly range_high: number
+  readonly range_low: number
+  readonly slope: number
+  readonly bar_count: number
+  readonly duration_bars: number
+  readonly range_atr_multiple: number
+  readonly side: 'high' | 'low'
+  readonly touch_count: number
+}
+
 export type SourceMetaDto =
   | EqualHighsLowsMetaDto
   | WickRejectionMetaDto
@@ -152,6 +204,11 @@ export type SourceMetaDto =
   | OpeningRangeMetaDto
   | MarketProfileMetaDto
   | SwingClusterMetaDto
+  | OrderBlockMetaDto
+  | FairValueGapMetaDto
+  | PriceGapMetaDto
+  | DarvasBoxMetaDto
+  | ConsolidationZoneMetaDto
 
 export type KeyLevelSource =
   | 'equal_highs_lows'
@@ -174,6 +231,11 @@ export type KeyLevelSource =
   | 'opening_range'
   | 'market_profile_tpo'
   | 'swing_cluster'
+  | 'order_block'
+  | 'fair_value_gap'
+  | 'price_gap'
+  | 'darvas_box'
+  | 'consolidation_zone'
 
 export type KeyLevelDto = {
   readonly price: number

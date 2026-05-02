@@ -38,6 +38,11 @@ const SOURCE_STYLE: Record<string, KeyLevelStyle> = {
   opening_range: { color: '#759aa0', baseWidth: 1.5 },
   market_profile_tpo: { color: '#c1232b', baseWidth: 1.5 },
   swing_cluster: { color: '#b5c334', baseWidth: 1.5 },
+  order_block: { color: '#dd6b66', baseWidth: 1.5 },
+  fair_value_gap: { color: '#e69d87', baseWidth: 1.5 },
+  price_gap: { color: '#8dc1a9', baseWidth: 1.5 },
+  darvas_box: { color: '#ea7e53', baseWidth: 1.5 },
+  consolidation_zone: { color: '#eedd78', baseWidth: 1.5 },
 }
 
 const DEFAULT_STYLE: KeyLevelStyle = { color: '#888', baseWidth: 1.5 }
