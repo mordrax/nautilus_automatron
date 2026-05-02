@@ -13,6 +13,7 @@ from indicators.key_levels.detectors.fibonacci import (
     FibonacciExtensionDetector,
     FibonacciRetracementDetector,
 )
+from indicators.key_levels.detectors.ma_confluence import MaConfluenceDetector
 from indicators.key_levels.detectors.market_profile import MarketProfileDetector
 from indicators.key_levels.detectors.opening_range import OpeningRangeDetector
 from indicators.key_levels.detectors.order_blocks import OrderBlockDetector
@@ -27,6 +28,7 @@ from indicators.key_levels.detectors.volume_distribution import (
 )
 from indicators.key_levels.detectors.volume_profile import VolumeProfileDetector
 from indicators.key_levels.detectors.wick_rejection import WickRejectionDetector
+from indicators.key_levels.detectors.wyckoff_zone import WyckoffZoneDetector
 
 __all__ = [
     "AnchoredVwapDetector",
@@ -38,6 +40,7 @@ __all__ = [
     "FairValueGapDetector",
     "FibonacciExtensionDetector",
     "FibonacciRetracementDetector",
+    "MaConfluenceDetector",
     "MarketProfileDetector",
     "OpeningRangeDetector",
     "OrderBlockDetector",
@@ -50,4 +53,5 @@ __all__ = [
     "VolumeDistributionDetector",
     "VolumeProfileDetector",
     "WickRejectionDetector",
+    "WyckoffZoneDetector",
 ]

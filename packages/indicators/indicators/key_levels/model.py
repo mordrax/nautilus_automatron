@@ -234,16 +234,20 @@ class ConsolidationZoneMeta:
 
 @dataclass(frozen=True)
 class MaConfluenceMeta:
-    converging_periods: tuple[int, ...]
+    ma_count: int
+    ma_periods: tuple[int, ...]
     spread_percent: float
+    side: Literal["high", "low"]
+    touch_count: int
 
 
 @dataclass(frozen=True)
 class WyckoffZoneMeta:
-    phase: Literal["accumulation", "distribution"]
-    event: Literal["sc", "ar", "st", "spring", "upthrust", "sos", "lpsy"]
-    zone_high: float
-    zone_low: float
+    zone_type: Literal["accumulation", "distribution"]
+    phase: Literal["A", "B", "C", "D", "E"]
+    confidence: float
+    side: Literal["high", "low"]
+    touch_count: int
 
 
 SourceMeta = (

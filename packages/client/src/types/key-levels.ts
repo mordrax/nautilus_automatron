@@ -188,6 +188,24 @@ export type ConsolidationZoneMetaDto = {
   readonly touch_count: number
 }
 
+export type MaConfluenceMetaDto = {
+  readonly kind: 'ma_confluence'
+  readonly ma_count: number
+  readonly ma_periods: readonly number[]
+  readonly spread_percent: number
+  readonly side: 'high' | 'low'
+  readonly touch_count: number
+}
+
+export type WyckoffZoneMetaDto = {
+  readonly kind: 'wyckoff_zone'
+  readonly zone_type: 'accumulation' | 'distribution'
+  readonly phase: 'A' | 'B' | 'C' | 'D' | 'E'
+  readonly confidence: number
+  readonly side: 'high' | 'low'
+  readonly touch_count: number
+}
+
 export type SourceMetaDto =
   | EqualHighsLowsMetaDto
   | WickRejectionMetaDto
@@ -209,6 +227,8 @@ export type SourceMetaDto =
   | PriceGapMetaDto
   | DarvasBoxMetaDto
   | ConsolidationZoneMetaDto
+  | MaConfluenceMetaDto
+  | WyckoffZoneMetaDto
 
 export type KeyLevelSource =
   | 'equal_highs_lows'
@@ -236,6 +256,8 @@ export type KeyLevelSource =
   | 'price_gap'
   | 'darvas_box'
   | 'consolidation_zone'
+  | 'ma_confluence'
+  | 'wyckoff_zone'
 
 export type KeyLevelDto = {
   readonly price: number
