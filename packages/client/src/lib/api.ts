@@ -13,7 +13,7 @@ const makeApiError = (url: string, cause: unknown): ApiError => ({
   cause,
 })
 
-const fetchJson = <T>(url: string): Effect.Effect<T, ApiError> =>
+export const fetchJson = <T>(url: string): Effect.Effect<T, ApiError> =>
   Effect.tryPromise({
     try: () => fetch(url).then((r) => {
       if (!r.ok) throw new Error(`HTTP ${r.status}`)
