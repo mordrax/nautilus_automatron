@@ -93,6 +93,49 @@ export type CvdMetaDto = {
   readonly touch_count: number
 }
 
+export type SessionLevelMetaDto = {
+  readonly kind: 'session_level'
+  readonly session: 'asian' | 'london' | 'new_york' | 'custom'
+  readonly role: 'high' | 'low'
+  readonly session_date_iso: string
+  readonly side: 'high' | 'low'
+  readonly touch_count: number
+}
+
+export type PeriodicLevelMetaDto = {
+  readonly kind: 'periodic_level'
+  readonly period: 'daily' | 'weekly' | 'monthly'
+  readonly role: 'high' | 'low'
+  readonly period_start_iso: string
+  readonly side: 'high' | 'low'
+  readonly touch_count: number
+}
+
+export type OpeningRangeMetaDto = {
+  readonly kind: 'opening_range'
+  readonly range_minutes: number
+  readonly role: 'high' | 'low'
+  readonly side: 'high' | 'low'
+  readonly touch_count: number
+}
+
+export type MarketProfileMetaDto = {
+  readonly kind: 'market_profile_tpo'
+  readonly tpo_count: number
+  readonly role: 'poc' | 'vah' | 'val'
+  readonly total_tpo_periods: number
+  readonly side: 'high' | 'low'
+  readonly touch_count: number
+}
+
+export type SwingClusterMetaDto = {
+  readonly kind: 'swing_cluster'
+  readonly cluster_radius: number
+  readonly pivot_indices: readonly number[]
+  readonly side: 'high' | 'low'
+  readonly touch_count: number
+}
+
 export type SourceMetaDto =
   | EqualHighsLowsMetaDto
   | WickRejectionMetaDto
@@ -104,6 +147,11 @@ export type SourceMetaDto =
   | VolumeDistributionMetaDto
   | AnchoredVwapMetaDto
   | CvdMetaDto
+  | SessionLevelMetaDto
+  | PeriodicLevelMetaDto
+  | OpeningRangeMetaDto
+  | MarketProfileMetaDto
+  | SwingClusterMetaDto
 
 export type KeyLevelSource =
   | 'equal_highs_lows'
@@ -121,6 +169,11 @@ export type KeyLevelSource =
   | 'volume_distribution'
   | 'anchored_vwap'
   | 'cvd'
+  | 'session_level'
+  | 'periodic_level'
+  | 'opening_range'
+  | 'market_profile_tpo'
+  | 'swing_cluster'
 
 export type KeyLevelDto = {
   readonly price: number

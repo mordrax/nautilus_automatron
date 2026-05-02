@@ -188,6 +188,11 @@ def test_detectors_endpoint_returns_equal_highs_lows():
         "volume_distribution",
         "anchored_vwap",
         "cvd",
+        "session_level",
+        "periodic_level",
+        "opening_range",
+        "market_profile_tpo",
+        "swing_cluster",
     }
     returned_ids = {d["id"] for d in data}
     assert expected_ids.issubset(returned_ids)
@@ -559,6 +564,131 @@ def test_key_levels_cvd_route():
         assert lvl["meta"]["kind"] == "cvd"
         assert lvl["meta"]["divergence"] in ("bullish", "bearish", "none")
         assert lvl["meta"]["side"] in ("high", "low")
+
+
+# ---------------------------------------------------------------------------
+# Smoke tests for the migrated detectors (#122).
+# ---------------------------------------------------------------------------
+
+
+def _make_session_bars(days: int = 2) -> list[Bar]:
+    """24 hourly bars per day for `days` days — exercises Asian/London/NY
+    session windows so SessionLevelDetector emits levels.
+    """
+    bars: list[Bar] = []
+    idx = 0
+    for d in range(days):
+        for h in range(24):
+            ts = _BASE_TS + d * 24 * _1H_NS + h * _1H_NS
+            base = 100.0 + d
+            spike = 0.0
+            if 0 <= h < 8:
+                spike = 1.0 if h == 4 else 0.0
+            elif 7 <= h < 16:
+                spike = 2.0 if h == 11 else 0.0
+            elif 12 <= h < 21:
+                spike = 3.0 if h == 17 else 0.0
+            o = base + spike
+            c = base + spike + 0.2
+            hi = max(o, c) + 0.3
+            lo = min(o, c) - 0.3
+            bars.append(_make_bar(o, hi, lo, c, ts_ns=ts))
+            idx += 1
+    return bars
+
+
+def test_key_levels_session_level_route():
+    bars = _make_session_bars(days=2)
+    client = _client_with_catalog(_StubCatalog(bars_by_type={_DEFAULT_BAR_TYPE_STR: bars}))
+    res = client.get(
+        f"/api/bars/{_DEFAULT_BAR_TYPE_STR}/key-levels",
+        params={"detectors": "session_level"},
+    )
+    assert res.status_code == 200, res.text
+    levels = res.json()
+    assert isinstance(levels, list)
+    assert len(levels) > 0
+    for lvl in levels:
+        assert lvl["source"] == "session_level"
+        assert lvl["meta"]["kind"] == "session_level"
+        assert lvl["meta"]["session"] in ("asian", "london", "new_york", "custom")
+        assert lvl["meta"]["role"] in ("high", "low")
+        assert lvl["meta"]["side"] in ("high", "low")
+
+
+def test_key_levels_periodic_level_route():
+    # Span at least 3 days so daily period rolls over and emits levels.
+    bars = _make_session_bars(days=3)
+    client = _client_with_catalog(_StubCatalog(bars_by_type={_DEFAULT_BAR_TYPE_STR: bars}))
+    res = client.get(
+        f"/api/bars/{_DEFAULT_BAR_TYPE_STR}/key-levels",
+        params={"detectors": "periodic_level"},
+    )
+    assert res.status_code == 200, res.text
+    levels = res.json()
+    assert isinstance(levels, list)
+    assert len(levels) > 0
+    for lvl in levels:
+        assert lvl["source"] == "periodic_level"
+        assert lvl["meta"]["kind"] == "periodic_level"
+        assert lvl["meta"]["period"] in ("daily", "weekly", "monthly")
+        assert lvl["meta"]["role"] in ("high", "low")
+        assert lvl["meta"]["side"] in ("high", "low")
+
+
+def test_key_levels_opening_range_route():
+    # Need bars spanning the open hour (9 UTC default) for >= range_minutes,
+    # plus past the lock — 2 days of hourly bars covers it.
+    bars = _make_session_bars(days=2)
+    client = _client_with_catalog(_StubCatalog(bars_by_type={_DEFAULT_BAR_TYPE_STR: bars}))
+    res = client.get(
+        f"/api/bars/{_DEFAULT_BAR_TYPE_STR}/key-levels",
+        params={"detectors": "opening_range"},
+    )
+    assert res.status_code == 200, res.text
+    levels = res.json()
+    assert isinstance(levels, list)
+    # Even if range hasn't locked, response shape must be valid.
+    for lvl in levels:
+        assert lvl["source"] == "opening_range"
+        assert lvl["meta"]["kind"] == "opening_range"
+        assert lvl["meta"]["role"] in ("high", "low")
+        assert lvl["meta"]["side"] in ("high", "low")
+
+
+def test_key_levels_market_profile_route():
+    # 2 days = at least one prior session's TPO profile to build levels from.
+    bars = _make_session_bars(days=2)
+    client = _client_with_catalog(_StubCatalog(bars_by_type={_DEFAULT_BAR_TYPE_STR: bars}))
+    res = client.get(
+        f"/api/bars/{_DEFAULT_BAR_TYPE_STR}/key-levels",
+        params={"detectors": "market_profile_tpo"},
+    )
+    assert res.status_code == 200, res.text
+    levels = res.json()
+    assert isinstance(levels, list)
+    for lvl in levels:
+        assert lvl["source"] == "market_profile_tpo"
+        assert lvl["meta"]["kind"] == "market_profile_tpo"
+        assert lvl["meta"]["role"] in ("poc", "vah", "val")
+        assert lvl["meta"]["side"] in ("high", "low")
+
+
+def test_key_levels_swing_cluster_route():
+    bars = _make_equal_highs_lows_bars()
+    client = _client_with_catalog(_StubCatalog(bars_by_type={_DEFAULT_BAR_TYPE_STR: bars}))
+    res = client.get(
+        f"/api/bars/{_DEFAULT_BAR_TYPE_STR}/key-levels",
+        params={"detectors": "swing_cluster"},
+    )
+    assert res.status_code == 200, res.text
+    levels = res.json()
+    assert isinstance(levels, list)
+    for lvl in levels:
+        assert lvl["source"] == "swing_cluster"
+        assert lvl["meta"]["kind"] == "swing_cluster"
+        assert lvl["meta"]["side"] in ("high", "low")
+        assert isinstance(lvl["meta"]["pivot_indices"], list)
 
 
 # ---------------------------------------------------------------------------
