@@ -139,6 +139,12 @@ const buildOption = (
 
   const allXAxisIndices = [0, ...panels.xAxes.map((_: any, i: number) => i + 1)]
 
+  const defaultVisibleBars = 500
+  const totalBars = categoryData.length
+  const defaultStart = totalBars > defaultVisibleBars
+    ? ((totalBars - defaultVisibleBars) / totalBars) * 100
+    : 0
+
   return {
     animation: false,
     tooltip: {
@@ -174,8 +180,8 @@ const buildOption = (
       ...panels.yAxes,
     ],
     dataZoom: [
-      { type: 'inside', start: 0, end: 100, xAxisIndex: allXAxisIndices },
-      { type: 'slider', start: 0, end: 100, bottom: '2%', xAxisIndex: allXAxisIndices },
+      { type: 'inside', start: defaultStart, end: 100, xAxisIndex: allXAxisIndices },
+      { type: 'slider', start: defaultStart, end: 100, bottom: '2%', xAxisIndex: allXAxisIndices },
     ],
     series: [
       {
