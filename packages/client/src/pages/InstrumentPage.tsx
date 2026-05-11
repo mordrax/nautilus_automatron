@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { CandlestickChart } from '@/components/chart/CandlestickChart'
-import { IndicatorToggles } from '@/components/chart/IndicatorToggles'
+import { IndicatorSelector } from '@/components/chart/indicator-selector/IndicatorSelector'
 import { KeyLevelsPanel } from '@/components/chart/KeyLevelsPanel'
 import { useCatalogBars } from '@/hooks/use-catalog-bars'
 import { useIndicators } from '@/hooks/use-indicators'
@@ -56,7 +56,7 @@ export const InstrumentPage = ({ barType }: InstrumentPageProps) => {
             <CardTitle className="text-sm">Indicators</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <IndicatorToggles
+            <IndicatorSelector
               indicators={available}
               enabledIds={enabledIds}
               onToggle={toggle}
