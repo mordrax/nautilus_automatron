@@ -1,5 +1,10 @@
 import { test, expect } from '@playwright/test'
 
+const enableIndicator = async (page: import('@playwright/test').Page, label: string) => {
+  await page.getByRole('button', { name: 'Add indicator' }).click()
+  await page.getByRole('option', { name: label }).click()
+}
+
 test.describe('Indicator Colors', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
@@ -11,105 +16,70 @@ test.describe('Indicator Colors', () => {
     await expect(page.getByRole('button', { name: /Prev/ })).toBeVisible()
   })
 
-  test('color swatches are visible next to each indicator', async ({ page }) => {
-    // Each indicator should have a color swatch button
-    const overlaysSection = page.getByText('Overlays').locator('..')
-    const swatches = overlaysSection.locator('button[title="Change color"]')
-    await expect(swatches.first()).toBeVisible()
-    const count = await swatches.count()
-    expect(count).toBeGreaterThan(0)
-  })
+  test('chip swatch opens color picker popover with hex input and presets', async ({ page }) => {
+    await enableIndicator(page, 'SMA(20)')
 
-  test('clicking color swatch opens popover with hex input and preset swatches', async ({ page }) => {
-    // Click the first color swatch
-    const firstSwatch = page.locator('button[title="Change color"]').first()
-    await expect(firstSwatch).toBeVisible()
-    await firstSwatch.click()
+    const swatch = page.getByRole('button', { name: 'Change color for SMA(20)' })
+    await expect(swatch).toBeVisible()
+    await swatch.click()
 
-    // Popover should open with hex input and preset colors
     const popover = page.locator('[data-radix-popper-content-wrapper]')
     await expect(popover).toBeVisible()
 
-    // Should have a hex text input
     const hexInput = popover.locator('input[type="text"]')
     await expect(hexInput).toBeVisible()
     const hexValue = await hexInput.inputValue()
     expect(hexValue).toMatch(/^#[0-9A-Fa-f]{6}$/)
 
-    // Should have preset color buttons (10 colors in the palette)
     const presets = popover.locator('button')
-    const presetCount = await presets.count()
-    expect(presetCount).toBe(10)
+    expect(await presets.count()).toBe(10)
   })
 
-  test('selecting a preset color updates the swatch', async ({ page }) => {
-    const firstSwatch = page.locator('button[title="Change color"]').first()
-    await expect(firstSwatch).toBeVisible()
+  test('selecting a preset color updates the chip swatch', async ({ page }) => {
+    await enableIndicator(page, 'SMA(20)')
+    const swatch = page.getByRole('button', { name: 'Change color for SMA(20)' })
+    await swatch.click()
 
-    // Open popover and click a different preset
-    await firstSwatch.click()
     const popover = page.locator('[data-radix-popper-content-wrapper]')
     await expect(popover).toBeVisible()
-
-    // Click the last preset (likely different from current)
     const lastPreset = popover.locator('button').last()
     await lastPreset.click()
 
-    // Swatch color should have changed
-    const newColor = await firstSwatch.evaluate(
-      (el) => (el as HTMLElement).style.backgroundColor
+    const newColor = await swatch.evaluate(
+      (el) => (el as HTMLElement).style.backgroundColor,
     )
-    // Colors may or may not differ (if the last preset happened to be the default)
-    // But the swatch should still have a valid color
     expect(newColor).toBeTruthy()
   })
 
-  test('indicator colors are deterministic across toggles', async ({ page }) => {
-    // Enable SMA(20) and note its color
-    const smaCheckbox = page.getByRole('checkbox').nth(0)
-    await smaCheckbox.click()
-    await expect(smaCheckbox).toBeChecked()
-
-    // Get the swatch color for SMA
-    const smaSwatch = page.locator('button[title="Change color"]').first()
-    const color1 = await smaSwatch.evaluate(
-      (el) => (el as HTMLElement).style.backgroundColor
+  test('indicator colors are deterministic across enable/disable', async ({ page }) => {
+    await enableIndicator(page, 'SMA(20)')
+    const swatch = page.getByRole('button', { name: 'Change color for SMA(20)' })
+    const color1 = await swatch.evaluate(
+      (el) => (el as HTMLElement).style.backgroundColor,
     )
 
-    // Disable and re-enable
-    await smaCheckbox.click()
-    await expect(smaCheckbox).not.toBeChecked()
-    await smaCheckbox.click()
-    await expect(smaCheckbox).toBeChecked()
+    await page.getByRole('button', { name: 'Disable SMA(20)' }).click()
+    await expect(page.getByRole('button', { name: 'Change color for SMA(20)' })).toHaveCount(0)
 
-    // Color should be the same
-    const color2 = await smaSwatch.evaluate(
-      (el) => (el as HTMLElement).style.backgroundColor
-    )
+    await enableIndicator(page, 'SMA(20)')
+    const color2 = await page
+      .getByRole('button', { name: 'Change color for SMA(20)' })
+      .evaluate((el) => (el as HTMLElement).style.backgroundColor)
     expect(color2).toBe(color1)
   })
 
   test('picked color is applied to the eCharts overlay series', async ({ page }) => {
-    // Enable SMA(20) so it renders as a series
-    const smaCheckbox = page.getByRole('checkbox', { name: 'SMA(20)' })
-    await smaCheckbox.click()
-    await expect(smaCheckbox).toBeChecked()
-
-    // Open color picker for SMA(20)
-    const smaSwatch = page.getByRole('button', { name: 'Change color for SMA(20)' })
-    await expect(smaSwatch).toBeVisible()
-    await smaSwatch.click()
+    await enableIndicator(page, 'SMA(20)')
+    const swatch = page.getByRole('button', { name: 'Change color for SMA(20)' })
+    await swatch.click()
 
     const popover = page.locator('[data-radix-popper-content-wrapper]')
     await expect(popover).toBeVisible()
-
-    // Pick the last preset
     const lastPreset = popover.locator('button').last()
     const targetHex = await lastPreset.getAttribute('title')
     expect(targetHex).toMatch(/^#[0-9A-Fa-f]{6}$/)
     await lastPreset.click()
 
-    // Wait until the SMA series in eCharts reflects the picked color
     await expect
       .poll(async () =>
         page.evaluate((label) => {
@@ -126,27 +96,30 @@ test.describe('Indicator Colors', () => {
   })
 
   test('color persists across page reload via localStorage', async ({ page }) => {
-    const firstSwatch = page.locator('button[title="Change color"]').first()
-    await expect(firstSwatch).toBeVisible()
-    await firstSwatch.click()
+    await enableIndicator(page, 'SMA(20)')
+    const swatch = page.getByRole('button', { name: 'Change color for SMA(20)' })
+    await swatch.click()
 
     const popover = page.locator('[data-radix-popper-content-wrapper]')
     await expect(popover).toBeVisible()
-
     const lastPreset = popover.locator('button').last()
-    const targetBg = await lastPreset.evaluate((el) => (el as HTMLElement).style.backgroundColor)
     const targetHex = await lastPreset.getAttribute('title')
+    const targetBg = await lastPreset.evaluate(
+      (el) => (el as HTMLElement).style.backgroundColor,
+    )
     await lastPreset.click()
 
-    // Verify localStorage was written
     const stored = await page.evaluate(() => localStorage.getItem('indicator-colors'))
     expect(stored).toBeTruthy()
     expect(stored).toContain(targetHex!)
 
-    // Reload and assert swatch retains the picked color
     await page.reload()
     await expect(page.getByRole('button', { name: /Prev/ })).toBeVisible()
-    const swatchAfterReload = page.locator('button[title="Change color"]').first()
+
+    // After reload the chip won't be there (enabledIds is in-memory only).
+    // Re-enable and verify the persisted color is applied to the new chip.
+    await enableIndicator(page, 'SMA(20)')
+    const swatchAfterReload = page.getByRole('button', { name: 'Change color for SMA(20)' })
     await expect(swatchAfterReload).toBeVisible()
     const colorAfterReload = await swatchAfterReload.evaluate(
       (el) => (el as HTMLElement).style.backgroundColor,
