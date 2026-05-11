@@ -196,3 +196,7 @@ None required — components are thin wrappers over shadcn primitives. Behavior 
 - [ ] No regressions to chart rendering or indicator overlay/panel behavior.
 - [ ] `IndicatorToggles.tsx` is deleted; call sites in `InstrumentPage` and `RunDetailPage` import `IndicatorSelector` instead.
 - [ ] Playwright e2e covers all scenarios listed above.
+
+## Amendment 2026-05-11: Key Levels unification
+
+The `IndicatorSelector` component was extended to absorb key-level detector selection, eliminating the separate `KeyLevelsPanel` checkbox list. The Add menu now has a third group — "Key Levels" — after Overlays and Panels; selected detectors render as chips in the same row as indicator chips, using the server-supplied `DetectorMeta.color` as the swatch background. Unlike indicator chips, key-level chip swatches are non-interactive (plain `<span>`, no color-picker popover) because detector colors are backend-defined. Both parent pages (`RunDetailPage` and `InstrumentPage`) pass detector props to `IndicatorSelector` and the `KeyLevelsPanel` component has been deleted; the `useDetectors` and `useKeyLevels` hooks remain unchanged and still drive chart rendering.
