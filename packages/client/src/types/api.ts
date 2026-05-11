@@ -122,6 +122,9 @@ export type CatalogEntry = {
   readonly start_date: string
   readonly end_date: string
   readonly timeframe: string
+  readonly venue: string | null
+  readonly path: string
+  readonly file_count: number
 }
 
 export type StrategyInfo = {
