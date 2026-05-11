@@ -51,10 +51,10 @@ test.describe('Indicator Selector (new behavior)', () => {
     await expect(selector.getByText('SMA(50)')).toBeVisible()
   })
 
-  test('keyboard nav: arrow down + Enter enables an instance', async ({ page }) => {
+  test('keyboard nav: ArrowDown + Enter enables the second option', async ({ page }) => {
     await openMenu(page)
-    // First option in the Overlays group is highlighted by default.
-    // Press Enter to select it.
+    // First option is highlighted by default; move to the second, then select.
+    await page.keyboard.press('ArrowDown')
     await page.keyboard.press('Enter')
     // A chip should have appeared
     const selector = page.getByTestId('indicator-selector')

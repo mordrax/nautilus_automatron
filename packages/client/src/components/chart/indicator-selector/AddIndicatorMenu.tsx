@@ -32,10 +32,9 @@ export const AddIndicatorMenu = ({
   const [open, setOpen] = useState(false)
 
   const groups = useMemo(() => {
-    const buckets: Record<IndicatorMeta['display'], IndicatorMeta[]> = {
-      overlay: [],
-      panel: [],
-    }
+    const buckets = Object.fromEntries(
+      GROUP_ORDER.map(d => [d, [] as IndicatorMeta[]]),
+    ) as Record<IndicatorMeta['display'], IndicatorMeta[]>
     for (const ind of indicators) {
       if (enabledIds.has(ind.id)) continue
       buckets[ind.display].push(ind)
