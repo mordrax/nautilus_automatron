@@ -10,42 +10,50 @@ import {
   CommandList,
 } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import type { IndicatorMeta } from '@/types/api'
 
-const GROUP_ORDER: readonly IndicatorMeta['display'][] = ['overlay', 'panel']
-const GROUP_LABELS: Record<IndicatorMeta['display'], string> = {
+export type MenuItemGroup = 'overlay' | 'panel' | 'key-level'
+
+export type MenuItem = {
+  readonly id: string
+  readonly label: string
+  readonly group: MenuItemGroup
+}
+
+const GROUP_ORDER: readonly MenuItemGroup[] = ['overlay', 'panel', 'key-level']
+const GROUP_LABELS: Record<MenuItemGroup, string> = {
   overlay: 'Overlays',
   panel: 'Panels',
+  'key-level': 'Key Levels',
 }
 
 type AddIndicatorMenuProps = {
-  readonly indicators: readonly IndicatorMeta[]
-  readonly enabledIds: ReadonlySet<string>
-  readonly onAdd: (id: string) => void
+  readonly items: readonly MenuItem[]
+  readonly enabledKey: (item: MenuItem) => boolean
+  readonly onAdd: (item: MenuItem) => void
 }
 
 export const AddIndicatorMenu = ({
-  indicators,
-  enabledIds,
+  items,
+  enabledKey,
   onAdd,
 }: AddIndicatorMenuProps) => {
   const [open, setOpen] = useState(false)
 
   const groups = useMemo(() => {
     const buckets = Object.fromEntries(
-      GROUP_ORDER.map(d => [d, [] as IndicatorMeta[]]),
-    ) as Record<IndicatorMeta['display'], IndicatorMeta[]>
-    for (const ind of indicators) {
-      if (enabledIds.has(ind.id)) continue
-      buckets[ind.display].push(ind)
+      GROUP_ORDER.map(g => [g, [] as MenuItem[]]),
+    ) as Record<MenuItemGroup, MenuItem[]>
+    for (const item of items) {
+      if (enabledKey(item)) continue
+      buckets[item.group].push(item)
     }
     return GROUP_ORDER
-      .map(display => ({ display, label: GROUP_LABELS[display], items: buckets[display] }))
+      .map(group => ({ group, label: GROUP_LABELS[group], items: buckets[group] }))
       .filter(g => g.items.length > 0)
-  }, [indicators, enabledIds])
+  }, [items, enabledKey])
 
-  const handleSelect = (id: string) => {
-    onAdd(id)
+  const handleSelect = (item: MenuItem) => {
+    onAdd(item)
     setOpen(false)
   }
 
@@ -68,14 +76,14 @@ export const AddIndicatorMenu = ({
           <CommandList>
             <CommandEmpty>No indicators found.</CommandEmpty>
             {groups.map(group => (
-              <CommandGroup key={group.display} heading={group.label}>
-                {group.items.map(ind => (
+              <CommandGroup key={group.group} heading={group.label}>
+                {group.items.map(item => (
                   <CommandItem
-                    key={ind.id}
-                    value={ind.label}
-                    onSelect={() => handleSelect(ind.id)}
+                    key={item.id}
+                    value={item.label}
+                    onSelect={() => handleSelect(item)}
                   >
-                    {ind.label}
+                    {item.label}
                   </CommandItem>
                 ))}
               </CommandGroup>

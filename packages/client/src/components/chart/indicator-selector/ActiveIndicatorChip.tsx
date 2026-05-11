@@ -48,7 +48,7 @@ type ActiveIndicatorChipProps = {
   readonly id: string
   readonly label: string
   readonly color: string
-  readonly onColorChange: (id: string, color: string) => void
+  readonly onColorChange?: (id: string, color: string) => void
   readonly onRemove: (id: string) => void
 }
 
@@ -60,20 +60,28 @@ export const ActiveIndicatorChip = ({
   onRemove,
 }: ActiveIndicatorChipProps) => (
   <div className="inline-flex items-center gap-1.5 pl-1 pr-1.5 py-0.5 rounded-md border border-border bg-background text-xs">
-    <Popover>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          aria-label={`Change color for ${label}`}
-          className="w-3 h-3 rounded-sm border border-border cursor-pointer shrink-0 hover:scale-110 transition-transform"
-          style={{ backgroundColor: color }}
-          title="Change color"
-        />
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-2" side="bottom" align="start">
-        <ColorPicker color={color} onChange={c => onColorChange(id, c)} />
-      </PopoverContent>
-    </Popover>
+    {onColorChange ? (
+      <Popover>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            aria-label={`Change color for ${label}`}
+            className="w-3 h-3 rounded-sm border border-border cursor-pointer shrink-0 hover:scale-110 transition-transform"
+            style={{ backgroundColor: color }}
+            title="Change color"
+          />
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-2" side="bottom" align="start">
+          <ColorPicker color={color} onChange={c => onColorChange(id, c)} />
+        </PopoverContent>
+      </Popover>
+    ) : (
+      <span
+        aria-label={`Color for ${label}`}
+        className="w-3 h-3 rounded-sm border border-border shrink-0"
+        style={{ backgroundColor: color }}
+      />
+    )}
     <span className="whitespace-nowrap">{label}</span>
     <button
       type="button"
