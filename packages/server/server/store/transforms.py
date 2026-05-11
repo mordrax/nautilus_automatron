@@ -217,6 +217,18 @@ def _parse_timeframe(bar_type: str, instrument_id: str) -> str:
     return bar_type
 
 
+def _parse_venue(bar_type: str) -> str | None:
+    """Extract the venue token from a bar_type string.
+
+    Bar types are formatted '{symbol}.{venue}-{aggregation}-{price}-{source}'.
+    Returns the venue token (e.g. 'IBCFD', 'SIM') or None if no '.' is present.
+    """
+    if "." not in bar_type:
+        return None
+    after_dot = bar_type.split(".", 1)[1]
+    return after_dot.split("-", 1)[0] if "-" in after_dot else after_dot
+
+
 def catalog_entry_to_dict(entry: dict) -> dict:
     """Convert a raw catalog entry from the reader into an API-ready dict."""
     return {
@@ -226,4 +238,7 @@ def catalog_entry_to_dict(entry: dict) -> dict:
         "start_date": _ns_to_iso(entry["ts_min"]),
         "end_date": _ns_to_iso(entry["ts_max"]),
         "timeframe": _parse_timeframe(entry["bar_type"], entry["instrument_id"]),
+        "venue": _parse_venue(entry["bar_type"]),
+        "path": entry["path"],
+        "file_count": entry["file_count"],
     }

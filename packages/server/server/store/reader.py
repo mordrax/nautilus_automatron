@@ -64,6 +64,8 @@ def list_catalog_entries(
             "bar_count": len(bars),
             "ts_min": ts_min,
             "ts_max": ts_max,
+            "path": str(bar_type_dir.resolve()),
+            "file_count": sum(1 for _ in bar_type_dir.glob("*.parquet")),
         })
 
     return entries
