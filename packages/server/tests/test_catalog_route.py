@@ -75,3 +75,28 @@ def test_catalog_entry_to_dict_venue_null_when_no_dot():
     }
     out = catalog_entry_to_dict(raw)
     assert out["venue"] is None
+
+
+class TestParseVenue:
+    """Direct unit tests for the venue parser."""
+
+    def test_single_dot_simple(self):
+        from server.store.transforms import _parse_venue
+        assert _parse_venue("XAUUSD.IBCFD-1-MINUTE-MID-EXTERNAL") == "IBCFD"
+
+    def test_single_dot_with_slash_in_symbol(self):
+        from server.store.transforms import _parse_venue
+        assert _parse_venue("AUD/USD.SIM-100-TICK-MID-INTERNAL") == "SIM"
+
+    def test_no_dot_returns_none(self):
+        from server.store.transforms import _parse_venue
+        assert _parse_venue("NOPE-1-MINUTE-BID-EXTERNAL") is None
+
+    def test_multi_dot_takes_last_segment(self):
+        from server.store.transforms import _parse_venue
+        # Hypothetical multi-dot instrument id (a.b.c). Venue is the LAST dot segment.
+        assert _parse_venue("AAA.BBB.CCC-1-MINUTE-MID-EXTERNAL") == "CCC"
+
+    def test_dot_but_no_dash_after(self):
+        from server.store.transforms import _parse_venue
+        assert _parse_venue("SOMETHING.VENUEONLY") == "VENUEONLY"

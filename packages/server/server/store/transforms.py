@@ -220,13 +220,16 @@ def _parse_timeframe(bar_type: str, instrument_id: str) -> str:
 def _parse_venue(bar_type: str) -> str | None:
     """Extract the venue token from a bar_type string.
 
-    Bar types are formatted '{symbol}.{venue}-{aggregation}-{price}-{source}'.
+    Bar types are formatted '{instrument_id}-{aggregation}-{price}-{source}',
+    where `instrument_id` is `{symbol}.{venue}`. The venue is the last
+    dot-separated segment of the instrument id, up to the first '-'.
+
     Returns the venue token (e.g. 'IBCFD', 'SIM') or None if no '.' is present.
     """
     if "." not in bar_type:
         return None
-    after_dot = bar_type.split(".", 1)[1]
-    return after_dot.split("-", 1)[0] if "-" in after_dot else after_dot
+    after_last_dot = bar_type.rsplit(".", 1)[1]
+    return after_last_dot.split("-", 1)[0] if "-" in after_last_dot else after_last_dot
 
 
 def catalog_entry_to_dict(entry: dict) -> dict:
