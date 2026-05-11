@@ -3,6 +3,7 @@ import { test, expect } from '@playwright/test'
 const enableIndicator = async (page: import('@playwright/test').Page, label: string) => {
   await page.getByRole('button', { name: 'Add indicator' }).click()
   await page.getByRole('option', { name: label }).click()
+  await expect(page.getByPlaceholder('Search indicators…')).not.toBeVisible()
 }
 
 test.describe('Indicator Colors', () => {

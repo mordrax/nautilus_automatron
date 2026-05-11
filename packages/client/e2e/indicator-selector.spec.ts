@@ -6,6 +6,7 @@ const openMenu = (page: import('@playwright/test').Page) =>
 const enableIndicator = async (page: import('@playwright/test').Page, label: string) => {
   await openMenu(page)
   await page.getByRole('option', { name: label }).click()
+  await expect(page.getByPlaceholder('Search indicators…')).not.toBeVisible()
 }
 
 test.describe('Indicator Selector (new behavior)', () => {
@@ -35,19 +36,19 @@ test.describe('Indicator Selector (new behavior)', () => {
   })
 
   test('already-enabled instance is hidden from the menu but siblings remain', async ({ page }) => {
-    await enableIndicator(page, 'EMA(20)')
+    await enableIndicator(page, 'SMA(20)')
     await openMenu(page)
-    await expect(page.getByRole('option', { name: 'EMA(20)' })).not.toBeVisible()
-    await expect(page.getByRole('option', { name: 'EMA(50)' })).toBeVisible()
+    await expect(page.getByRole('option', { name: 'SMA(20)' })).not.toBeVisible()
+    await expect(page.getByRole('option', { name: 'SMA(50)' })).toBeVisible()
   })
 
   test('multiple instances of same type coexist as separate chips', async ({ page }) => {
-    await enableIndicator(page, 'EMA(20)')
-    await enableIndicator(page, 'EMA(50)')
+    await enableIndicator(page, 'SMA(20)')
+    await enableIndicator(page, 'SMA(50)')
 
     const selector = page.getByTestId('indicator-selector')
-    await expect(selector.getByText('EMA(20)')).toBeVisible()
-    await expect(selector.getByText('EMA(50)')).toBeVisible()
+    await expect(selector.getByText('SMA(20)')).toBeVisible()
+    await expect(selector.getByText('SMA(50)')).toBeVisible()
   })
 
   test('keyboard nav: arrow down + Enter enables an instance', async ({ page }) => {
