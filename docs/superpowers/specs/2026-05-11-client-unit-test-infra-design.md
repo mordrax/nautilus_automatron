@@ -37,6 +37,8 @@ The 50-bar default isn't the headline change — it's the vehicle that proves th
 
 DevDependencies to add: `vitest` only. No `jsdom`, no `@testing-library/react`, no setup file — the first test is pure logic over numbers.
 
+**Version pinning (important):** `packages/client` is on Vite 8. Vitest 4.x (latest stable as of 2026-05-11) only declares `vite: '^6.0.0 || ^7.0.0'` as its peer — it does **not** support Vite 8. The first version with Vite 8 support is **Vitest 5.0.0-beta.2** (released 2026-05-05). Pin `"vitest": "5.0.0-beta.2"` (exact, not `^`) in `devDependencies` until Vitest 5 reaches stable; bumping to a later beta or RC should be an intentional follow-up, not a silent caret-range upgrade. Accept the beta risk knowingly: the surface we use (pure-logic tests, no jsdom/threads/browser) is the most stable slice of Vitest and the blast radius of a beta bug is a noisy local test run, not a production regression.
+
 ### Config
 
 Add a `test` block to the existing `packages/client/vite.config.ts` rather than introducing a separate `vitest.config.ts`. Vitest reads the `test` field from `vite.config.ts`, so transforms, plugins, and path aliases are shared automatically without `mergeConfig` boilerplate or risk of drift between two files. No `environment` override (defaults to `node`, correct for pure-logic tests). A separate `vitest.config.ts` is a fine future option if test config grows enough to warrant it, but is unwarranted today.
@@ -70,6 +72,10 @@ The helper lives in `src/lib/` alongside other pure helpers (`chart-config.ts`, 
 
 ### Helper consumer
 
+`CandlestickChart` is consumed by **both** `RunDetailPage` (via `useBars`) and `InstrumentPage` (via `useCatalogBars`), so the default-zoom behavior change applies to both routes. The e2e smoke check covers `RunDetailPage` only; `InstrumentPage` relies on the unit test for confidence in the math. A separate `InstrumentPage` smoke check is out of scope for this card.
+
+The `@/lib/chart-zoom` import path uses the existing `@` → `src/` alias configured in `packages/client/tsconfig.app.json` and `vite.config.ts` (same alias already used by `@/lib/chart-config` and others — no new alias configuration required).
+
 In `packages/client/src/components/chart/CandlestickChart.tsx`, replace the inline math block:
 
 ```ts
@@ -88,7 +94,9 @@ import { computeDefaultStart } from '@/lib/chart-zoom'
 const defaultStart = computeDefaultStart(categoryData.length)
 ```
 
-Both `dataZoom` entries continue using `start: defaultStart, end: 100`. The existing indicator-update effect at the bottom of the file (which preserves the user's current zoom on re-renders) is unaffected — it reads the chart instance's current `dataZoom` start/end, not the option's default.
+Both `dataZoom` entries continue using `start: defaultStart, end: 100`. The existing indicator-update effect at the bottom of the file (which preserves the user's current zoom on re-renders for indicator toggling) is unaffected — it reads the chart instance's current `dataZoom` start/end, not the option's default.
+
+**Run-switching behavior (unchanged by this PR):** When the user picks a different run, `CandlestickChart` is re-mounted (different `ohlc` prop) and the first `useEffect` rebuilds the chart from scratch, which means the viewport resets to the 50-bar default. This matches the current (pre-PR-#47) behavior — zoom is preserved across *indicator* updates but reset on *run switches*. Cross-run zoom persistence is explicitly out of scope.
 
 ### Production default
 
@@ -119,11 +127,25 @@ Assertions use concrete numbers (`toBe(0)`, `toBe(95)`, `toBe(90)`) rather than 
 
 Removed: the visible-bars-count math (now covered by unit tests) and the tautological formula re-derivation. The 1000-bar e2e dataset still satisfies `start > 0` under the new 50-bar default, so the spec stays green without test-data changes.
 
+## Acceptance Criteria
+
+The PR is "done" when all of the following hold:
+
+1. `cd packages/client && bun run test:unit` exits 0 with 6 passing tests, all in `src/lib/chart-zoom.test.ts`.
+2. `cd packages/client && bunx tsc -b --noEmit` exits 0.
+3. `cd packages/client && bun run lint` exits 0.
+4. `cd packages/client && TEST_VITE_PORT=<port> TEST_API_PORT=<port> bunx playwright test default-zoom.spec.ts --project=headless` exits 0.
+5. The full e2e suite passes in CI on the PR.
+6. Browser validation (Chrome MCP) on a real backtest run shows the chart opens with the last 50 bars visible; the dataZoom slider can be dragged to expand the viewport to the full range.
+7. `import { computeDefaultStart, DEFAULT_VISIBLE_BARS } from '@/lib/chart-zoom'` in `CandlestickChart.tsx` resolves and `DEFAULT_VISIBLE_BARS === 50`.
+8. No new files outside the ones listed in this spec (`vite.config.ts` edit, `package.json` edit, `src/lib/chart-zoom.ts`, `src/lib/chart-zoom.test.ts`, `CandlestickChart.tsx` edit, `e2e/default-zoom.spec.ts` edit).
+
 ## Risk + Mitigation
 
-- **The 50-bar default may be too tight for some workflows.** Mitigation: it's a constant in one file (`chart-zoom.ts`) and the user can still drag the dataZoom slider out to the full range. If 50 turns out to be wrong, it's a one-line follow-up.
-- **Vitest config drift from Vite config.** Mitigation: extending the same `defineConfig` keeps them in sync. If they diverge, type-check failures will surface immediately in `tsc --noEmit` (already in CI).
+- **Vitest 5 beta dependency.** Pin exact version (no caret). The pure-logic test surface is the most stable slice of Vitest; failures would be loud and local. If a blocker is hit, fall back to `bun test` (same test file shape, ~5-minute migration).
+- **The 50-bar default may be too tight for some workflows.** It's a constant in one file (`chart-zoom.ts`) and the user can still drag the dataZoom slider out to the full range. If 50 turns out to be wrong, it's a one-line follow-up.
 - **Indicator-update effect interaction.** The effect reads `chartRef.current.getOption().dataZoom[0].start`, so any change to the *default* `start` only affects first render. Verified by reading the effect at `CandlestickChart.tsx:328-347` during brainstorming.
+- **InstrumentPage not covered by e2e smoke check.** Unit test covers the math for both consumers; the wiring on `InstrumentPage` is identical to `RunDetailPage`. If a regression sneaks in there, the next user of that page will see the wrong default — acceptable risk for this card.
 
 ## Out of Scope (Explicit)
 
@@ -137,6 +159,7 @@ Removed: the visible-bars-count math (now covered by unit tests) and the tautolo
 | Decision | Choice | Why |
 |---|---|---|
 | Test runner | Vitest | Canonical for Vite + React |
+| Vitest version | 5.0.0-beta.2 (pinned exact) | Vitest 4.x doesn't support Vite 8 |
 | Install scope | Minimal (no jsdom / RTL) | Defer until first component test |
 | Helper location | `src/lib/chart-zoom.ts` | Matches existing pure-helper home |
 | Test file layout | Co-located (`foo.ts` + `foo.test.ts`) | Standard Vitest pattern; mirrors prod source |
