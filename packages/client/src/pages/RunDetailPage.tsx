@@ -17,7 +17,7 @@ import { useTradeNavigation } from '@/hooks/use-trades'
 import { useHotkeys } from '@/hooks/use-hotkeys'
 import { useCategorisation } from '@/hooks/use-categorisation'
 import { useIndicators } from '@/hooks/use-indicators'
-import { IndicatorToggles } from '@/components/chart/IndicatorToggles'
+import { IndicatorSelector } from '@/components/chart/indicator-selector/IndicatorSelector'
 import { KeyLevelsPanel } from '@/components/chart/KeyLevelsPanel'
 import { useKeyLevels } from '@/hooks/use-key-levels'
 
@@ -115,7 +115,7 @@ export const RunDetailPage = ({ runId }: RunDetailPageProps) => {
             <CardTitle className="text-sm">Indicators</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <IndicatorToggles
+            <IndicatorSelector
               indicators={available}
               enabledIds={enabledIds}
               onToggle={toggle}
