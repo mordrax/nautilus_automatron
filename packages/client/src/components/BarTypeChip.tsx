@@ -32,7 +32,11 @@ export const BarTypeChip = ({ barType, entry }: Props) => {
         className="max-w-[640px] bg-popover text-popover-foreground border border-border shadow-md"
         side="bottom"
         align="start"
-        onPointerDownOutside={() => setPinned(false)}
+        onPointerDownOutside={(e) => {
+          const target = e.detail.originalEvent.target as HTMLElement | null
+          if (target?.closest('[data-bartype]')) return
+          setPinned(false)
+        }}
       >
         <CatalogTooltipContent barType={barType} entry={entry} />
       </TooltipContent>
