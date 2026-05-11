@@ -20,6 +20,8 @@ import { useIndicators } from '@/hooks/use-indicators'
 import { IndicatorToggles } from '@/components/chart/IndicatorToggles'
 import { KeyLevelsPanel } from '@/components/chart/KeyLevelsPanel'
 import { useKeyLevels } from '@/hooks/use-key-levels'
+import { useCatalog } from '@/hooks/use-catalog'
+import { BarTypeChip } from '@/components/BarTypeChip'
 
 type RunDetailPageProps = {
   readonly runId: string
@@ -31,6 +33,10 @@ export const RunDetailPage = ({ runId }: RunDetailPageProps) => {
   const barType = runDetail?.bar_types[0] ?? ''
   const { data: ohlc } = useBars(runId, barType)
   const { data: equity } = useEquity(runId)
+  const { data: catalog } = useCatalog()
+  const catalogMap = Object.fromEntries(
+    (catalog ?? []).map((e) => [e.bar_type, e]),
+  )
 
   const [chartInstance, setChartInstance] = useState<echarts.ECharts | null>(null)
 
@@ -74,7 +80,7 @@ export const RunDetailPage = ({ runId }: RunDetailPageProps) => {
         <Badge variant="secondary">{runDetail.total_positions} positions</Badge>
         <Badge variant="secondary">{runDetail.total_fills} fills</Badge>
         {runDetail.bar_types.map((bt) => (
-          <Badge key={bt} variant="outline">{bt}</Badge>
+          <BarTypeChip key={bt} barType={bt} entry={catalogMap[bt]} />
         ))}
       </div>
 
