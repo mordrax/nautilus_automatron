@@ -1,34 +1,30 @@
 import { test, expect, Page } from '@playwright/test'
 
-const DETECTOR_ID = 'equal_highs_lows'
+const DETECTOR_LABEL = 'Equal Highs/Lows'
 
-const toggleKeyLevelsAndWait = async (page: Page) => {
+const enableDetectorAndWait = async (page: Page) => {
   const responsePromise = page.waitForResponse(
     (resp) => resp.url().includes('/key-levels?detectors=') && resp.status() === 200,
     { timeout: 15_000 },
   )
-  await page.getByTestId(`key-level-toggle-${DETECTOR_ID}`).click()
+  await page.getByRole('button', { name: 'Add indicator' }).click()
+  await page.getByRole('option', { name: DETECTOR_LABEL }).click()
+  await expect(page.getByPlaceholder('Search indicators…')).not.toBeVisible()
   await responsePromise
   await page.waitForFunction(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const chart = (window as any).__ECHARTS_INSTANCE__
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const series = chart?.getOption()?.series ?? []
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const kl = series.find((s: any) => s.name === 'Key Levels')
-    return kl?.markLine?.data?.length > 0
+    const chart = (window as unknown as { __ECHARTS_INSTANCE__?: { getOption?: () => { series?: unknown[] } } }).__ECHARTS_INSTANCE__
+    const series = chart?.getOption?.()?.series ?? []
+    const kl = (series as Array<{ name: string; markLine?: { data?: unknown[] } }>).find(s => s.name === 'Key Levels')
+    return (kl?.markLine?.data?.length ?? 0) > 0
   }, { timeout: 10_000 })
 }
 
 const getKeyLevelSeries = (page: Page) =>
   page.evaluate(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const chart = (window as any).__ECHARTS_INSTANCE__
+    const chart = (window as unknown as { __ECHARTS_INSTANCE__?: { getOption?: () => { series?: unknown[] } } }).__ECHARTS_INSTANCE__
     if (!chart?.getOption) return null
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const series = chart.getOption().series ?? []
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return series.find((s: any) => s.name === 'Key Levels') ?? null
+    return (series as Array<{ name: string } & Record<string, unknown>>).find(s => s.name === 'Key Levels') ?? null
   })
 
 test.describe('Key Levels (event-based slice)', () => {
@@ -42,55 +38,51 @@ test.describe('Key Levels (event-based slice)', () => {
     await expect(page.getByRole('button', { name: /Prev/ })).toBeVisible()
   })
 
-  test('Key Levels panel and Equal Highs/Lows detector are visible', async ({ page }) => {
-    await expect(page.getByTestId('key-levels-panel')).toBeVisible()
-    await expect(page.getByText('Equal Highs/Lows')).toBeVisible()
+  test('Equal Highs/Lows detector appears in Add menu under Key Levels group', async ({ page }) => {
+    await page.getByRole('button', { name: 'Add indicator' }).click()
+    await expect(page.getByRole('option', { name: DETECTOR_LABEL })).toBeVisible()
+    // Close the menu
+    await page.keyboard.press('Escape')
+    await expect(page.getByPlaceholder('Search indicators…')).not.toBeVisible()
   })
 
   test('toggling Equal Highs/Lows adds a Key Levels markLine series', async ({ page }) => {
     // Pre-toggle: no Key Levels series with data
     const before = await getKeyLevelSeries(page)
     if (before) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const data = ((before as any).markLine?.data ?? [])
+      const data = ((before as { markLine?: { data?: unknown[] } }).markLine?.data ?? [])
       expect(data.length).toBe(0)
     }
 
-    await toggleKeyLevelsAndWait(page)
+    await enableDetectorAndWait(page)
 
     const after = await getKeyLevelSeries(page)
     expect(after).not.toBeNull()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const markLine = (after as any).markLine
+    const markLine = (after as { markLine?: { data?: Array<[{ coord: [unknown, number] }, { coord: [unknown, number] }]> } }).markLine
     expect(markLine).toBeDefined()
-    expect(Array.isArray(markLine.data)).toBe(true)
-    expect(markLine.data.length).toBeGreaterThan(0)
+    expect(Array.isArray(markLine?.data)).toBe(true)
+    expect(markLine?.data?.length).toBeGreaterThan(0)
 
     // Each entry must be a 2-coord segment (start, end) for a horizontal line
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const entry = markLine.data[0]
+    const entry = markLine?.data?.[0]
     expect(Array.isArray(entry)).toBe(true)
     expect(entry).toHaveLength(2)
-    expect(entry[0].coord).toBeDefined()
-    expect(entry[1].coord).toBeDefined()
-    expect(typeof entry[0].coord[1]).toBe('number') // y = price
-    expect(typeof entry[1].coord[1]).toBe('number')
-    expect(entry[0].coord[1]).toBe(entry[1].coord[1]) // horizontal: same price both ends
+    expect(entry?.[0].coord).toBeDefined()
+    expect(entry?.[1].coord).toBeDefined()
+    expect(typeof entry?.[0].coord[1]).toBe('number') // y = price
+    expect(typeof entry?.[1].coord[1]).toBe('number')
+    expect(entry?.[0].coord[1]).toBe(entry?.[1].coord[1]) // horizontal: same price both ends
   })
 
   test('strength translates to varying opacity across levels', async ({ page }) => {
-    await toggleKeyLevelsAndWait(page)
+    await enableDetectorAndWait(page)
 
     const opacities = await page.evaluate(() => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const chart = (window as any).__ECHARTS_INSTANCE__
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const series = chart?.getOption()?.series ?? []
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const kl = series.find((s: any) => s.name === 'Key Levels')
+      const chart = (window as unknown as { __ECHARTS_INSTANCE__?: { getOption?: () => { series?: unknown[] } } }).__ECHARTS_INSTANCE__
+      const series = chart?.getOption?.()?.series ?? []
+      const kl = (series as Array<{ name: string; markLine?: { data?: Array<[{ lineStyle?: { opacity?: number } }]> } }>).find(s => s.name === 'Key Levels')
       if (!kl?.markLine?.data) return []
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return kl.markLine.data.map((entry: any[]) => entry[0]?.lineStyle?.opacity ?? null)
+      return kl.markLine.data.map(entry => entry[0]?.lineStyle?.opacity ?? null)
     })
 
     expect(opacities.length).toBeGreaterThan(0)
@@ -103,23 +95,19 @@ test.describe('Key Levels (event-based slice)', () => {
   })
 
   test('toggling Equal Highs/Lows off empties the Key Levels series', async ({ page }) => {
-    await toggleKeyLevelsAndWait(page)
+    await enableDetectorAndWait(page)
 
-    await page.getByTestId(`key-level-toggle-${DETECTOR_ID}`).click()
+    await page.getByRole('button', { name: `Disable ${DETECTOR_LABEL}` }).click()
     await page.waitForFunction(() => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const chart = (window as any).__ECHARTS_INSTANCE__
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const series = chart?.getOption()?.series ?? []
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const kl = series.find((s: any) => s.name === 'Key Levels')
+      const chart = (window as unknown as { __ECHARTS_INSTANCE__?: { getOption?: () => { series?: unknown[] } } }).__ECHARTS_INSTANCE__
+      const series = chart?.getOption?.()?.series ?? []
+      const kl = (series as Array<{ name: string; markLine?: { data?: unknown[] } }>).find(s => s.name === 'Key Levels')
       return !kl || (kl.markLine?.data?.length ?? 0) === 0
     }, { timeout: 10_000 })
 
     const after = await getKeyLevelSeries(page)
     if (after) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      expect(((after as any).markLine?.data ?? []).length).toBe(0)
+      expect(((after as { markLine?: { data?: unknown[] } }).markLine?.data ?? []).length).toBe(0)
     }
   })
 
@@ -128,7 +116,7 @@ test.describe('Key Levels (event-based slice)', () => {
     const initialBox = await chartContainer.boundingBox()
     expect(initialBox).not.toBeNull()
 
-    await toggleKeyLevelsAndWait(page)
+    await enableDetectorAndWait(page)
 
     const newBox = await chartContainer.boundingBox()
     expect(newBox).not.toBeNull()
