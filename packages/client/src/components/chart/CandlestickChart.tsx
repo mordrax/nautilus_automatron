@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import * as echarts from 'echarts'
 import { CHART_COLORS, getDefaultIndicatorColor } from '@/lib/chart-config'
+import { computeDefaultStart } from '@/lib/chart-zoom'
 import { buildTradeMarkLines, formatTradeTooltip, formatDatetime } from '@/lib/trade-utils'
 import { buildKeyLevelSeries } from '@/lib/key-level-render'
 import type { OhlcData, Trade, IndicatorResult } from '@/types/api'
@@ -139,11 +140,7 @@ const buildOption = (
 
   const allXAxisIndices = [0, ...panels.xAxes.map((_: any, i: number) => i + 1)]
 
-  const defaultVisibleBars = 500
-  const totalBars = categoryData.length
-  const defaultStart = totalBars > defaultVisibleBars
-    ? ((totalBars - defaultVisibleBars) / totalBars) * 100
-    : 0
+  const defaultStart = computeDefaultStart(categoryData.length)
 
   return {
     animation: false,
