@@ -120,9 +120,10 @@ test.describe('Runs Page', () => {
   })
 
   test('instrument data catalog table is visible', async ({ page }) => {
-    await expect(page.getByText('Instrument Data Catalog')).toBeVisible()
+    await page.getByRole('tab', { name: 'Instrument Data Catalog' }).click()
+    await expect(page.getByRole('heading', { name: 'Instrument Data Catalog' })).toBeVisible()
 
-    const catalogSection = page.locator('section', { has: page.getByText('Instrument Data Catalog') })
+    const catalogSection = page.locator('section', { has: page.getByRole('heading', { name: 'Instrument Data Catalog' }) })
     const tabulator = catalogSection.locator('.tabulator')
     await expect(tabulator).toBeVisible()
 

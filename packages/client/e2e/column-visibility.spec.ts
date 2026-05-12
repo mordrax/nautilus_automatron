@@ -12,8 +12,12 @@ test.describe('Column Visibility', () => {
   })
 
   test('cog icon is visible on both tables', async ({ page }) => {
-    const configButtons = page.getByRole('button', { name: 'Configure columns' })
-    await expect(configButtons).toHaveCount(2)
+    // Default tab is Backtest Runs — one cog visible
+    await expect(page.getByRole('button', { name: 'Configure columns' })).toHaveCount(1)
+
+    // Switch to catalog tab — one cog visible there too
+    await page.getByRole('tab', { name: 'Instrument Data Catalog' }).click()
+    await expect(page.getByRole('button', { name: 'Configure columns' })).toHaveCount(1)
   })
 
   test('clicking cog opens column visibility popover', async ({ page }) => {
@@ -108,7 +112,8 @@ test.describe('Column Visibility', () => {
   })
 
   test('catalog table cog opens popover with catalog columns', async ({ page }) => {
-    const catalogSection = page.locator('section', { has: page.getByText('Instrument Data Catalog') })
+    await page.getByRole('tab', { name: 'Instrument Data Catalog' }).click()
+    const catalogSection = page.locator('section', { has: page.getByRole('heading', { name: 'Instrument Data Catalog' }) })
     const cogButton = catalogSection.getByRole('button', { name: 'Configure columns' })
     await cogButton.click()
 
