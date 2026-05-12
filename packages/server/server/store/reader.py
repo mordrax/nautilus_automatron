@@ -55,15 +55,21 @@ def list_catalog_entries(
             continue
 
         instrument_id = str(bars[0].bar_type.instrument_id)
+        # The on-disk directory strips characters like '/' from FX pairs,
+        # so the runtime BarType string is the source of truth for matching
+        # against bar_types reported elsewhere (e.g. run_detail.bar_types).
+        bar_type_str = str(bars[0].bar_type)
         ts_min = min(b.ts_event for b in bars)
         ts_max = max(b.ts_event for b in bars)
 
         entries.append({
             "instrument_id": instrument_id,
-            "bar_type": bar_type_name,
+            "bar_type": bar_type_str,
             "bar_count": len(bars),
             "ts_min": ts_min,
             "ts_max": ts_max,
+            "path": str(bar_type_dir.resolve()),
+            "file_count": sum(1 for _ in bar_type_dir.glob("*.parquet")),
         })
 
     return entries

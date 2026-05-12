@@ -17,3 +17,9 @@ nautilus-automatron-indicators = { path = "../indicators", editable = true }
 
 [tool.hatch.metadata]
 allow-direct-references = true
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.0.3",
+]

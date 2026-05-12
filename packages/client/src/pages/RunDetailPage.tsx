@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import type * as echarts from 'echarts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -19,6 +19,8 @@ import { useCategorisation } from '@/hooks/use-categorisation'
 import { useIndicators } from '@/hooks/use-indicators'
 import { IndicatorSelector } from '@/components/chart/indicator-selector/IndicatorSelector'
 import { useDetectors, useKeyLevels } from '@/hooks/use-key-levels'
+import { useCatalog } from '@/hooks/use-catalog'
+import { BarTypeChip } from '@/components/BarTypeChip'
 
 type RunDetailPageProps = {
   readonly runId: string
@@ -30,6 +32,12 @@ export const RunDetailPage = ({ runId }: RunDetailPageProps) => {
   const barType = runDetail?.bar_types[0] ?? ''
   const { data: ohlc } = useBars(runId, barType)
   const { data: equity } = useEquity(runId)
+  const { data: catalog } = useCatalog()
+  const catalogMap = useMemo(
+    () => Object.fromEntries((catalog ?? []).map((e) => [e.bar_type, e])),
+    [catalog],
+  )
+  const [pinnedBarType, setPinnedBarType] = useState<string | null>(null)
 
   const [chartInstance, setChartInstance] = useState<echarts.ECharts | null>(null)
 
@@ -81,7 +89,14 @@ export const RunDetailPage = ({ runId }: RunDetailPageProps) => {
         <Badge variant="secondary">{runDetail.total_positions} positions</Badge>
         <Badge variant="secondary">{runDetail.total_fills} fills</Badge>
         {runDetail.bar_types.map((bt) => (
-          <Badge key={bt} variant="outline">{bt}</Badge>
+          <BarTypeChip
+            key={bt}
+            barType={bt}
+            entry={catalogMap[bt]}
+            pinned={pinnedBarType === bt}
+            onTogglePin={() => setPinnedBarType((p) => (p === bt ? null : bt))}
+            onClearPin={() => setPinnedBarType(null)}
+          />
         ))}
       </div>
 
