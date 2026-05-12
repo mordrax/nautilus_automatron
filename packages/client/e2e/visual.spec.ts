@@ -1,4 +1,10 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, Page } from '@playwright/test'
+
+const enableIndicator = async (page: Page, label: string) => {
+  await page.getByRole('button', { name: 'Add indicator' }).click()
+  await page.getByRole('option', { name: label }).click()
+  await expect(page.getByPlaceholder('Search indicators…')).not.toBeVisible()
+}
 
 test.describe('Visual Regression', () => {
   test('runs page', async ({ page }) => {
@@ -37,15 +43,14 @@ test.describe('Visual Regression', () => {
     await expect(page.getByRole('button', { name: /Prev/ })).toBeVisible()
     await expect(page.getByText(/Jan-\d+|Feb-\d+/).first()).toBeVisible()
 
-    // Toggle SMA(20) on
-    await page.getByRole('checkbox').nth(0).click()
-    // Wait for indicator data to load and chart to re-render
+    // Enable SMA(20) via the Add menu and wait for chart re-render
+    await enableIndicator(page, 'SMA(20)')
     await page.waitForFunction(() => {
-      const canvas = document.querySelector('[data-testid="chart-container"] canvas')
-      return canvas !== null
-    })
-    // Small delay for eCharts to finish rendering the overlay line
-    await page.waitForFunction(() => true, null, { timeout: 1000 }).catch(() => {})
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const chart = (window as any).__ECHARTS_INSTANCE__
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return chart?.getOption()?.series?.some((s: any) => s.name?.includes('SMA'))
+    }, { timeout: 10_000 })
 
     const chart = page.getByTestId('chart-container')
     await expect(chart).toHaveScreenshot('chart-sma-overlay.png', {
@@ -61,13 +66,12 @@ test.describe('Visual Regression', () => {
     await expect(page.getByRole('button', { name: /Prev/ })).toBeVisible()
     await expect(page.getByText(/Jan-\d+|Feb-\d+/).first()).toBeVisible()
 
-    // Toggle RSI(14) on
-    await page.getByText('RSI(14)').click()
-    // Wait for chart to grow (panel added)
+    // Enable RSI(14) via the Add menu and wait for chart to grow (panel added)
+    await enableIndicator(page, 'RSI(14)')
     await page.waitForFunction(() => {
       const el = document.querySelector('[data-testid="chart-container"]')
       return el && el.getBoundingClientRect().height > 600
-    })
+    }, { timeout: 10_000 })
 
     const chart = page.getByTestId('chart-container')
     await expect(chart).toHaveScreenshot('chart-rsi-panel.png', {
@@ -83,14 +87,14 @@ test.describe('Visual Regression', () => {
     await expect(page.getByRole('button', { name: /Prev/ })).toBeVisible()
     await expect(page.getByText(/Jan-\d+|Feb-\d+/).first()).toBeVisible()
 
-    // Toggle RSI and ATR
-    await page.getByText('RSI(14)').click()
-    await page.getByText('ATR(14)').click()
+    // Enable RSI and ATR via the Add menu
+    await enableIndicator(page, 'RSI(14)')
+    await enableIndicator(page, 'ATR(14)')
     // Wait for both panels
     await page.waitForFunction(() => {
       const el = document.querySelector('[data-testid="chart-container"]')
       return el && el.getBoundingClientRect().height > 750
-    })
+    }, { timeout: 10_000 })
 
     const chart = page.getByTestId('chart-container')
     await expect(chart).toHaveScreenshot('chart-multi-panel.png', {

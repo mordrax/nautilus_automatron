@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test'
 
-// Toggle the ZigZag(0.1%) checkbox and wait for the indicator data to load
+// Enable ZigZag(0.1%) via the Add menu and wait for the indicator data to load
 // and the chart series to render. The waitForResponse listener must be
 // registered BEFORE the click — the indicator fetch can resolve before the
 // listener is set up otherwise (race condition observed in CI).
@@ -9,7 +9,9 @@ const toggleZigZagAndWait = async (page: Page) => {
     (resp) => resp.url().includes('/indicators?ids=') && resp.status() === 200,
     { timeout: 15_000 },
   )
-  await page.getByText('ZigZag(0.1%)').click()
+  await page.getByRole('button', { name: 'Add indicator' }).click()
+  await page.getByRole('option', { name: 'ZigZag(0.1%)' }).click()
+  await expect(page.getByPlaceholder('Search indicators…')).not.toBeVisible()
   await responsePromise
   await page.waitForFunction(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -39,9 +41,10 @@ test.describe('ZigZag Indicator', () => {
     await expect(page.getByRole('button', { name: /Prev/ })).toBeVisible()
   })
 
-  test('ZigZag indicators appear in the Overlays section', async ({ page }) => {
-    await expect(page.getByText('ZigZag(0.1%)')).toBeVisible()
-    await expect(page.getByText('ZigZag(3%)')).toBeVisible()
+  test('ZigZag indicators appear in the Add menu Overlays group', async ({ page }) => {
+    await page.getByRole('button', { name: 'Add indicator' }).click()
+    await expect(page.getByRole('option', { name: 'ZigZag(0.1%)' })).toBeVisible()
+    await expect(page.getByRole('option', { name: 'ZigZag(3%)' })).toBeVisible()
   })
 
   test('toggling ZigZag(0.1%) renders a sparse overlay line', async ({ page }) => {
@@ -99,8 +102,8 @@ test.describe('ZigZag Indicator', () => {
     // Toggle on
     await toggleZigZagAndWait(page)
 
-    // Toggle off
-    await page.getByText('ZigZag(0.1%)').click()
+    // Toggle off via the chip's Disable button
+    await page.getByRole('button', { name: 'Disable ZigZag(0.1%)' }).click()
     await page.waitForFunction(() => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const chart = (window as any).__ECHARTS_INSTANCE__

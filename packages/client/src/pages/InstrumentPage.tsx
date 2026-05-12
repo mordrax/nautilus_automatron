@@ -1,12 +1,11 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { CandlestickChart } from '@/components/chart/CandlestickChart'
-import { IndicatorToggles } from '@/components/chart/IndicatorToggles'
-import { KeyLevelsPanel } from '@/components/chart/KeyLevelsPanel'
+import { IndicatorSelector } from '@/components/chart/indicator-selector/IndicatorSelector'
 import { useCatalogBars } from '@/hooks/use-catalog-bars'
 import { useIndicators } from '@/hooks/use-indicators'
-import { useKeyLevels } from '@/hooks/use-key-levels'
+import { useDetectors, useKeyLevels } from '@/hooks/use-key-levels'
 
 type InstrumentPageProps = {
   readonly barType: string
@@ -18,7 +17,15 @@ export const InstrumentPage = ({ barType }: InstrumentPageProps) => {
   const { available, data: indicatorData, enabledIds, toggle, getColor, setColor } = useIndicators(decodedBarType)
 
   const [selectedDetectors, setSelectedDetectors] = useState<readonly string[]>([])
+  const { data: detectors = [] } = useDetectors()
   const { data: keyLevels } = useKeyLevels(decodedBarType, selectedDetectors)
+
+  const toggleDetector = useCallback(
+    (id: string) => setSelectedDetectors(prev =>
+      prev.includes(id) ? prev.filter(d => d !== id) : [...prev, id]
+    ),
+    [],
+  )
 
   return (
     <div className="space-y-4">
@@ -56,16 +63,15 @@ export const InstrumentPage = ({ barType }: InstrumentPageProps) => {
             <CardTitle className="text-sm">Indicators</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <IndicatorToggles
+            <IndicatorSelector
               indicators={available}
               enabledIds={enabledIds}
               onToggle={toggle}
               getColor={getColor}
               onColorChange={setColor}
-            />
-            <KeyLevelsPanel
-              selectedDetectors={selectedDetectors}
-              onChange={setSelectedDetectors}
+              detectors={detectors}
+              selectedDetectorIds={selectedDetectors}
+              onToggleDetector={toggleDetector}
             />
           </CardContent>
         </Card>
