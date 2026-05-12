@@ -17,9 +17,8 @@ import { useTradeNavigation } from '@/hooks/use-trades'
 import { useHotkeys } from '@/hooks/use-hotkeys'
 import { useCategorisation } from '@/hooks/use-categorisation'
 import { useIndicators } from '@/hooks/use-indicators'
-import { IndicatorToggles } from '@/components/chart/IndicatorToggles'
-import { KeyLevelsPanel } from '@/components/chart/KeyLevelsPanel'
-import { useKeyLevels } from '@/hooks/use-key-levels'
+import { IndicatorSelector } from '@/components/chart/indicator-selector/IndicatorSelector'
+import { useDetectors, useKeyLevels } from '@/hooks/use-key-levels'
 import { useCatalog } from '@/hooks/use-catalog'
 import { BarTypeChip } from '@/components/BarTypeChip'
 
@@ -68,7 +67,15 @@ export const RunDetailPage = ({ runId }: RunDetailPageProps) => {
   const { available, data: indicatorData, enabledIds, toggle, getColor, setColor } = useIndicators(barType)
 
   const [selectedDetectors, setSelectedDetectors] = useState<readonly string[]>([])
+  const { data: detectors = [] } = useDetectors()
   const { data: keyLevels } = useKeyLevels(barType, selectedDetectors)
+
+  const toggleDetector = useCallback(
+    (id: string) => setSelectedDetectors(prev =>
+      prev.includes(id) ? prev.filter(d => d !== id) : [...prev, id]
+    ),
+    [],
+  )
 
   if (!runDetail) return <div className="text-muted-foreground">Loading...</div>
 
@@ -121,16 +128,15 @@ export const RunDetailPage = ({ runId }: RunDetailPageProps) => {
             <CardTitle className="text-sm">Indicators</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <IndicatorToggles
+            <IndicatorSelector
               indicators={available}
               enabledIds={enabledIds}
               onToggle={toggle}
               getColor={getColor}
               onColorChange={setColor}
-            />
-            <KeyLevelsPanel
-              selectedDetectors={selectedDetectors}
-              onChange={setSelectedDetectors}
+              detectors={detectors}
+              selectedDetectorIds={selectedDetectors}
+              onToggleDetector={toggleDetector}
             />
           </CardContent>
         </Card>
