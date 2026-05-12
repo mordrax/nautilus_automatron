@@ -36,8 +36,6 @@ export const useIndicators = (runId: string, barType: string) => {
   const [instances, setInstances] = useState<IndicatorInstance[]>([])
   const [colors, setColorsState] = useState<Record<string, string>>(loadColors)
   const [seeded, setSeeded] = useState(false)
-  const runIdRef = useRef(runId)
-  runIdRef.current = runId
   // mutationVersion increments on every user mutation; used to trigger debounced PUT
   const [mutationVersion, setMutationVersion] = useState(0)
 
@@ -52,22 +50,24 @@ export const useIndicators = (runId: string, barType: string) => {
     enabled: !!runId,
   })
 
-  // Seed local instances once from server on first successful load
-  useEffect(() => {
-    if (!seeded && viewerStateData) {
-      setInstances([...viewerStateData.indicators])
-      setSeeded(true)
-    }
-  }, [seeded, viewerStateData])
+  // Seed local instances once from server on first successful load (during render)
+  if (!seeded && viewerStateData) {
+    setInstances([...viewerStateData.indicators])
+    setSeeded(true)
+  }
 
   // Debounced PUT triggered by mutationVersion (only after seeding)
-  const instancesRef = useRef(instances)
-  instancesRef.current = instances
+  // Keep the latest runId and instances in a ref, updated in a layout effect (not during render)
+  const latestRef = useRef({ runId, instances })
+  useEffect(() => {
+    latestRef.current = { runId, instances }
+  }, [runId, instances])
 
   useEffect(() => {
     if (!seeded || mutationVersion === 0) return
     const timer = setTimeout(() => {
-      putViewerState(runIdRef.current, { indicators: instancesRef.current }).catch(console.error)
+      const { runId: rid, instances: insts } = latestRef.current
+      putViewerState(rid, { indicators: insts }).catch(console.error)
     }, 300)
     return () => clearTimeout(timer)
   }, [seeded, mutationVersion])

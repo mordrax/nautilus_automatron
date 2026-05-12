@@ -1,100 +1,107 @@
-import { useMemo } from 'react'
-import type { IndicatorMeta } from '@/types/api'
-import type { DetectorMeta } from '@/types/key-levels'
-import { ActiveIndicatorChip } from './ActiveIndicatorChip'
-import { AddIndicatorMenu } from './AddIndicatorMenu'
-import type { MenuItem } from './AddIndicatorMenu'
+import { useState } from 'react'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import type { IndicatorInstance, IndicatorType } from '@/types/api'
+import { IndicatorChip } from './IndicatorChip'
+import { AddIndicatorPopover } from './AddIndicatorPopover'
+import { IndicatorParamForm } from './IndicatorParamForm'
 
-type IndicatorSelectorProps = {
-  // Indicators
-  readonly indicators: readonly IndicatorMeta[]
-  readonly enabledIds: ReadonlySet<string>
-  readonly onToggle: (id: string) => void
-  readonly getColor: (id: string) => string
-  readonly onColorChange: (id: string, color: string) => void
-  // Key-level detectors
-  readonly detectors: readonly DetectorMeta[]
-  readonly selectedDetectorIds: readonly string[]
-  readonly onToggleDetector: (id: string) => void
+type EditState = {
+  readonly instanceId: string
+  readonly type: IndicatorType
 }
 
-export const IndicatorSelector = ({
-  indicators,
-  enabledIds,
-  onToggle,
+type IndicatorInstanceSelectorProps = {
+  readonly types: readonly IndicatorType[]
+  readonly instances: readonly IndicatorInstance[]
+  readonly getColor: (id: string) => string
+  readonly onSetColor: (id: string, color: string) => void
+  readonly onAdd: (type: string, params: Record<string, number>) => void
+  readonly onEdit: (id: string, params: Record<string, number>) => void
+  readonly onRemove: (id: string) => void
+}
+
+export const IndicatorInstanceSelector = ({
+  types,
+  instances,
   getColor,
-  onColorChange,
-  detectors,
-  selectedDetectorIds,
-  onToggleDetector,
-}: IndicatorSelectorProps) => {
-  const indicatorById = new Map(indicators.map(i => [i.id, i]))
-  const detectorById = new Map(detectors.map(d => [d.id, d]))
+  onSetColor,
+  onAdd,
+  onEdit,
+  onRemove,
+}: IndicatorInstanceSelectorProps) => {
+  const [editState, setEditState] = useState<EditState | null>(null)
 
-  const enabledIndicators = [...enabledIds]
-    .map(id => indicatorById.get(id))
-    .filter((i): i is IndicatorMeta => i !== undefined)
+  const handleAdd = (type: IndicatorType, params: Record<string, number>) => {
+    onAdd(type.type, params)
+  }
 
-  const enabledDetectors = selectedDetectorIds
-    .map(id => detectorById.get(id))
-    .filter((d): d is DetectorMeta => d !== undefined)
-
-  const menuItems: readonly MenuItem[] = useMemo(() => [
-    ...indicators.map(i => ({
-      id: i.id,
-      label: i.label,
-      group: i.display as 'overlay' | 'panel',
-    })),
-    ...detectors.map(d => ({
-      id: d.id,
-      label: d.label,
-      group: 'key-level' as const,
-    })),
-  ], [indicators, detectors])
-
-  const selectedDetectorSet = useMemo(
-    () => new Set(selectedDetectorIds),
-    [selectedDetectorIds],
-  )
-
-  const handleAdd = (item: MenuItem) => {
-    if (item.group === 'key-level') {
-      onToggleDetector(item.id)
-    } else {
-      onToggle(item.id)
+  const handleEditOpen = (instance: IndicatorInstance) => {
+    const type = types.find(t => t.type === instance.type)
+    if (!type) {
+      console.warn(`IndicatorInstanceSelector: unknown indicator type "${instance.type}"`)
+      return
     }
+    setEditState({ instanceId: instance.id, type })
+  }
+
+  const handleEditSubmit = (params: Record<string, number>) => {
+    if (!editState) return
+    onEdit(editState.instanceId, params)
+    setEditState(null)
+  }
+
+  const handleEditCancel = () => {
+    setEditState(null)
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5" data-testid="indicator-selector">
-      {enabledIndicators.map(ind => (
-        <ActiveIndicatorChip
-          key={ind.id}
-          id={ind.id}
-          label={ind.label}
-          color={getColor(ind.id)}
-          onColorChange={onColorChange}
-          onRemove={onToggle}
-        />
-      ))}
-      {enabledDetectors.map(det => (
-        <ActiveIndicatorChip
-          key={det.id}
-          id={det.id}
-          label={det.label}
-          color={det.color}
-          onRemove={onToggleDetector}
-        />
-      ))}
-      <AddIndicatorMenu
-        items={menuItems}
-        enabledKey={item =>
-          item.group === 'key-level'
-            ? selectedDetectorSet.has(item.id)
-            : enabledIds.has(item.id)
+    <div className="flex flex-wrap items-center gap-1.5" data-testid="indicator-instance-selector">
+      {instances.map(instance => {
+        const type = types.find(t => t.type === instance.type)
+        if (!type) {
+          console.warn(`IndicatorInstanceSelector: skipping instance with unknown type "${instance.type}"`)
+          return null
         }
-        onAdd={handleAdd}
+        const isEditing = editState?.instanceId === instance.id
+        return (
+          <Popover
+            key={instance.id}
+            open={isEditing}
+            onOpenChange={open => {
+              if (!open) setEditState(null)
+            }}
+          >
+            <PopoverTrigger asChild>
+              <span>
+                <IndicatorChip
+                  instance={instance}
+                  type={type}
+                  color={getColor(instance.id)}
+                  onEdit={() => handleEditOpen(instance)}
+                  onRemove={() => onRemove(instance.id)}
+                  onColorChange={color => onSetColor(instance.id, color)}
+                />
+              </span>
+            </PopoverTrigger>
+            <PopoverContent className="w-56 p-3" side="bottom" align="start">
+              <IndicatorParamForm
+                type={type}
+                initialParams={{ ...instance.params }}
+                submitLabel="Save"
+                onSubmit={handleEditSubmit}
+                onCancel={handleEditCancel}
+              />
+            </PopoverContent>
+          </Popover>
+        )
+      })}
+      <AddIndicatorPopover
+        types={types}
+        onSubmit={handleAdd}
       />
     </div>
   )
 }
+
+// Keep backward-compatible re-export for any remaining consumers of old IndicatorSelector
+export { IndicatorInstanceSelector as IndicatorSelector }

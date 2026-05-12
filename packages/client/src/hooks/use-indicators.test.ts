@@ -19,9 +19,9 @@ vi.mock('@/lib/uuid', () => ({
   newInstanceId: vi.fn(),
 }))
 
-// @ts-ignore — dynamic import in vitest
+// @ts-expect-error — dynamic import in vitest
 import * as apiMock from '@/lib/api'
-// @ts-ignore — dynamic import in vitest
+// @ts-expect-error — dynamic import in vitest
 import * as uuidMock from '@/lib/uuid'
 
 const makeWrapper = () => {
@@ -152,9 +152,6 @@ describe('useIndicators', () => {
     await waitForSeed(result)
 
     const startCallCount = vi.mocked(apiMock.putViewerState).mock.calls.length
-
-    // Record time before mutations
-    const before = Date.now()
 
     act(() => {
       result.current.addInstance('SMA', { period: 20 })

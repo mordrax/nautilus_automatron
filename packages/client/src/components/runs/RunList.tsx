@@ -67,6 +67,7 @@ export const RunList = ({ runs, title, onRerun, onDelete }: RunListProps) => {
       table.destroy()
       tabulatorRef.current = null
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- setLocation from wouter is stable
   }, [runs, columns, applyVisibility])
 
   return (
