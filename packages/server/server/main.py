@@ -13,6 +13,7 @@ from server.routes.catalog import router as catalog_router
 from server.routes.catalog_bars import router as catalog_bars_router
 from server.routes.version import VERSION, router as version_router
 from server.routes.strategies import router as strategies_router
+from server.routes.viewer_state import router as viewer_state_router
 
 
 def create_app() -> FastAPI:
@@ -39,6 +40,7 @@ def create_app() -> FastAPI:
     app.include_router(catalog_bars_router, prefix="/api")
     app.include_router(version_router, prefix="/api")
     app.include_router(strategies_router, prefix="/api")
+    app.include_router(viewer_state_router, prefix="/api")
 
     return app
 
