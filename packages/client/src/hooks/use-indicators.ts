@@ -32,7 +32,7 @@ const saveColors = (colors: Record<string, string>) => {
 const hashInstances = (instances: readonly IndicatorInstance[]): string =>
   JSON.stringify([...instances].sort((a, b) => a.id.localeCompare(b.id)))
 
-export const useIndicators = (runId: string, barType: string) => {
+export const useIndicators = (runId: string | null, barType: string) => {
   const [instances, setInstances] = useState<IndicatorInstance[]>([])
   const [colors, setColorsState] = useState<Record<string, string>>(loadColors)
   const [seeded, setSeeded] = useState(false)
@@ -46,7 +46,7 @@ export const useIndicators = (runId: string, barType: string) => {
 
   const { data: viewerStateData } = useQuery({
     queryKey: ['viewer-state', runId],
-    queryFn: () => fetchViewerState(runId),
+    queryFn: () => fetchViewerState(runId!),
     enabled: !!runId,
   })
 
@@ -65,12 +65,14 @@ export const useIndicators = (runId: string, barType: string) => {
 
   useEffect(() => {
     if (!seeded || mutationVersion === 0) return
+    if (runId === null) return
     const timer = setTimeout(() => {
       const { runId: rid, instances: insts } = latestRef.current
+      if (rid === null) return
       putViewerState(rid, { indicators: insts }).catch(console.error)
     }, 300)
     return () => clearTimeout(timer)
-  }, [seeded, mutationVersion])
+  }, [seeded, mutationVersion, runId])
 
   const addInstance = useCallback(
     (type: string, params: Record<string, number>): string => {

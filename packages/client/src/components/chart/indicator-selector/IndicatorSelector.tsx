@@ -102,6 +102,3 @@ export const IndicatorInstanceSelector = ({
     </div>
   )
 }
-
-// Keep backward-compatible re-export for any remaining consumers of old IndicatorSelector
-export { IndicatorInstanceSelector as IndicatorSelector }

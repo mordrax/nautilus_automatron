@@ -19,9 +19,7 @@ vi.mock('@/lib/uuid', () => ({
   newInstanceId: vi.fn(),
 }))
 
-// @ts-expect-error — dynamic import in vitest
 import * as apiMock from '@/lib/api'
-// @ts-expect-error — dynamic import in vitest
 import * as uuidMock from '@/lib/uuid'
 
 const makeWrapper = () => {
