@@ -48,4 +48,28 @@ test.describe('Run Detail — bar_type chip tooltip', () => {
     await page.mouse.move(0, 0)
     await expect(tooltip).not.toBeVisible()
   })
+
+  test('chip with no catalog entry falls back to "Not in catalog"', async ({ page }) => {
+    // Stub catalog response to be empty BEFORE navigating
+    await page.route('**/api/catalog', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: '[]',
+      })
+    })
+
+    // Re-navigate so the stubbed catalog is used
+    await page.goto('/')
+    const runsSection = page.locator('section', { has: page.getByText('Backtest Runs') })
+    await runsSection.locator('[role="grid"]').getByRole('button', { name: 'View' }).first().click()
+    await expect(page).toHaveURL(/\/runs\/[a-f0-9-]+/)
+    await expect(page.getByRole('button', { name: /Prev/ })).toBeVisible()
+
+    const chip = page.locator('[data-bartype]').first()
+    await chip.hover()
+    const tooltip = page.locator('[data-slot="tooltip-content"]').first()
+    await expect(tooltip).toBeVisible()
+    await expect(tooltip).toContainText('Not in catalog')
+  })
 })

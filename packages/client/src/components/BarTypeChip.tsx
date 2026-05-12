@@ -7,20 +7,22 @@ import type { CatalogEntry } from '@/types/api'
 type Props = {
   readonly barType: string
   readonly entry: CatalogEntry | undefined
+  readonly pinned: boolean
+  readonly onTogglePin: () => void
+  readonly onClearPin: () => void
 }
 
-export const BarTypeChip = ({ barType, entry }: Props) => {
-  const [pinned, setPinned] = useState(false)
-  const [hovered, setHovered] = useState(false)
-  const open = pinned || hovered
+export const BarTypeChip = ({ barType, entry, pinned, onTogglePin, onClearPin }: Props) => {
+  const [radixOpen, setRadixOpen] = useState(false)
+  const open = pinned || radixOpen
 
   return (
-    <Tooltip open={open} onOpenChange={setHovered}>
+    <Tooltip open={open} onOpenChange={setRadixOpen}>
       <TooltipTrigger asChild>
         <Badge
           variant="outline"
           className="cursor-pointer select-none"
-          onClick={() => setPinned((p) => !p)}
+          onClick={onTogglePin}
           aria-pressed={pinned}
           data-pinned={pinned || undefined}
           data-bartype={barType}
@@ -35,7 +37,7 @@ export const BarTypeChip = ({ barType, entry }: Props) => {
         onPointerDownOutside={(e) => {
           const target = e.detail.originalEvent.target as HTMLElement | null
           if (target?.closest('[data-bartype]')) return
-          setPinned(false)
+          onClearPin()
         }}
       >
         <CatalogTooltipContent barType={barType} entry={entry} />

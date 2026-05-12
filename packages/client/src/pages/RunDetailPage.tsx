@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import type * as echarts from 'echarts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -33,9 +33,11 @@ export const RunDetailPage = ({ runId }: RunDetailPageProps) => {
   const { data: ohlc } = useBars(runId, barType)
   const { data: equity } = useEquity(runId)
   const { data: catalog } = useCatalog()
-  const catalogMap = Object.fromEntries(
-    (catalog ?? []).map((e) => [e.bar_type, e]),
+  const catalogMap = useMemo(
+    () => Object.fromEntries((catalog ?? []).map((e) => [e.bar_type, e])),
+    [catalog],
   )
+  const [pinnedBarType, setPinnedBarType] = useState<string | null>(null)
 
   const [chartInstance, setChartInstance] = useState<echarts.ECharts | null>(null)
 
@@ -87,7 +89,14 @@ export const RunDetailPage = ({ runId }: RunDetailPageProps) => {
         <Badge variant="secondary">{runDetail.total_positions} positions</Badge>
         <Badge variant="secondary">{runDetail.total_fills} fills</Badge>
         {runDetail.bar_types.map((bt) => (
-          <BarTypeChip key={bt} barType={bt} entry={catalogMap[bt]} />
+          <BarTypeChip
+            key={bt}
+            barType={bt}
+            entry={catalogMap[bt]}
+            pinned={pinnedBarType === bt}
+            onTogglePin={() => setPinnedBarType((p) => (p === bt ? null : bt))}
+            onClearPin={() => setPinnedBarType(null)}
+          />
         ))}
       </div>
 
