@@ -66,7 +66,11 @@ export const IndicatorChip = ({
   const label = formatLabel(type, instance.params)
 
   return (
-    <div className="inline-flex items-center gap-1.5 pl-1 pr-1.5 py-0.5 rounded-md border border-border bg-background text-xs">
+    <div
+      className="inline-flex items-center gap-1.5 pl-1 pr-1.5 py-0.5 rounded-md border border-border bg-background text-xs"
+      data-testid="indicator-chip"
+      data-instance-id={instance.id}
+    >
       <Popover>
         <PopoverTrigger asChild>
           <button
@@ -81,10 +85,11 @@ export const IndicatorChip = ({
           <ColorPicker color={color} onChange={onColorChange} />
         </PopoverContent>
       </Popover>
-      <span className="whitespace-nowrap">{label}</span>
+      <span className="whitespace-nowrap" data-testid="indicator-chip-label">{label}</span>
       <button
         type="button"
         aria-label={`Edit ${label}`}
+        data-testid="indicator-chip-edit"
         onClick={onEdit}
         className="ml-0.5 rounded-sm hover:bg-muted p-0.5 cursor-pointer"
       >
@@ -93,6 +98,7 @@ export const IndicatorChip = ({
       <button
         type="button"
         aria-label={`Remove ${label}`}
+        data-testid="indicator-chip-remove"
         onClick={onRemove}
         className="rounded-sm hover:bg-muted p-0.5 cursor-pointer"
       >

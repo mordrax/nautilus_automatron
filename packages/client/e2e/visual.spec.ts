@@ -1,12 +1,30 @@
 import { test, expect, Page } from '@playwright/test'
+import path from 'path'
+import fs from 'fs'
+import { enableIndicator } from './helpers'
 
-const enableIndicator = async (page: Page, label: string) => {
-  await page.getByRole('button', { name: 'Add indicator' }).click()
-  await page.getByRole('option', { name: label }).click()
-  await expect(page.getByPlaceholder('Search indicators…')).not.toBeVisible()
+const __dirname = path.dirname(new URL(import.meta.url).pathname)
+const RUN_ID = '41a1f019-a7fd-44cd-9c7a-bf41e5b0bf31'
+const viewerStatePath = path.resolve(
+  __dirname,
+  'test-data/backtest_catalog/backtest',
+  RUN_ID,
+  'viewer_state.json',
+)
+
+const clearViewerState = () => {
+  if (fs.existsSync(viewerStatePath)) fs.unlinkSync(viewerStatePath)
 }
 
 test.describe('Visual Regression', () => {
+  test.beforeEach(() => {
+    clearViewerState()
+  })
+
+  test.afterEach(() => {
+    clearViewerState()
+  })
+
   test('runs page', async ({ page }) => {
     await page.goto('/')
     const runsSection = page.locator('section', { has: page.getByText('Backtest Runs') })
@@ -43,8 +61,8 @@ test.describe('Visual Regression', () => {
     await expect(page.getByRole('button', { name: /Prev/ })).toBeVisible()
     await expect(page.getByText(/Jan-\d+|Feb-\d+/).first()).toBeVisible()
 
-    // Enable SMA(20) via the Add menu and wait for chart re-render
-    await enableIndicator(page, 'SMA(20)')
+    // Enable SMA via the new Add popover and wait for chart re-render
+    await enableIndicator(page, 'SMA')
     await page.waitForFunction(() => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const chart = (window as any).__ECHARTS_INSTANCE__
@@ -66,8 +84,8 @@ test.describe('Visual Regression', () => {
     await expect(page.getByRole('button', { name: /Prev/ })).toBeVisible()
     await expect(page.getByText(/Jan-\d+|Feb-\d+/).first()).toBeVisible()
 
-    // Enable RSI(14) via the Add menu and wait for chart to grow (panel added)
-    await enableIndicator(page, 'RSI(14)')
+    // Enable RSI via the new Add popover and wait for chart to grow (panel added)
+    await enableIndicator(page, 'RSI')
     await page.waitForFunction(() => {
       const el = document.querySelector('[data-testid="chart-container"]')
       return el && el.getBoundingClientRect().height > 600
@@ -87,9 +105,9 @@ test.describe('Visual Regression', () => {
     await expect(page.getByRole('button', { name: /Prev/ })).toBeVisible()
     await expect(page.getByText(/Jan-\d+|Feb-\d+/).first()).toBeVisible()
 
-    // Enable RSI and ATR via the Add menu
-    await enableIndicator(page, 'RSI(14)')
-    await enableIndicator(page, 'ATR(14)')
+    // Enable RSI and ATR via the new Add popover
+    await enableIndicator(page, 'RSI')
+    await enableIndicator(page, 'ATR')
     // Wait for both panels
     await page.waitForFunction(() => {
       const el = document.querySelector('[data-testid="chart-container"]')

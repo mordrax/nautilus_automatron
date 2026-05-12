@@ -44,6 +44,7 @@ export const AddIndicatorPopover = ({ types, onSubmit }: AddIndicatorPopoverProp
           variant="outline"
           size="xs"
           aria-label="Add indicator"
+          data-testid="add-indicator-button"
           className="h-6"
         >
           <Plus className="w-3 h-3" />
@@ -60,6 +61,8 @@ export const AddIndicatorPopover = ({ types, onSubmit }: AddIndicatorPopoverProp
               <button
                 key={type.type}
                 type="button"
+                data-testid="indicator-type-option"
+                data-indicator-type={type.type}
                 onClick={() => handlePickType(type)}
                 className="w-full text-left text-sm px-2 py-1.5 rounded hover:bg-accent hover:text-accent-foreground transition-colors"
               >

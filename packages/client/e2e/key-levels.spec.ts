@@ -1,15 +1,21 @@
 import { test, expect, Page } from '@playwright/test'
 
+const BAR_TYPE = 'AUDUSD.SIM-100-TICK-MID-INTERNAL'
 const DETECTOR_LABEL = 'Equal Highs/Lows'
+
+const navigateToInstrumentPage = async (page: Page) => {
+  await page.goto(`/instruments/${encodeURIComponent(BAR_TYPE)}`)
+  // Wait for chart canvas to confirm the page loaded with data
+  await expect(page.locator('canvas').first()).toBeVisible()
+}
 
 const enableDetectorAndWait = async (page: Page) => {
   const responsePromise = page.waitForResponse(
     (resp) => resp.url().includes('/key-levels?detectors=') && resp.status() === 200,
     { timeout: 15_000 },
   )
-  await page.getByRole('button', { name: 'Add indicator' }).click()
-  await page.getByRole('option', { name: DETECTOR_LABEL }).click()
-  await expect(page.getByPlaceholder('Search indicators…')).not.toBeVisible()
+  // Detectors are shown as dashed buttons directly (not behind a popover)
+  await page.getByRole('button', { name: DETECTOR_LABEL }).click()
   await responsePromise
   await page.waitForFunction(() => {
     const chart = (window as unknown as { __ECHARTS_INSTANCE__?: { getOption?: () => { series?: unknown[] } } }).__ECHARTS_INSTANCE__
@@ -29,21 +35,12 @@ const getKeyLevelSeries = (page: Page) =>
 
 test.describe('Key Levels (event-based slice)', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
-    const runsSection = page.locator('section', { has: page.getByText('Backtest Runs') })
-    const grid = runsSection.locator('[role="grid"]')
-    await expect(grid).toBeVisible()
-    await grid.getByRole('button', { name: 'View' }).first().click()
-    await expect(page).toHaveURL(/\/runs\/[a-f0-9-]+/)
-    await expect(page.getByRole('button', { name: /Prev/ })).toBeVisible()
+    await navigateToInstrumentPage(page)
   })
 
-  test('Equal Highs/Lows detector appears in Add menu under Key Levels group', async ({ page }) => {
-    await page.getByRole('button', { name: 'Add indicator' }).click()
-    await expect(page.getByRole('option', { name: DETECTOR_LABEL })).toBeVisible()
-    // Close the menu
-    await page.keyboard.press('Escape')
-    await expect(page.getByPlaceholder('Search indicators…')).not.toBeVisible()
+  test('Equal Highs/Lows detector appears on the Instrument page', async ({ page }) => {
+    await expect(page.getByText('Key Levels')).toBeVisible()
+    await expect(page.getByRole('button', { name: DETECTOR_LABEL })).toBeVisible()
   })
 
   test('toggling Equal Highs/Lows adds a Key Levels markLine series', async ({ page }) => {
@@ -97,6 +94,7 @@ test.describe('Key Levels (event-based slice)', () => {
   test('toggling Equal Highs/Lows off empties the Key Levels series', async ({ page }) => {
     await enableDetectorAndWait(page)
 
+    // Toggle off — when selected the chip shows as an ActiveIndicatorChip with a remove button
     await page.getByRole('button', { name: `Disable ${DETECTOR_LABEL}` }).click()
     await page.waitForFunction(() => {
       const chart = (window as unknown as { __ECHARTS_INSTANCE__?: { getOption?: () => { series?: unknown[] } } }).__ECHARTS_INSTANCE__

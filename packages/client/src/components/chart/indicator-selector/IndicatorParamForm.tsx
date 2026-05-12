@@ -66,6 +66,7 @@ export const IndicatorParamForm = ({
             </Label>
             <Input
               id={`param-${param.name}`}
+              data-testid={`param-input-${param.name}`}
               type="number"
               value={rawValues[param.name] ?? ''}
               min={param.min}
@@ -99,6 +100,7 @@ export const IndicatorParamForm = ({
           type="submit"
           size="sm"
           disabled={!validation.ok}
+          data-testid="param-form-submit"
           className="flex-1"
         >
           {submitLabel}
