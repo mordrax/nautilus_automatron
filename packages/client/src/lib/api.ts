@@ -1,5 +1,5 @@
 import { Effect, pipe } from 'effect'
-import type { RunsResponse, RunDetail, Trade, OhlcData, EquityPoint, Position, IndicatorMeta, IndicatorResult, CatalogEntry, StrategyInfo, CreateBacktestRequest, BacktestResponse } from '@/types/api'
+import type { RunsResponse, RunDetail, Trade, OhlcData, EquityPoint, Position, IndicatorMeta, IndicatorResult, IndicatorType, IndicatorInstance, ViewerState, CatalogEntry, StrategyInfo, CreateBacktestRequest, BacktestResponse } from '@/types/api'
 
 export type ApiError = {
   readonly _tag: 'ApiError'
@@ -40,6 +40,18 @@ const fetchDelete = <T>(url: string): Effect.Effect<T, ApiError> =>
     try: () => fetch(url, { method: 'DELETE' }).then((r) => {
       if (!r.ok) throw new Error(`HTTP ${r.status}`)
       return r.json() as Promise<T>
+    }),
+    catch: (e) => makeApiError(url, e),
+  })
+
+const fetchJsonPut = (url: string, body: unknown): Effect.Effect<void, ApiError> =>
+  Effect.tryPromise({
+    try: () => fetch(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }).then((r) => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`)
     }),
     catch: (e) => makeApiError(url, e),
   })
@@ -99,6 +111,41 @@ export const getIndicatorResult = (barType: string, ids: readonly string[]) =>
   fetchJson<readonly IndicatorResult[]>(
     `/api/bars/${encodeURIComponent(barType)}/indicators?ids=${ids.join(',')}`
   )
+
+type IndicatorTypeRaw = Omit<IndicatorType, 'labelTemplate'> & { label_template: string }
+
+export const fetchIndicatorTypes = (): Promise<IndicatorType[]> =>
+  runEffect(
+    pipe(
+      fetchJson<IndicatorTypeRaw[]>('/api/indicators'),
+      Effect.map((raw) =>
+        raw.map((r) => ({
+          type: r.type,
+          labelTemplate: r.label_template,
+          display: r.display,
+          outputs: r.outputs,
+          params: r.params,
+        }))
+      ),
+    )
+  )
+
+export const fetchIndicatorData = (
+  barType: string,
+  instances: readonly IndicatorInstance[],
+): Promise<IndicatorResult[]> =>
+  runEffect(
+    fetchJsonPost<IndicatorResult[]>(
+      `/api/bars/${barType}/indicators`,
+      { instances },
+    )
+  )
+
+export const fetchViewerState = (runId: string): Promise<ViewerState> =>
+  runEffect(fetchJson<ViewerState>(`/api/runs/${runId}/viewer-state`))
+
+export const putViewerState = (runId: string, state: ViewerState): Promise<void> =>
+  runEffect(fetchJsonPut(`/api/runs/${runId}/viewer-state`, state))
 
 export const runEffect = <T>(effect: Effect.Effect<T, ApiError>): Promise<T> =>
   Effect.runPromise(

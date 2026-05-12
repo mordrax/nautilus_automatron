@@ -66,7 +66,7 @@ export const RunDetailPage = ({ runId }: RunDetailPageProps) => {
     ),
   })
 
-  const { available, data: indicatorData, enabledIds, toggle, getColor, setColor } = useIndicators(barType)
+  const { data: indicatorData, getColor, setColor } = useIndicators(runId, barType)
 
   const [selectedDetectors, setSelectedDetectors] = useState<readonly string[]>([])
   const { data: detectors = [] } = useDetectors()
@@ -137,10 +137,12 @@ export const RunDetailPage = ({ runId }: RunDetailPageProps) => {
             <CardTitle className="text-sm">Indicators</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* TODO Phase 4: replace with IndicatorInstanceSelector */}
+            <div>Indicators (Phase 4)</div>
             <IndicatorSelector
-              indicators={available}
-              enabledIds={enabledIds}
-              onToggle={toggle}
+              indicators={[]}
+              enabledIds={new Set<string>()}
+              onToggle={() => undefined}
               getColor={getColor}
               onColorChange={setColor}
               detectors={detectors}
