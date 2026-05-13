@@ -1,16 +1,26 @@
 import { test, expect } from '@playwright/test'
+import path from 'path'
+import fs from 'fs'
+import { enableIndicator, removeIndicator } from './helpers'
 
-const openMenu = (page: import('@playwright/test').Page) =>
-  page.getByRole('button', { name: 'Add indicator' }).click()
+const __dirname = path.dirname(new URL(import.meta.url).pathname)
+const RUN_ID = '41a1f019-a7fd-44cd-9c7a-bf41e5b0bf31'
+const viewerStatePath = path.resolve(
+  __dirname,
+  'test-data/backtest_catalog/backtest',
+  RUN_ID,
+  'viewer_state.json',
+)
 
-const enableIndicator = async (page: import('@playwright/test').Page, label: string) => {
-  await openMenu(page)
-  await page.getByRole('option', { name: label }).click()
-  await expect(page.getByPlaceholder('Search indicators…')).not.toBeVisible()
+const clearViewerState = () => {
+  if (fs.existsSync(viewerStatePath)) fs.unlinkSync(viewerStatePath)
+  const tmpPath = viewerStatePath + '.tmp'
+  if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath)
 }
 
-test.describe('Indicator Selector (new behavior)', () => {
+test.describe('Indicator Instance Selector (new behavior)', () => {
   test.beforeEach(async ({ page }) => {
+    clearViewerState()
     await page.goto('/')
     const runsSection = page.locator('section', { has: page.getByText('Backtest Runs') })
     const grid = runsSection.locator('[role="grid"]')
@@ -20,53 +30,64 @@ test.describe('Indicator Selector (new behavior)', () => {
     await expect(page.getByRole('button', { name: /Prev/ })).toBeVisible()
   })
 
+  test.afterEach(() => {
+    clearViewerState()
+  })
+
   test('empty state shows only the Add button', async ({ page }) => {
-    const selector = page.getByTestId('indicator-selector')
-    await expect(selector.getByRole('button', { name: 'Add indicator' })).toBeVisible()
-    // No chips: only the Add button is a button inside the selector
-    const buttons = selector.locator('button')
-    await expect(buttons).toHaveCount(1)
+    const selector = page.getByTestId('indicator-instance-selector')
+    await expect(selector.getByTestId('add-indicator-button')).toBeVisible()
+    // No chips yet
+    await expect(selector.locator('[data-testid="indicator-chip"]')).toHaveCount(0)
   })
 
-  test('search filters the menu', async ({ page }) => {
-    await openMenu(page)
-    await page.getByPlaceholder('Search indicators…').fill('rsi')
-    await expect(page.getByRole('option', { name: 'RSI(14)' })).toBeVisible()
-    await expect(page.getByRole('option', { name: 'SMA(20)' })).not.toBeVisible()
+  test('Add popover opens with indicator type list', async ({ page }) => {
+    await page.getByTestId('add-indicator-button').click()
+    await expect(page.locator('[data-testid="indicator-type-option"]', { hasText: 'SMA' })).toBeVisible()
+    await expect(page.locator('[data-testid="indicator-type-option"]', { hasText: 'RSI' })).toBeVisible()
   })
 
-  test('already-enabled instance is hidden from the menu but siblings remain', async ({ page }) => {
-    await enableIndicator(page, 'SMA(20)')
-    await openMenu(page)
-    await expect(page.getByRole('option', { name: 'SMA(20)' })).not.toBeVisible()
-    await expect(page.getByRole('option', { name: 'SMA(50)' })).toBeVisible()
+  test('picking SMA shows the param form', async ({ page }) => {
+    await page.getByTestId('add-indicator-button').click()
+    await page.locator('[data-testid="indicator-type-option"]', { hasText: 'SMA' }).click()
+    await expect(page.getByTestId('param-input-period')).toBeVisible()
+    await expect(page.getByTestId('param-form-submit')).toBeVisible()
   })
 
   test('multiple instances of same type coexist as separate chips', async ({ page }) => {
-    await enableIndicator(page, 'SMA(20)')
-    await enableIndicator(page, 'SMA(50)')
+    await enableIndicator(page, 'SMA')
 
-    const selector = page.getByTestId('indicator-selector')
+    // Add another SMA (will also default to 20, but with a different id)
+    await page.getByTestId('add-indicator-button').click()
+    await page.locator('[data-testid="indicator-type-option"]', { hasText: 'SMA' }).click()
+    await page.getByTestId('param-input-period').fill('50')
+    await page.getByTestId('param-form-submit').click()
+    await expect(page.getByTestId('param-form-submit')).not.toBeVisible()
+
+    const selector = page.getByTestId('indicator-instance-selector')
     await expect(selector.getByText('SMA(20)')).toBeVisible()
     await expect(selector.getByText('SMA(50)')).toBeVisible()
   })
 
-  test('keyboard nav: ArrowDown + Enter enables the second option', async ({ page }) => {
-    await openMenu(page)
-    // First option is highlighted by default; move to the second, then select.
-    await page.keyboard.press('ArrowDown')
-    await page.keyboard.press('Enter')
-    // A chip should have appeared
-    const selector = page.getByTestId('indicator-selector')
-    await expect(selector.locator('button[aria-label^="Disable "]')).toHaveCount(1)
+  test('clicking outside closes the Add popover without adding anything', async ({ page }) => {
+    await page.getByTestId('add-indicator-button').click()
+    await expect(page.locator('[data-testid="indicator-type-option"]', { hasText: 'SMA' })).toBeVisible()
+    // Click outside the popover to dismiss it
+    await page.mouse.click(10, 10)
+    await expect(page.locator('[data-testid="indicator-type-option"]', { hasText: 'SMA' })).not.toBeVisible()
+    const selector = page.getByTestId('indicator-instance-selector')
+    await expect(selector.locator('[data-testid="indicator-chip"]')).toHaveCount(0)
   })
 
-  test('Esc closes the menu without enabling anything', async ({ page }) => {
-    await openMenu(page)
-    await expect(page.getByPlaceholder('Search indicators…')).toBeVisible()
-    await page.keyboard.press('Escape')
-    await expect(page.getByPlaceholder('Search indicators…')).not.toBeVisible()
-    const selector = page.getByTestId('indicator-selector')
-    await expect(selector.locator('button[aria-label^="Disable "]')).toHaveCount(0)
+  test('removing a chip leaves others intact', async ({ page }) => {
+    await enableIndicator(page, 'SMA')
+    await enableIndicator(page, 'EMA')
+
+    const selector = page.getByTestId('indicator-instance-selector')
+    await expect(selector.locator('[data-testid="indicator-chip"]')).toHaveCount(2)
+
+    await removeIndicator(page, 'SMA(20)')
+    await expect(selector.locator('[data-testid="indicator-chip"]')).toHaveCount(1)
+    await expect(selector.getByText('EMA(20)')).toBeVisible()
   })
 })

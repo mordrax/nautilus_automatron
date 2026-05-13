@@ -1,11 +1,9 @@
-import { useState, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { CandlestickChart } from '@/components/chart/CandlestickChart'
-import { IndicatorSelector } from '@/components/chart/indicator-selector/IndicatorSelector'
+import { IndicatorInstanceSelector } from '@/components/chart/indicator-selector/IndicatorSelector'
 import { useCatalogBars } from '@/hooks/use-catalog-bars'
 import { useIndicators } from '@/hooks/use-indicators'
-import { useDetectors, useKeyLevels } from '@/hooks/use-key-levels'
 
 type InstrumentPageProps = {
   readonly barType: string
@@ -14,18 +12,21 @@ type InstrumentPageProps = {
 export const InstrumentPage = ({ barType }: InstrumentPageProps) => {
   const decodedBarType = decodeURIComponent(barType)
   const { data: ohlc, isLoading, error } = useCatalogBars(decodedBarType)
-  const { available, data: indicatorData, enabledIds, toggle, getColor, setColor } = useIndicators(decodedBarType)
-
-  const [selectedDetectors, setSelectedDetectors] = useState<readonly string[]>([])
-  const { data: detectors = [] } = useDetectors()
-  const { data: keyLevels } = useKeyLevels(decodedBarType, selectedDetectors)
-
-  const toggleDetector = useCallback(
-    (id: string) => setSelectedDetectors(prev =>
-      prev.includes(id) ? prev.filter(d => d !== id) : [...prev, id]
-    ),
-    [],
-  )
+  const {
+    types,
+    instances,
+    data: indicatorData,
+    addInstance,
+    editInstance,
+    removeInstance,
+    getColor,
+    setColor,
+    detectorTypes,
+    detectorIds,
+    addDetector,
+    removeDetector,
+    keyLevels,
+  } = useIndicators(null, decodedBarType)
 
   return (
     <div className="space-y-4">
@@ -63,15 +64,18 @@ export const InstrumentPage = ({ barType }: InstrumentPageProps) => {
             <CardTitle className="text-sm">Indicators</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <IndicatorSelector
-              indicators={available}
-              enabledIds={enabledIds}
-              onToggle={toggle}
+            <IndicatorInstanceSelector
+              types={types}
+              instances={instances}
               getColor={getColor}
-              onColorChange={setColor}
-              detectors={detectors}
-              selectedDetectorIds={selectedDetectors}
-              onToggleDetector={toggleDetector}
+              onSetColor={setColor}
+              onAdd={addInstance}
+              onEdit={editInstance}
+              onRemove={removeInstance}
+              detectorTypes={detectorTypes}
+              selectedDetectorIds={detectorIds}
+              onAddDetector={addDetector}
+              onRemoveDetector={removeDetector}
             />
           </CardContent>
         </Card>

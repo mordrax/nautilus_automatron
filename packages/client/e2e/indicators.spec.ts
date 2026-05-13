@@ -1,13 +1,26 @@
 import { test, expect } from '@playwright/test'
+import path from 'path'
+import fs from 'fs'
+import { enableIndicator } from './helpers'
 
-const enableIndicator = async (page: import('@playwright/test').Page, label: string) => {
-  await page.getByRole('button', { name: 'Add indicator' }).click()
-  await page.getByRole('option', { name: label }).click()
-  await expect(page.getByPlaceholder('Search indicators…')).not.toBeVisible()
+const __dirname = path.dirname(new URL(import.meta.url).pathname)
+const RUN_ID = '41a1f019-a7fd-44cd-9c7a-bf41e5b0bf31'
+const viewerStatePath = path.resolve(
+  __dirname,
+  'test-data/backtest_catalog/backtest',
+  RUN_ID,
+  'viewer_state.json',
+)
+
+const clearViewerState = () => {
+  if (fs.existsSync(viewerStatePath)) fs.unlinkSync(viewerStatePath)
+  const tmpPath = viewerStatePath + '.tmp'
+  if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath)
 }
 
 test.describe('Indicator Selector', () => {
   test.beforeEach(async ({ page }) => {
+    clearViewerState()
     await page.goto('/')
     const runsSection = page.locator('section', { has: page.getByText('Backtest Runs') })
     const grid = runsSection.locator('[role="grid"]')
@@ -18,28 +31,30 @@ test.describe('Indicator Selector', () => {
     await expect(page.getByText(/Jan-\d+|Feb-\d+/).first()).toBeVisible()
   })
 
-  test('add menu opens and shows Overlays and Panels groups', async ({ page }) => {
-    await page.getByRole('button', { name: 'Add indicator' }).click()
-    await expect(page.getByText('Overlays')).toBeVisible()
-    await expect(page.getByText('Panels')).toBeVisible()
-    await expect(page.getByRole('option', { name: 'SMA(20)' })).toBeVisible()
-    await expect(page.getByRole('option', { name: 'RSI(14)' })).toBeVisible()
-    await expect(page.getByRole('option', { name: 'BB(20,2)' })).toBeVisible()
+  test.afterEach(() => {
+    clearViewerState()
   })
 
-  test('selecting SMA(20) from menu creates an active chip', async ({ page }) => {
-    await enableIndicator(page, 'SMA(20)')
-    const chip = page.getByTestId('indicator-selector').getByText('SMA(20)')
+  test('add menu opens and shows indicator types', async ({ page }) => {
+    await page.getByTestId('add-indicator-button').click()
+    await expect(page.locator('[data-testid="indicator-type-option"]', { hasText: 'SMA' })).toBeVisible()
+    await expect(page.locator('[data-testid="indicator-type-option"]', { hasText: 'RSI' })).toBeVisible()
+    await expect(page.locator('[data-testid="indicator-type-option"]', { hasText: 'BB' })).toBeVisible()
+  })
+
+  test('selecting SMA from menu creates an active chip', async ({ page }) => {
+    await enableIndicator(page, 'SMA')
+    const chip = page.getByTestId('indicator-instance-selector').getByText('SMA(20)')
     await expect(chip).toBeVisible()
   })
 
-  test('enabling RSI(14) increases chart height', async ({ page }) => {
+  test('enabling RSI increases chart height', async ({ page }) => {
     const chartContainer = page.getByTestId('chart-container')
     const initialBox = await chartContainer.boundingBox()
     expect(initialBox).not.toBeNull()
     const initialHeight = initialBox!.height
 
-    await enableIndicator(page, 'RSI(14)')
+    await enableIndicator(page, 'RSI')
 
     await page.waitForFunction(
       (prevHeight) => {
@@ -55,7 +70,7 @@ test.describe('Indicator Selector', () => {
   })
 
   test('panel indicator does not overlap main chart x-axis', async ({ page }) => {
-    await enableIndicator(page, 'RSI(14)')
+    await enableIndicator(page, 'RSI')
 
     await page.waitForFunction(() => {
       const el = document.querySelector('[data-testid="chart-container"]')
@@ -79,8 +94,8 @@ test.describe('Indicator Selector', () => {
   })
 
   test('multiple panels stack without overlapping each other', async ({ page }) => {
-    await enableIndicator(page, 'RSI(14)')
-    await enableIndicator(page, 'ATR(14)')
+    await enableIndicator(page, 'RSI')
+    await enableIndicator(page, 'ATR')
 
     await page.waitForFunction(() => {
       const el = document.querySelector('[data-testid="chart-container"]')
@@ -96,7 +111,7 @@ test.describe('Indicator Selector', () => {
   })
 
   test('panel x-axis labels are visible on the bottom panel', async ({ page }) => {
-    await enableIndicator(page, 'RSI(14)')
+    await enableIndicator(page, 'RSI')
 
     await page.waitForFunction(() => {
       const el = document.querySelector('[data-testid="chart-container"]')
@@ -106,12 +121,13 @@ test.describe('Indicator Selector', () => {
     await expect(page.getByText(/Jan-\d+|Feb-\d+/).first()).toBeVisible()
   })
 
-  test('clicking ✕ on chip disables the indicator', async ({ page }) => {
-    await enableIndicator(page, 'SMA(20)')
-    const chip = page.getByTestId('indicator-selector').getByText('SMA(20)')
-    await expect(chip).toBeVisible()
+  test('clicking × on chip removes the indicator', async ({ page }) => {
+    await enableIndicator(page, 'SMA')
+    const selector = page.getByTestId('indicator-instance-selector')
+    await expect(selector.getByText('SMA(20)')).toBeVisible()
 
-    await page.getByRole('button', { name: 'Disable SMA(20)' }).click()
-    await expect(chip).not.toBeVisible()
+    const chip = selector.locator('[data-testid="indicator-chip"]', { hasText: 'SMA(20)' })
+    await chip.getByTestId('indicator-chip-remove').click()
+    await expect(selector.getByText('SMA(20)')).not.toBeVisible()
   })
 })

@@ -1,12 +1,17 @@
-"""Indicator registry and compute functions.
+"""Indicator type registry and compute functions.
 
-Typed registry using Protocols, frozen dataclasses, and callable update
-strategies for type-safe integration with NautilusTrader indicators.
+Parameterized indicator types using Protocols, frozen dataclasses, and callable
+update strategies for type-safe integration with NautilusTrader indicators.
+
+Each `IndicatorType` carries a `params` schema so the UI can render a config
+form; `build_indicator_from_instance` validates params and instantiates the
+indicator class.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Callable, Literal, Protocol
+from typing import Any, Callable, Literal, Protocol
+
 
 from nautilus_trader.indicators import (
     AverageTrueRange,
@@ -63,31 +68,46 @@ def update_bar(indicator: IndicatorProto, bar: Bar) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Typed config and result dataclasses
+# Display type alias
 # ---------------------------------------------------------------------------
 
 Display = Literal["overlay", "panel"]
 
 
+# ---------------------------------------------------------------------------
+# Parameter schema and indicator type dataclasses
+# ---------------------------------------------------------------------------
+
+
 @dataclass(frozen=True)
-class IndicatorConfig:
-    # Cython indicator classes satisfy IndicatorProto structurally at runtime
-    # but static analysers cannot verify Cython .pxd declarations.
-    indicator_class: type[IndicatorProto]
-    params: tuple[int | float, ...]
-    outputs: tuple[str, ...]
+class ParamSchema:
+    """Schema definition for a single indicator parameter."""
+
+    name: str
+    type: Literal["int", "float"]
+    default: int | float
+    min: int | float | None = None
+    max: int | float | None = None
+    step: int | float | None = None
+    label: str | None = None  # display label; defaults to name if None
+
+
+@dataclass(frozen=True)
+class IndicatorType:
+    """A parameterized indicator type entry in the registry."""
+
+    type: str
+    label_template: str  # e.g. "SMA({period})" — formatted with params
     display: Display
-    label: str
+    outputs: tuple[str, ...]
+    params: tuple[ParamSchema, ...]
+    factory: Callable[[dict[str, Any]], IndicatorProto]
     update: UpdateFn
-    kwargs: dict[str, int | float] = field(default_factory=dict)
 
 
-@dataclass(frozen=True)
-class IndicatorMeta:
-    id: str
-    label: str
-    display: Display
-    outputs: tuple[str, ...]
+# ---------------------------------------------------------------------------
+# Result dataclass (kept for route layer compatibility)
+# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -100,120 +120,251 @@ class IndicatorResult:
 
 
 # ---------------------------------------------------------------------------
-# Registry – direct class refs, typed update fns, no string dispatch
+# Exceptions
 # ---------------------------------------------------------------------------
 
-INDICATOR_REGISTRY: dict[str, IndicatorConfig] = {
-    "SMA_20": IndicatorConfig(
-        indicator_class=SimpleMovingAverage,
-        params=(20,),
-        outputs=("value",),
+
+class ParamValidationError(ValueError):
+    """Raised when indicator params fail schema validation."""
+
+
+# ---------------------------------------------------------------------------
+# Registry – INDICATOR_TYPES keyed by indicator type string
+# ---------------------------------------------------------------------------
+
+INDICATOR_TYPES: dict[str, IndicatorType] = {
+    "SMA": IndicatorType(
+        type="SMA",
+        label_template="SMA({period})",
         display="overlay",
-        label="SMA(20)",
+        outputs=("value",),
+        params=(
+            ParamSchema(name="period", type="int", default=20, min=2, max=500),
+        ),
+        factory=lambda p: SimpleMovingAverage(period=p["period"]),
         update=update_close,
     ),
-    "SMA_50": IndicatorConfig(
-        indicator_class=SimpleMovingAverage,
-        params=(50,),
-        outputs=("value",),
+    "EMA": IndicatorType(
+        type="EMA",
+        label_template="EMA({period})",
         display="overlay",
-        label="SMA(50)",
+        outputs=("value",),
+        params=(
+            ParamSchema(name="period", type="int", default=20, min=2, max=500),
+        ),
+        factory=lambda p: ExponentialMovingAverage(period=p["period"]),
         update=update_close,
     ),
-    "EMA_20": IndicatorConfig(
-        indicator_class=ExponentialMovingAverage,
-        params=(20,),
-        outputs=("value",),
+    "HMA": IndicatorType(
+        type="HMA",
+        label_template="HMA({period})",
         display="overlay",
-        label="EMA(20)",
+        outputs=("value",),
+        params=(
+            ParamSchema(name="period", type="int", default=20, min=2, max=500),
+        ),
+        factory=lambda p: HullMovingAverage(period=p["period"]),
         update=update_close,
     ),
-    "HMA_20": IndicatorConfig(
-        indicator_class=HullMovingAverage,
-        params=(20,),
-        outputs=("value",),
+    "BB": IndicatorType(
+        type="BB",
+        label_template="BB({period},{std_dev})",
         display="overlay",
-        label="HMA(20)",
-        update=update_close,
-    ),
-    "BollingerBands_20": IndicatorConfig(
-        indicator_class=BollingerBands,
-        params=(20, 2.0),
         outputs=("upper", "middle", "lower"),
-        display="overlay",
-        label="BB(20,2)",
+        params=(
+            ParamSchema(name="period", type="int", default=20, min=2, max=500),
+            ParamSchema(
+                name="std_dev",
+                type="float",
+                default=2.0,
+                min=0.1,
+                max=10.0,
+                step=0.1,
+            ),
+        ),
+        factory=lambda p: BollingerBands(period=p["period"], k=p["std_dev"]),
         update=update_hlc,
     ),
-    "DonchianChannel_20": IndicatorConfig(
-        indicator_class=DonchianChannel,
-        params=(20,),
-        outputs=("upper", "middle", "lower"),
+    "Donchian": IndicatorType(
+        type="Donchian",
+        label_template="DC({period})",
         display="overlay",
-        label="DC(20)",
+        outputs=("upper", "middle", "lower"),
+        params=(
+            ParamSchema(name="period", type="int", default=20, min=2, max=500),
+        ),
+        factory=lambda p: DonchianChannel(period=p["period"]),
         update=update_hl,
     ),
-    "RSI_14": IndicatorConfig(
-        indicator_class=RelativeStrengthIndex,
-        params=(14,),
-        outputs=("value",),
+    "RSI": IndicatorType(
+        type="RSI",
+        label_template="RSI({period})",
         display="panel",
-        label="RSI(14)",
+        outputs=("value",),
+        params=(
+            ParamSchema(name="period", type="int", default=14, min=2, max=100),
+        ),
+        factory=lambda p: RelativeStrengthIndex(period=p["period"]),
         update=update_close,
     ),
-    "MACD_12_26_9": IndicatorConfig(
-        indicator_class=MovingAverageConvergenceDivergence,
-        params=(),
-        outputs=("value",),
+    "MACD": IndicatorType(
+        type="MACD",
+        label_template="MACD({fast_period},{slow_period})",
         display="panel",
-        label="MACD(12,26)",
+        outputs=("value",),
+        params=(
+            ParamSchema(
+                name="fast_period",
+                type="int",
+                default=12,
+                min=2,
+                max=200,
+                label="Fast Period",
+            ),
+            ParamSchema(
+                name="slow_period",
+                type="int",
+                default=26,
+                min=2,
+                max=500,
+                label="Slow Period",
+            ),
+        ),
+        # NautilusTrader's MACD only accepts fast_period and slow_period;
+        # signal_period is not supported by this indicator class.
+        factory=lambda p: MovingAverageConvergenceDivergence(
+            fast_period=p["fast_period"],
+            slow_period=p["slow_period"],
+        ),
         update=update_close,
-        kwargs={"fast_period": 12, "slow_period": 26},
     ),
-    "ATR_14": IndicatorConfig(
-        indicator_class=AverageTrueRange,
-        params=(14,),
-        outputs=("value",),
+    "ATR": IndicatorType(
+        type="ATR",
+        label_template="ATR({period})",
         display="panel",
-        label="ATR(14)",
+        outputs=("value",),
+        params=(
+            ParamSchema(name="period", type="int", default=14, min=1, max=200),
+        ),
+        factory=lambda p: AverageTrueRange(period=p["period"]),
         update=update_hlc,
     ),
-    "Stochastics_14_3": IndicatorConfig(
-        indicator_class=Stochastics,
-        params=(14, 3),
+    "Stochastics": IndicatorType(
+        type="Stochastics",
+        label_template="Stoch({period_k},{period_d})",
+        display="panel",
         outputs=("value_k", "value_d"),
-        display="panel",
-        label="Stoch(14,3)",
+        params=(
+            ParamSchema(
+                name="period_k",
+                type="int",
+                default=14,
+                min=1,
+                max=200,
+                label="%K Period",
+            ),
+            ParamSchema(
+                name="period_d",
+                type="int",
+                default=3,
+                min=1,
+                max=200,
+                label="%D Period",
+            ),
+        ),
+        factory=lambda p: Stochastics(period_k=p["period_k"], period_d=p["period_d"]),
         update=update_hlc,
     ),
-    "ZigZag_5pct": IndicatorConfig(
-        indicator_class=ZigZagIndicator,  # type: ignore[arg-type]
-        params=(0.05,),
-        outputs=("zigzag",),
+    "ZigZag": IndicatorType(
+        type="ZigZag",
+        label_template="ZigZag({threshold})",
         display="overlay",
-        label="ZigZag(5%)",
-        update=update_bar,
-    ),
-    "ZigZag_3pct": IndicatorConfig(
-        indicator_class=ZigZagIndicator,  # type: ignore[arg-type]
-        params=(0.03,),
         outputs=("zigzag",),
-        display="overlay",
-        label="ZigZag(3%)",
-        update=update_bar,
-    ),
-    "ZigZag_01pct": IndicatorConfig(
-        indicator_class=ZigZagIndicator,  # type: ignore[arg-type]
-        params=(0.001,),
-        outputs=("zigzag",),
-        display="overlay",
-        label="ZigZag(0.1%)",
+        params=(
+            ParamSchema(
+                name="threshold",
+                type="float",
+                default=0.05,
+                min=0.001,
+                max=0.5,
+                step=0.001,
+                label="Threshold",
+            ),
+        ),
+        factory=lambda p: ZigZagIndicator(p["threshold"]),  # type: ignore[arg-type]
         update=update_bar,
     ),
 }
 
 
 # ---------------------------------------------------------------------------
-# Public functions
+# Public helpers
+# ---------------------------------------------------------------------------
+
+
+def format_label(t: IndicatorType, params: dict[str, Any]) -> str:
+    """Format an indicator label by interpolating params into the label template."""
+    return t.label_template.format(**params)
+
+
+def build_indicator_from_instance(
+    type_name: str,
+    params: dict[str, Any],
+) -> IndicatorProto:
+    """Validate params against schema and instantiate the indicator.
+
+    Args:
+        type_name: Key into INDICATOR_TYPES (e.g. "SMA").
+        params: Parameter dict (e.g. {"period": 20}).
+
+    Returns:
+        An instantiated indicator satisfying IndicatorProto.
+
+    Raises:
+        KeyError: If type_name is not in INDICATOR_TYPES.
+        ParamValidationError: If any param fails schema validation.
+    """
+    indicator_type = INDICATOR_TYPES[type_name]
+
+    for schema in indicator_type.params:
+        if schema.name not in params:
+            raise ParamValidationError(
+                f"Missing required param '{schema.name}' for indicator '{type_name}'"
+            )
+
+        value = params[schema.name]
+
+        # Type check
+        if schema.type == "int":
+            if not isinstance(value, int):
+                raise ParamValidationError(
+                    f"Param '{schema.name}' for '{type_name}' must be an int, "
+                    f"got {type(value).__name__}: {value!r}"
+                )
+        elif schema.type == "float":
+            if not isinstance(value, (int, float)):
+                raise ParamValidationError(
+                    f"Param '{schema.name}' for '{type_name}' must be a float, "
+                    f"got {type(value).__name__}: {value!r}"
+                )
+
+        # Range checks
+        if schema.min is not None and value < schema.min:
+            raise ParamValidationError(
+                f"Param '{schema.name}' for '{type_name}' must be >= {schema.min}, "
+                f"got {value}"
+            )
+        if schema.max is not None and value > schema.max:
+            raise ParamValidationError(
+                f"Param '{schema.name}' for '{type_name}' must be <= {schema.max}, "
+                f"got {value}"
+            )
+
+    return indicator_type.factory(params)
+
+
+# ---------------------------------------------------------------------------
+# Private compute helpers
 # ---------------------------------------------------------------------------
 
 
@@ -222,35 +373,25 @@ def _ns_to_iso(ns: int) -> str:
     return datetime.fromtimestamp(ns / 1e9, tz=timezone.utc).isoformat()
 
 
-def list_available_indicators() -> list[IndicatorMeta]:
-    """Return metadata for all registered indicators."""
-    return [
-        IndicatorMeta(
-            id=indicator_id,
-            label=config.label,
-            display=config.display,
-            outputs=config.outputs,
-        )
-        for indicator_id, config in INDICATOR_REGISTRY.items()
-    ]
-
-
-def _compute_zigzag(indicator_id: str, bars: list[Bar]) -> IndicatorResult:
+def _compute_zigzag(
+    instance_id: str,
+    label: str,
+    indicator: IndicatorProto,
+    update: UpdateFn,
+    bars: list[Bar],
+) -> IndicatorResult:
     """Compute a ZigZag indicator, producing a sparse series for diagonal lines.
 
     Values are emitted at the bars where the swing extremes occurred (not where
     the reversal was confirmed), so the zigzag line aligns with candle highs/lows.
     """
-    config = INDICATOR_REGISTRY[indicator_id]
-    indicator = config.indicator_class(*config.params, **config.kwargs)
-
     # Build timestamp -> bar index map for placing pivots at the correct bar
     ts_to_idx: dict[int, int] = {}
     datetimes: list[str] = []
 
     for i, bar in enumerate(bars):
         ts_to_idx[bar.ts_init] = i
-        config.update(indicator, bar)
+        update(indicator, bar)
         datetimes.append(_ns_to_iso(bar.ts_event))
 
     # Build sparse zigzag line using pivot timestamps to find the correct bar
@@ -262,7 +403,7 @@ def _compute_zigzag(indicator_id: str, bars: list[Bar]) -> IndicatorResult:
             zigzag[bar_idx] = pivot.price
 
     # Add tentative (current) extreme at the bar where it occurred
-    if indicator.initialized and len(bars) > 0:  # type: ignore[attr-defined]
+    if indicator.initialized and len(bars) > 0:
         tentative_idx = ts_to_idx.get(
             indicator.tentative_timestamp  # type: ignore[attr-defined]
         )
@@ -272,54 +413,62 @@ def _compute_zigzag(indicator_id: str, bars: list[Bar]) -> IndicatorResult:
             )
 
     return IndicatorResult(
-        id=indicator_id,
-        label=config.label,
-        display=config.display,
+        id=instance_id,
+        label=label,
+        display="overlay",
         outputs={"zigzag": zigzag},
         datetime=datetimes,
     )
 
 
-_ZIGZAG_IDS = frozenset(
-    k for k, v in INDICATOR_REGISTRY.items()
-    if v.indicator_class is ZigZagIndicator  # type: ignore[comparison-overlap]
-)
-
-
-def compute_indicator(indicator_id: str, bars: list[Bar]) -> IndicatorResult:
-    """Instantiate an indicator, feed it bars, and collect output series.
+def compute_indicator_instance(
+    instance_id: str,
+    type_name: str,
+    params: dict[str, Any],
+    bars: list[Bar],
+) -> IndicatorResult:
+    """Validate params, instantiate an indicator, feed it bars, collect output series.
 
     Args:
-        indicator_id: Key into INDICATOR_REGISTRY (e.g. "SMA_20").
+        instance_id: Caller-supplied UUID for this instance (used as result id).
+        type_name: Key into INDICATOR_TYPES (e.g. "SMA").
+        params: Parameter dict validated against schema.
         bars: List of nautilus_trader Bar objects.
 
     Returns:
         IndicatorResult with typed fields.
+
+    Raises:
+        KeyError: If type_name is not in INDICATOR_TYPES.
+        ParamValidationError: If any param fails schema validation.
     """
-    if indicator_id in _ZIGZAG_IDS:
-        return _compute_zigzag(indicator_id, bars)
+    indicator_type = INDICATOR_TYPES[type_name]
+    indicator = build_indicator_from_instance(type_name, params)
+    label = format_label(indicator_type, params)
 
-    config = INDICATOR_REGISTRY[indicator_id]
-    indicator = config.indicator_class(*config.params, **config.kwargs)
+    if indicator_type.type == "ZigZag":
+        return _compute_zigzag(
+            instance_id, label, indicator, indicator_type.update, bars
+        )
 
-    outputs: dict[str, list[float | None]] = {f: [] for f in config.outputs}
+    outputs: dict[str, list[float | None]] = {f: [] for f in indicator_type.outputs}
     datetimes: list[str] = []
 
     for bar in bars:
-        config.update(indicator, bar)
+        indicator_type.update(indicator, bar)
         datetimes.append(_ns_to_iso(bar.ts_event))
 
         if indicator.initialized:
-            for f in config.outputs:
+            for f in indicator_type.outputs:
                 outputs[f].append(float(getattr(indicator, f)))
         else:
-            for f in config.outputs:
+            for f in indicator_type.outputs:
                 outputs[f].append(None)
 
     return IndicatorResult(
-        id=indicator_id,
-        label=config.label,
-        display=config.display,
+        id=instance_id,
+        label=label,
+        display=indicator_type.display,
         outputs=outputs,
         datetime=datetimes,
     )

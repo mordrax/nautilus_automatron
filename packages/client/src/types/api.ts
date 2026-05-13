@@ -100,6 +100,35 @@ export type TradeCategory = {
   readonly tradeIds: ReadonlySet<number>
 }
 
+export type ParamSchema = {
+  readonly name: string
+  readonly type: 'int' | 'float'
+  readonly default: number
+  readonly min?: number
+  readonly max?: number
+  readonly step?: number
+  readonly label?: string
+}
+
+export type IndicatorType = {
+  readonly type: string
+  readonly labelTemplate: string
+  readonly display: 'overlay' | 'panel'
+  readonly outputs: readonly string[]
+  readonly params: readonly ParamSchema[]
+}
+
+export type IndicatorInstance = {
+  readonly id: string
+  readonly type: string
+  readonly params: Readonly<Record<string, number>>
+}
+
+export type ViewerState = {
+  readonly indicators: readonly IndicatorInstance[]
+  readonly detectors: readonly string[]
+}
+
 export type IndicatorMeta = {
   readonly id: string
   readonly label: string
