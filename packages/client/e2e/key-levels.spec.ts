@@ -169,9 +169,8 @@ const cleanViewerState = () => {
 test.describe('Detector persistence on RunDetailPage', () => {
   test.beforeEach(() => { cleanViewerState() })
   test.afterEach(() => { cleanViewerState() })
-  test.slow()
 
-  test('add SMA + detector → both chips visible → reload → both persist → remove detector', { timeout: 90_000 }, async ({ page }) => {
+  test('add SMA + detector → both chips visible → reload → both persist → remove detector', async ({ page }) => {
     await page.goto(`/runs/${RUN_ID}`)
     await expect(page.getByRole('button', { name: /Prev/ })).toBeVisible()
     await expect(page.locator('canvas').first()).toBeVisible()
