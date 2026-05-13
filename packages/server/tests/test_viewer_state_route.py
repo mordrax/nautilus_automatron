@@ -54,7 +54,8 @@ def test_get_viewer_state_returns_empty_default_when_file_missing(
     client = _client(backtest_dir, monkeypatch)
     resp = client.get(f"/api/runs/{run_id}/viewer-state")
     assert resp.status_code == 200, resp.text
-    assert resp.json() == {"indicators": []}
+    data = resp.json()
+    assert data == {"indicators": [], "detectors": []}
 
 
 def test_get_viewer_state_returns_saved_content(
@@ -183,19 +184,19 @@ def test_put_unknown_run_returns_404(
     assert resp.status_code == 404
 
 
-def test_put_malformed_body_returns_422(
+def test_put_empty_body_uses_defaults(
     backtest_dir: Path,
     run_id: str,
     monkeypatch: pytest.MonkeyPatch,
 ):
-    """Pydantic validation — body missing 'indicators' field should return 422."""
+    """Both fields have defaults, so a body with no recognised keys succeeds with empty state."""
     client = _client(backtest_dir, monkeypatch)
     resp = client.put(
         f"/api/runs/{run_id}/viewer-state",
         json={"not_indicators": "wrong_shape"},
     )
-    # FastAPI returns 422 for Pydantic validation errors
-    assert resp.status_code == 422
+    # Both fields have defaults — Pydantic accepts the body and returns 204
+    assert resp.status_code == 204
 
 
 def test_put_indicators_wrong_type_returns_422(
@@ -210,3 +211,60 @@ def test_put_indicators_wrong_type_returns_422(
         json={"indicators": "not-a-list"},
     )
     assert resp.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# Detectors support
+# ---------------------------------------------------------------------------
+
+
+def test_put_with_detectors_round_trips(
+    backtest_dir: Path,
+    run_id: str,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """PUT with both indicators and detectors persists and returns both."""
+    payload = {
+        "indicators": [{"id": "uuid-1", "type": "SMA", "params": {"period": 20}}],
+        "detectors": ["equal_highs_lows", "wick_rejection"],
+    }
+    client = _client(backtest_dir, monkeypatch)
+    put_resp = client.put(f"/api/runs/{run_id}/viewer-state", json=payload)
+    assert put_resp.status_code == 204
+
+    get_resp = client.get(f"/api/runs/{run_id}/viewer-state")
+    assert get_resp.status_code == 200
+    data = get_resp.json()
+    assert data["indicators"][0]["id"] == "uuid-1"
+    assert data["detectors"] == ["equal_highs_lows", "wick_rejection"]
+
+
+def test_put_legacy_indicators_only_returns_detectors_empty(
+    backtest_dir: Path,
+    run_id: str,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """PUT with only 'indicators' (legacy shape) returns detectors: [] on GET."""
+    payload = {"indicators": [{"id": "uuid-2", "type": "EMA", "params": {"period": 12}}]}
+    client = _client(backtest_dir, monkeypatch)
+    client.put(f"/api/runs/{run_id}/viewer-state", json=payload)
+
+    get_resp = client.get(f"/api/runs/{run_id}/viewer-state")
+    assert get_resp.status_code == 200
+    data = get_resp.json()
+    assert data["detectors"] == []
+
+
+def test_put_detector_ids_not_validated_against_registry(
+    backtest_dir: Path,
+    run_id: str,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """Route accepts arbitrary detector ids — client is responsible for filtering stale ones."""
+    payload = {
+        "indicators": [],
+        "detectors": ["nonexistent_detector_xyz"],
+    }
+    client = _client(backtest_dir, monkeypatch)
+    resp = client.put(f"/api/runs/{run_id}/viewer-state", json=payload)
+    assert resp.status_code == 204

@@ -1,4 +1,6 @@
 import { test, expect, Page } from '@playwright/test'
+import path from 'path'
+import fs from 'fs'
 
 const BAR_TYPE = 'AUDUSD.SIM-100-TICK-MID-INTERNAL'
 const DETECTOR_LABEL = 'Equal Highs/Lows'
@@ -9,13 +11,18 @@ const navigateToInstrumentPage = async (page: Page) => {
   await expect(page.locator('canvas').first()).toBeVisible()
 }
 
+const openAddPopover = async (page: Page) => {
+  await page.getByTestId('add-indicator-button').click()
+}
+
 const enableDetectorAndWait = async (page: Page) => {
   const responsePromise = page.waitForResponse(
     (resp) => resp.url().includes('/key-levels?detectors=') && resp.status() === 200,
     { timeout: 15_000 },
   )
-  // Detectors are shown as dashed buttons directly (not behind a popover)
-  await page.getByRole('button', { name: DETECTOR_LABEL }).click()
+  // Detectors are now in the Add popover under "Key-level detectors"
+  await openAddPopover(page)
+  await page.locator('[data-testid="detector-type-option"]', { hasText: DETECTOR_LABEL }).click()
   await responsePromise
   await page.waitForFunction(() => {
     const chart = (window as unknown as { __ECHARTS_INSTANCE__?: { getOption?: () => { series?: unknown[] } } }).__ECHARTS_INSTANCE__
@@ -38,9 +45,10 @@ test.describe('Key Levels (event-based slice)', () => {
     await navigateToInstrumentPage(page)
   })
 
-  test('Equal Highs/Lows detector appears on the Instrument page', async ({ page }) => {
-    await expect(page.getByText('Key Levels')).toBeVisible()
-    await expect(page.getByRole('button', { name: DETECTOR_LABEL })).toBeVisible()
+  test('Equal Highs/Lows detector appears in the Add popover', async ({ page }) => {
+    await openAddPopover(page)
+    await expect(page.getByText('Key-level detectors')).toBeVisible()
+    await expect(page.locator('[data-testid="detector-type-option"]', { hasText: DETECTOR_LABEL })).toBeVisible()
   })
 
   test('toggling Equal Highs/Lows adds a Key Levels markLine series', async ({ page }) => {
@@ -94,7 +102,7 @@ test.describe('Key Levels (event-based slice)', () => {
   test('toggling Equal Highs/Lows off empties the Key Levels series', async ({ page }) => {
     await enableDetectorAndWait(page)
 
-    // Toggle off — when selected the chip shows as an ActiveIndicatorChip with a remove button
+    // Toggle off — chip in selector has aria-label "Disable {label}"
     await page.getByRole('button', { name: `Disable ${DETECTOR_LABEL}` }).click()
     await page.waitForFunction(() => {
       const chart = (window as unknown as { __ECHARTS_INSTANCE__?: { getOption?: () => { series?: unknown[] } } }).__ECHARTS_INSTANCE__
@@ -119,5 +127,107 @@ test.describe('Key Levels (event-based slice)', () => {
     const newBox = await chartContainer.boundingBox()
     expect(newBox).not.toBeNull()
     expect(newBox!.height).toBe(initialBox!.height)
+  })
+
+  test('detector chip appears after adding and is removed when clicked off', async ({ page }) => {
+    const selector = page.getByTestId('indicator-instance-selector')
+
+    // Add the detector
+    await openAddPopover(page)
+    await page.locator('[data-testid="detector-type-option"]', { hasText: DETECTOR_LABEL }).click()
+
+    // Chip appears in selector
+    await expect(selector.getByText(DETECTOR_LABEL)).toBeVisible()
+
+    // The detector now shows as "(added)" in the popover
+    await openAddPopover(page)
+    await expect(page.locator('[data-testid="detector-type-option"]', { hasText: DETECTOR_LABEL }).getByText('(added)')).toBeVisible()
+    // Close popover
+    await page.keyboard.press('Escape')
+
+    // Remove the chip
+    await page.getByRole('button', { name: `Disable ${DETECTOR_LABEL}` }).click()
+    await expect(selector.getByText(DETECTOR_LABEL)).not.toBeVisible()
+  })
+})
+
+const RUN_ID = '41a1f019-a7fd-44cd-9c7a-bf41e5b0bf31'
+const __dirname_key_levels = path.dirname(new URL(import.meta.url).pathname)
+const viewerStatePath = path.resolve(
+  __dirname_key_levels,
+  'test-data/backtest_catalog/backtest',
+  RUN_ID,
+  'viewer_state.json',
+)
+
+const cleanViewerState = () => {
+  if (fs.existsSync(viewerStatePath)) fs.unlinkSync(viewerStatePath)
+  const tmpPath = viewerStatePath + '.tmp'
+  if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath)
+}
+
+test.describe('Detector persistence on RunDetailPage', () => {
+  test.beforeEach(() => { cleanViewerState() })
+  test.afterEach(() => { cleanViewerState() })
+  test.slow()
+
+  test('add SMA + detector → both chips visible → reload → both persist → remove detector', { timeout: 90_000 }, async ({ page }) => {
+    await page.goto(`/runs/${RUN_ID}`)
+    await expect(page.getByRole('button', { name: /Prev/ })).toBeVisible()
+    await expect(page.locator('canvas').first()).toBeVisible()
+
+    const selector = page.getByTestId('indicator-instance-selector')
+
+    // Add SMA(20)
+    await page.getByTestId('add-indicator-button').click()
+    await page.locator('[data-testid="indicator-type-option"]', { hasText: 'SMA' }).click()
+    await page.getByTestId('param-form-submit').click()
+    await expect(selector.getByText('SMA(20)')).toBeVisible()
+
+    // Add Equal Highs/Lows detector
+    await page.getByTestId('add-indicator-button').click()
+    // Wait for detector options to load (detectors are fetched async)
+    const detectorOption = page.locator('[data-testid="detector-type-option"]', { hasText: DETECTOR_LABEL })
+    await expect(detectorOption).toBeVisible()
+    await detectorOption.scrollIntoViewIfNeeded()
+    await detectorOption.click()
+    await expect(selector.getByText(DETECTOR_LABEL)).toBeVisible()
+
+    // Wait for viewer_state.json to be written with the detector id
+    // (debounce fires 300ms after last mutation, so poll the file for up to 10s)
+    await expect
+      .poll(() => {
+        try {
+          const raw = fs.readFileSync(viewerStatePath, 'utf-8')
+          const state = JSON.parse(raw) as { detectors?: string[] }
+          return state.detectors?.includes('equal_highs_lows') ?? false
+        } catch {
+          return false
+        }
+      }, { timeout: 10_000 })
+      .toBe(true)
+
+    // Reload and assert both persist
+    await page.reload()
+    await expect(page.getByRole('button', { name: /Prev/ })).toBeVisible()
+    await expect(selector.getByText('SMA(20)')).toBeVisible()
+    await expect(selector.getByText(DETECTOR_LABEL)).toBeVisible()
+
+    // Remove detector and wait for viewer_state.json to be updated
+    await page.getByRole('button', { name: `Disable ${DETECTOR_LABEL}` }).click()
+    await expect
+      .poll(() => {
+        try {
+          const raw = fs.readFileSync(viewerStatePath, 'utf-8')
+          const state = JSON.parse(raw) as { detectors?: string[] }
+          return !(state.detectors?.includes('equal_highs_lows') ?? false)
+        } catch {
+          return false
+        }
+      }, { timeout: 10_000 })
+      .toBe(true)
+
+    await expect(selector.getByText('SMA(20)')).toBeVisible()
+    await expect(selector.getByText(DETECTOR_LABEL)).not.toBeVisible()
   })
 })

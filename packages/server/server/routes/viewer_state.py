@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from server.routes.dependencies import _store_path
 
@@ -25,7 +25,8 @@ class IndicatorInstance(BaseModel):
 
 
 class ViewerState(BaseModel):
-    indicators: list[IndicatorInstance]
+    indicators: list[IndicatorInstance] = Field(default_factory=list)
+    detectors: list[str] = Field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -64,7 +65,7 @@ def get_viewer_state(
 
     state_file = run_dir / "viewer_state.json"
     if not state_file.exists():
-        return {"indicators": []}
+        return {"indicators": [], "detectors": []}
 
     with open(state_file) as f:
         return json.load(f)

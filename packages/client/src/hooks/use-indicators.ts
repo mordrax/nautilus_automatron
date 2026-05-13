@@ -9,6 +9,7 @@ import {
 import { getDefaultIndicatorColor } from '@/lib/chart-config'
 import { newInstanceId } from '@/lib/uuid'
 import type { IndicatorInstance } from '@/types/api'
+import { useDetectors, useKeyLevels } from '@/hooks/use-key-levels'
 
 const COLORS_STORAGE_KEY = 'indicator-colors-v2'
 
@@ -34,6 +35,7 @@ const hashInstances = (instances: readonly IndicatorInstance[]): string =>
 
 export const useIndicators = (runId: string | null, barType: string) => {
   const [instances, setInstances] = useState<IndicatorInstance[]>([])
+  const [detectorIds, setDetectorIds] = useState<string[]>([])
   const [colors, setColorsState] = useState<Record<string, string>>(loadColors)
   const [seeded, setSeeded] = useState(false)
   // mutationVersion increments on every user mutation; used to trigger debounced PUT
@@ -50,26 +52,27 @@ export const useIndicators = (runId: string | null, barType: string) => {
     enabled: !!runId,
   })
 
-  // Seed local instances once from server on first successful load (during render)
+  // Seed local state once from server on first successful load (during render)
   if (!seeded && viewerStateData) {
     setInstances([...viewerStateData.indicators])
+    setDetectorIds([...(viewerStateData.detectors ?? [])])
     setSeeded(true)
   }
 
   // Debounced PUT triggered by mutationVersion (only after seeding)
-  // Keep the latest runId and instances in a ref, updated in a layout effect (not during render)
-  const latestRef = useRef({ runId, instances })
+  // Keep the latest runId, instances, and detectorIds in a ref, updated in a layout effect
+  const latestRef = useRef({ runId, instances, detectorIds })
   useEffect(() => {
-    latestRef.current = { runId, instances }
-  }, [runId, instances])
+    latestRef.current = { runId, instances, detectorIds }
+  }, [runId, instances, detectorIds])
 
   useEffect(() => {
     if (!seeded || mutationVersion === 0) return
     if (runId === null) return
     const timer = setTimeout(() => {
-      const { runId: rid, instances: insts } = latestRef.current
+      const { runId: rid, instances: insts, detectorIds: dets } = latestRef.current
       if (rid === null) return
-      putViewerState(rid, { indicators: insts }).catch(console.error)
+      putViewerState(rid, { indicators: insts, detectors: dets }).catch(console.error)
     }, 300)
     return () => clearTimeout(timer)
   }, [seeded, mutationVersion, runId])
@@ -95,11 +98,24 @@ export const useIndicators = (runId: string | null, barType: string) => {
     setMutationVersion((v) => v + 1)
   }, [])
 
+  const addDetector = useCallback((id: string) => {
+    setDetectorIds((prev) => (prev.includes(id) ? prev : [...prev, id]))
+    setMutationVersion((v) => v + 1)
+  }, [])
+
+  const removeDetector = useCallback((id: string) => {
+    setDetectorIds((prev) => prev.filter((d) => d !== id))
+    setMutationVersion((v) => v + 1)
+  }, [])
+
   const { data: indicatorData, isLoading } = useQuery({
     queryKey: ['indicator-data', barType, hashInstances(instances)],
     queryFn: () => fetchIndicatorData(barType, instances),
     enabled: !!barType && instances.length > 0,
   })
+
+  const { data: detectorTypes = [] } = useDetectors()
+  const { data: keyLevels } = useKeyLevels(barType, detectorIds)
 
   const getColor = useCallback(
     (id: string): string => colors[id] ?? getDefaultIndicatorColor(id),
@@ -115,6 +131,7 @@ export const useIndicators = (runId: string | null, barType: string) => {
   }, [])
 
   return {
+    // indicators
     types: types ?? [],
     instances,
     data: indicatorData,
@@ -123,6 +140,13 @@ export const useIndicators = (runId: string | null, barType: string) => {
     removeInstance,
     getColor,
     setColor,
+    // detectors
+    detectorTypes,
+    detectorIds,
+    addDetector,
+    removeDetector,
+    keyLevels,
+    // shared
     isLoading,
   }
 }

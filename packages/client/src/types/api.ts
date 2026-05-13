@@ -126,6 +126,7 @@ export type IndicatorInstance = {
 
 export type ViewerState = {
   readonly indicators: readonly IndicatorInstance[]
+  readonly detectors: readonly string[]
 }
 
 export type IndicatorMeta = {

@@ -15,6 +15,11 @@ vi.mock('@/lib/api', () => ({
   putViewerState: vi.fn(),
 }))
 
+vi.mock('@/hooks/use-key-levels', () => ({
+  useDetectors: vi.fn(() => ({ data: [] })),
+  useKeyLevels: vi.fn(() => ({ data: undefined })),
+}))
+
 vi.mock('@/lib/uuid', () => ({
   newInstanceId: vi.fn(),
 }))
@@ -32,7 +37,7 @@ const makeWrapper = () => {
     createElement(QueryClientProvider, { client: queryClient }, children)
 }
 
-const emptyViewerState: ViewerState = { indicators: [] }
+const emptyViewerState: ViewerState = { indicators: [], detectors: [] }
 const indicatorTypes: IndicatorType[] = [
   {
     type: 'SMA',
@@ -85,6 +90,7 @@ describe('useIndicators', () => {
   it('fires GET viewer-state on mount and populates instances', async () => {
     const stateWithInstances: ViewerState = {
       indicators: [{ id: 'existing-1', type: 'SMA', params: { period: 20 } }],
+      detectors: [],
     }
     vi.mocked(apiMock.fetchViewerState).mockResolvedValue(stateWithInstances)
 
@@ -139,7 +145,7 @@ describe('useIndicators', () => {
 
     expect(apiMock.putViewerState).toHaveBeenCalledWith(
       'run-123',
-      expect.objectContaining({ indicators: expect.any(Array) }),
+      expect.objectContaining({ indicators: expect.any(Array), detectors: expect.any(Array) }),
     )
   })
 
@@ -202,5 +208,69 @@ describe('useIndicators', () => {
 
     expect(result.current.instances).toHaveLength(1)
     expect(result.current.instances[0].id).toBe('uuid-2')
+  })
+
+  it('addDetector updates detectorIds and triggers a PUT with detectors', async () => {
+    const wrapper = makeWrapper()
+    const { result } = renderHook(() => useIndicators('run-123', 'BAR_TYPE'), { wrapper })
+
+    await waitForSeed(result)
+
+    act(() => {
+      result.current.addDetector('equal_highs_lows')
+    })
+
+    expect(result.current.detectorIds).toEqual(['equal_highs_lows'])
+
+    await waitFor(
+      () => {
+        expect(apiMock.putViewerState).toHaveBeenCalled()
+      },
+      { timeout: 1000 },
+    )
+
+    expect(apiMock.putViewerState).toHaveBeenCalledWith(
+      'run-123',
+      expect.objectContaining({ detectors: ['equal_highs_lows'] }),
+    )
+  })
+
+  it('removeDetector drops the matching id', async () => {
+    const wrapper = makeWrapper()
+    const { result } = renderHook(() => useIndicators('run-123', 'BAR_TYPE'), { wrapper })
+
+    await waitForSeed(result)
+
+    act(() => {
+      result.current.addDetector('equal_highs_lows')
+    })
+    act(() => {
+      result.current.addDetector('wick_rejection')
+    })
+
+    expect(result.current.detectorIds).toHaveLength(2)
+
+    act(() => {
+      result.current.removeDetector('equal_highs_lows')
+    })
+
+    expect(result.current.detectorIds).toEqual(['wick_rejection'])
+  })
+
+  it('on mount with persisted detectors, those are seeded into detectorIds', async () => {
+    const stateWithDetectors: ViewerState = {
+      indicators: [],
+      detectors: ['wick_rejection', 'pivot_standard'],
+    }
+    vi.mocked(apiMock.fetchViewerState).mockResolvedValue(stateWithDetectors)
+
+    const wrapper = makeWrapper()
+    const { result } = renderHook(() => useIndicators('run-123', 'BAR_TYPE'), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.detectorIds).toHaveLength(2)
+    })
+
+    expect(result.current.detectorIds).toEqual(['wick_rejection', 'pivot_standard'])
   })
 })

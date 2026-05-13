@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import type { IndicatorInstance, IndicatorType } from '@/types/api'
+import type { DetectorMeta } from '@/types/key-levels'
 import { IndicatorChip } from './IndicatorChip'
+import { ActiveIndicatorChip } from './ActiveIndicatorChip'
 import { AddIndicatorPopover } from './AddIndicatorPopover'
 import { IndicatorParamForm } from './IndicatorParamForm'
 
@@ -11,6 +13,7 @@ type EditState = {
 }
 
 type IndicatorInstanceSelectorProps = {
+  // indicators
   readonly types: readonly IndicatorType[]
   readonly instances: readonly IndicatorInstance[]
   readonly getColor: (id: string) => string
@@ -18,6 +21,11 @@ type IndicatorInstanceSelectorProps = {
   readonly onAdd: (type: string, params: Record<string, number>) => void
   readonly onEdit: (id: string, params: Record<string, number>) => void
   readonly onRemove: (id: string) => void
+  // detectors
+  readonly detectorTypes: readonly DetectorMeta[]
+  readonly selectedDetectorIds: readonly string[]
+  readonly onAddDetector: (id: string) => void
+  readonly onRemoveDetector: (id: string) => void
 }
 
 export const IndicatorInstanceSelector = ({
@@ -28,6 +36,10 @@ export const IndicatorInstanceSelector = ({
   onAdd,
   onEdit,
   onRemove,
+  detectorTypes,
+  selectedDetectorIds,
+  onAddDetector,
+  onRemoveDetector,
 }: IndicatorInstanceSelectorProps) => {
   const [editState, setEditState] = useState<EditState | null>(null)
 
@@ -95,9 +107,28 @@ export const IndicatorInstanceSelector = ({
           </Popover>
         )
       })}
+      {selectedDetectorIds.map(detId => {
+        const det = detectorTypes.find(d => d.id === detId)
+        if (!det) {
+          console.warn(`IndicatorInstanceSelector: skipping detector with unknown id "${detId}"`)
+          return null
+        }
+        return (
+          <ActiveIndicatorChip
+            key={det.id}
+            id={det.id}
+            label={det.label}
+            color={det.color}
+            onRemove={onRemoveDetector}
+          />
+        )
+      })}
       <AddIndicatorPopover
         types={types}
-        onSubmit={handleAdd}
+        detectorTypes={detectorTypes}
+        selectedDetectorIds={selectedDetectorIds}
+        onAddIndicator={handleAdd}
+        onAddDetector={onAddDetector}
       />
     </div>
   )

@@ -18,7 +18,6 @@ import { useHotkeys } from '@/hooks/use-hotkeys'
 import { useCategorisation } from '@/hooks/use-categorisation'
 import { useIndicators } from '@/hooks/use-indicators'
 import { IndicatorInstanceSelector } from '@/components/chart/indicator-selector/IndicatorSelector'
-import { useKeyLevels } from '@/hooks/use-key-levels'
 import { useCatalog } from '@/hooks/use-catalog'
 import { BarTypeChip } from '@/components/BarTypeChip'
 
@@ -75,10 +74,12 @@ export const RunDetailPage = ({ runId }: RunDetailPageProps) => {
     removeInstance,
     getColor,
     setColor,
+    detectorTypes,
+    detectorIds,
+    addDetector,
+    removeDetector,
+    keyLevels,
   } = useIndicators(runId, barType)
-
-  const [selectedDetectors] = useState<readonly string[]>([])
-  const { data: keyLevels } = useKeyLevels(barType, selectedDetectors)
 
   if (!runDetail) return <div className="text-muted-foreground">Loading...</div>
 
@@ -146,6 +147,10 @@ export const RunDetailPage = ({ runId }: RunDetailPageProps) => {
               onAdd={addInstance}
               onEdit={editInstance}
               onRemove={removeInstance}
+              detectorTypes={detectorTypes}
+              selectedDetectorIds={detectorIds}
+              onAddDetector={addDetector}
+              onRemoveDetector={removeDetector}
             />
           </CardContent>
         </Card>
