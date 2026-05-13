@@ -1,4 +1,4 @@
-import { test, expect, Page } from '@playwright/test'
+import { test, expect } from '@playwright/test'
 import path from 'path'
 import fs from 'fs'
 import { enableIndicator } from './helpers'

@@ -1,7 +1,6 @@
 import { test, expect, Page } from '@playwright/test'
 import path from 'path'
 import fs from 'fs'
-import { removeIndicator } from './helpers'
 
 // Enable ZigZag via the new Add popover and wait for the indicator data to load
 // and the chart series to render. The waitForResponse listener must be
@@ -24,7 +23,7 @@ const toggleZigZagAndWait = async (page: Page) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const chart = (window as any).__ECHARTS_INSTANCE__
     if (!chart?.getOption) return false
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const series = chart.getOption().series ?? []
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const zigzag = series.find((s: any) => s.name?.includes('ZigZag'))
