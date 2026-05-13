@@ -63,6 +63,7 @@ def test_get_viewer_state_returns_saved_content(
     run_id: str,
     monkeypatch: pytest.MonkeyPatch,
 ):
+    # Write a legacy file without the 'detectors' key to verify Pydantic normalisation adds it
     state = {
         "indicators": [
             {"id": "uuid-1", "type": "SMA", "params": {"period": 20}},
@@ -74,7 +75,9 @@ def test_get_viewer_state_returns_saved_content(
     client = _client(backtest_dir, monkeypatch)
     resp = client.get(f"/api/runs/{run_id}/viewer-state")
     assert resp.status_code == 200, resp.text
-    assert resp.json() == state
+    # Pydantic normalisation adds detectors: [] for legacy files
+    expected = {**state, "detectors": []}
+    assert resp.json() == expected
 
 
 # ---------------------------------------------------------------------------
@@ -182,6 +185,49 @@ def test_put_unknown_run_returns_404(
         json={"indicators": []},
     )
     assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Path traversal protection
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("malicious_id", [
+    "../../../etc/passwd",
+    "..%2F..%2Fetc%2Fpasswd",
+    "../../some-other-run",
+])
+def test_get_path_traversal_returns_400_or_404(
+    backtest_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    malicious_id: str,
+):
+    """run_id values that escape the backtest directory must not return 200."""
+    client = _client(backtest_dir, monkeypatch)
+    resp = client.get(f"/api/runs/{malicious_id}/viewer-state")
+    assert resp.status_code in (400, 404), (
+        f"Expected 400 or 404 for path traversal attempt, got {resp.status_code}: {resp.text}"
+    )
+
+
+@pytest.mark.parametrize("malicious_id", [
+    "../../../etc/passwd",
+    "../../some-other-run",
+])
+def test_put_path_traversal_returns_400_or_404(
+    backtest_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    malicious_id: str,
+):
+    """PUT with a path-traversal run_id must not write outside the backtest directory."""
+    client = _client(backtest_dir, monkeypatch)
+    resp = client.put(
+        f"/api/runs/{malicious_id}/viewer-state",
+        json={"indicators": []},
+    )
+    assert resp.status_code in (400, 404), (
+        f"Expected 400 or 404 for path traversal attempt, got {resp.status_code}: {resp.text}"
+    )
 
 
 def test_put_empty_body_uses_defaults(

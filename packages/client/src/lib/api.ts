@@ -1,5 +1,5 @@
 import { Effect, pipe } from 'effect'
-import type { RunsResponse, RunDetail, Trade, OhlcData, EquityPoint, Position, IndicatorMeta, IndicatorResult, IndicatorType, IndicatorInstance, ViewerState, CatalogEntry, StrategyInfo, CreateBacktestRequest, BacktestResponse } from '@/types/api'
+import type { RunsResponse, RunDetail, Trade, OhlcData, EquityPoint, Position, IndicatorResult, IndicatorType, IndicatorInstance, ViewerState, CatalogEntry, StrategyInfo, CreateBacktestRequest, BacktestResponse } from '@/types/api'
 
 export type ApiError = {
   readonly _tag: 'ApiError'
@@ -104,14 +104,6 @@ export const rerunBacktest = (runId: string) =>
 export const deleteBacktest = (runId: string) =>
   fetchDelete<BacktestResponse>(`/api/runs/${runId}`)
 
-export const getIndicators = () =>
-  fetchJson<readonly IndicatorMeta[]>('/api/indicators')
-
-export const getIndicatorResult = (barType: string, ids: readonly string[]) =>
-  fetchJson<readonly IndicatorResult[]>(
-    `/api/bars/${encodeURIComponent(barType)}/indicators?ids=${ids.join(',')}`
-  )
-
 type IndicatorTypeRaw = Omit<IndicatorType, 'labelTemplate'> & { label_template: string }
 
 export const fetchIndicatorTypes = (): Promise<IndicatorType[]> =>
@@ -136,7 +128,7 @@ export const fetchIndicatorData = (
 ): Promise<IndicatorResult[]> =>
   runEffect(
     fetchJsonPost<IndicatorResult[]>(
-      `/api/bars/${barType}/indicators`,
+      `/api/bars/${encodeURIComponent(barType)}/indicators`,
       { instances },
     )
   )

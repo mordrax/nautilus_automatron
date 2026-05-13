@@ -52,7 +52,10 @@ export const useIndicators = (runId: string | null, barType: string) => {
     enabled: !!runId,
   })
 
-  // Seed local state once from server on first successful load (during render)
+  // Seed local state once from server on first successful load.
+  // Calling setState conditionally during render is the React-recommended way to derive
+  // state from props/queries without an extra effect cycle (see react.dev/learn/you-might-not-need-an-effect).
+  // The !seeded guard ensures this runs at most once.
   if (!seeded && viewerStateData) {
     setInstances([...viewerStateData.indicators])
     setDetectorIds([...(viewerStateData.detectors ?? [])])

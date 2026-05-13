@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
 
 from server.routes.dependencies import _store_path
+from server.schemas import IndicatorInstance
 
 router = APIRouter()
 
@@ -16,12 +17,6 @@ router = APIRouter()
 # ---------------------------------------------------------------------------
 # Models
 # ---------------------------------------------------------------------------
-
-
-class IndicatorInstance(BaseModel):
-    id: str
-    type: str
-    params: dict[str, Any]
 
 
 class ViewerState(BaseModel):
@@ -35,7 +30,11 @@ class ViewerState(BaseModel):
 
 
 def _run_dir(store_path: Path, run_id: str) -> Path:
-    return store_path / "backtest" / run_id
+    base = store_path.resolve() / "backtest"
+    run_dir = (base / run_id).resolve()
+    if not run_dir.is_relative_to(base):
+        raise HTTPException(status_code=400, detail="Invalid run_id")
+    return run_dir
 
 
 def _run_exists(run_dir: Path) -> bool:
@@ -68,7 +67,9 @@ def get_viewer_state(
         return {"indicators": [], "detectors": []}
 
     with open(state_file) as f:
-        return json.load(f)
+        raw = json.load(f)
+    state = ViewerState(**raw)
+    return state.model_dump()
 
 
 @router.put("/runs/{run_id}/viewer-state", status_code=204)

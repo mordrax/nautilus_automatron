@@ -1,6 +1,6 @@
 """Routes for technical indicator data."""
 
-from typing import Any, Literal
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from nautilus_trader.persistence.catalog.parquet import ParquetDataCatalog
 
 from server.routes.dependencies import _catalog
+from server.schemas import IndicatorInstance
 from server.store.indicators import (
     INDICATOR_TYPES,
     IndicatorResult,
@@ -44,12 +45,6 @@ class IndicatorTypeOut(BaseModel):
 # ---------------------------------------------------------------------------
 # Request models
 # ---------------------------------------------------------------------------
-
-
-class IndicatorInstance(BaseModel):
-    id: str
-    type: str
-    params: dict[str, Any]
 
 
 class IndicatorInstancesBody(BaseModel):
