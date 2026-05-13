@@ -1,4 +1,5 @@
-import { useRef, useEffect, useMemo } from 'react'
+import { useRef, useEffect, useMemo, useState } from 'react'
+import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useLocation } from 'wouter'
 import { TabulatorFull as Tabulator, type RowComponent } from 'tabulator-tables'
 import 'tabulator-tables/dist/css/tabulator.min.css'
@@ -18,6 +19,7 @@ export const RunList = ({ runs, title, onRerun, onDelete }: RunListProps) => {
   const [, setLocation] = useLocation()
   const tableRef = useRef<HTMLDivElement>(null)
   const tabulatorRef = useRef<Tabulator | null>(null)
+  const [isOpen, setIsOpen] = useState(true)
   const { hiddenColumns, toggleColumn, applyVisibility } = useColumnVisibility('run-list')
 
   const columns = useMemo(
@@ -73,14 +75,25 @@ export const RunList = ({ runs, title, onRerun, onDelete }: RunListProps) => {
   return (
     <div>
       <div className="flex items-center justify-between mb-4 px-2">
-        <h2 className="text-xl font-semibold">{title}</h2>
-        <ColumnVisibilityPopover
-          columns={toggleableColumns}
-          hiddenColumns={hiddenColumns}
-          onToggle={(field) => toggleColumn(field, tabulatorRef.current)}
-        />
+        <button
+          type="button"
+          onClick={() => setIsOpen((v) => !v)}
+          className="flex items-center gap-2 text-xl font-semibold hover:opacity-80"
+          aria-expanded={isOpen}
+          aria-label={isOpen ? `Collapse ${title}` : `Expand ${title}`}
+        >
+          {isOpen ? <ChevronDown className="size-5" /> : <ChevronRight className="size-5" />}
+          <h2>{title}</h2>
+        </button>
+        {isOpen && (
+          <ColumnVisibilityPopover
+            columns={toggleableColumns}
+            hiddenColumns={hiddenColumns}
+            onToggle={(field) => toggleColumn(field, tabulatorRef.current)}
+          />
+        )}
       </div>
-      <div ref={tableRef} />
+      <div ref={tableRef} style={{ display: isOpen ? undefined : 'none' }} />
     </div>
   )
 }
