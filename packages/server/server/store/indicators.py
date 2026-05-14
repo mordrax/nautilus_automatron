@@ -27,6 +27,8 @@ from nautilus_trader.indicators import (
 from nautilus_trader.model.data import Bar
 
 from indicators.zigzag import ZigZagIndicator
+from indicators.spike import SpikeIndicator
+from indicators.spike.model import MoveMethod, Statistic, VolumeMode
 
 
 # ---------------------------------------------------------------------------
@@ -84,12 +86,13 @@ class ParamSchema:
     """Schema definition for a single indicator parameter."""
 
     name: str
-    type: Literal["int", "float"]
-    default: int | float
+    type: Literal["int", "float", "enum"]
+    default: int | float | str
     min: int | float | None = None
     max: int | float | None = None
     step: int | float | None = None
     label: str | None = None  # display label; defaults to name if None
+    choices: tuple[str, ...] | None = None  # required when type == "enum"
 
 
 @dataclass(frozen=True)
@@ -294,6 +297,44 @@ INDICATOR_TYPES: dict[str, IndicatorType] = {
         factory=lambda p: ZigZagIndicator(p["threshold"]),  # type: ignore[arg-type]
         update=update_bar,
     ),
+    "Spike": IndicatorType(
+        type="Spike",
+        label_template="Spike({move_method},{statistic})",
+        display="overlay",
+        outputs=("spike_up", "spike_down"),
+        params=(
+            ParamSchema(name="move_method", type="enum", default="EXCURSION",
+                        choices=("NET", "EXCURSION", "RANGE"), label="Move method"),
+            ParamSchema(name="statistic", type="enum", default="ZSCORE",
+                        choices=("MEAN", "MEDIAN", "ZSCORE"), label="Statistic"),
+            ParamSchema(name="measurement_window", type="int", default=5,
+                        min=2, max=200, label="Measurement window (N)"),
+            ParamSchema(name="baseline_window", type="int", default=20,
+                        min=3, max=2000, label="Baseline window (M)"),
+            ParamSchema(name="price_threshold", type="float", default=2.5,
+                        min=0.0, max=20.0, step=0.1, label="Price threshold"),
+            ParamSchema(name="volume_threshold", type="float", default=2.0,
+                        min=0.0, max=20.0, step=0.1, label="Volume threshold"),
+            ParamSchema(name="cooldown_bars", type="int", default=20,
+                        min=0, max=2000, label="Cooldown bars"),
+            ParamSchema(name="require_volume", type="enum", default="AUTO",
+                        choices=("AUTO", "ALWAYS", "NEVER"), label="Require volume"),
+            ParamSchema(name="max_spikes", type="int", default=10000,
+                        min=0, max=1_000_000, label="Max spikes"),
+        ),
+        factory=lambda p: SpikeIndicator(
+            move_method=MoveMethod(p["move_method"]),
+            statistic=Statistic(p["statistic"]),
+            measurement_window=int(p["measurement_window"]),
+            baseline_window=int(p["baseline_window"]),
+            price_threshold=float(p["price_threshold"]),
+            volume_threshold=float(p["volume_threshold"]),
+            cooldown_bars=int(p["cooldown_bars"]),
+            require_volume=VolumeMode(p["require_volume"]),
+            max_spikes=int(p["max_spikes"]),
+        ),
+        update=update_bar,
+    ),
 }
 
 
@@ -334,31 +375,38 @@ def build_indicator_from_instance(
 
         value = params[schema.name]
 
-        # Type check
+        # Type check. `bool` is a subclass of `int`, so guard against it
+        # explicitly — a boolean param value is never valid.
         if schema.type == "int":
-            if not isinstance(value, int):
+            if not isinstance(value, int) or isinstance(value, bool):
                 raise ParamValidationError(
                     f"Param '{schema.name}' for '{type_name}' must be an int, "
                     f"got {type(value).__name__}: {value!r}"
                 )
         elif schema.type == "float":
-            if not isinstance(value, (int, float)):
+            if not isinstance(value, (int, float)) or isinstance(value, bool):
                 raise ParamValidationError(
                     f"Param '{schema.name}' for '{type_name}' must be a float, "
                     f"got {type(value).__name__}: {value!r}"
                 )
 
-        # Range checks
-        if schema.min is not None and value < schema.min:
-            raise ParamValidationError(
-                f"Param '{schema.name}' for '{type_name}' must be >= {schema.min}, "
-                f"got {value}"
-            )
-        if schema.max is not None and value > schema.max:
-            raise ParamValidationError(
-                f"Param '{schema.name}' for '{type_name}' must be <= {schema.max}, "
-                f"got {value}"
-            )
+        # Enum membership / numeric range checks
+        if schema.type == "enum":
+            if schema.choices is None or value not in schema.choices:
+                raise ParamValidationError(
+                    f"{schema.name}: {value!r} not in {schema.choices}"
+                )
+        elif schema.type in ("int", "float"):
+            if schema.min is not None and value < schema.min:
+                raise ParamValidationError(
+                    f"Param '{schema.name}' for '{type_name}' must be >= {schema.min}, "
+                    f"got {value}"
+                )
+            if schema.max is not None and value > schema.max:
+                raise ParamValidationError(
+                    f"Param '{schema.name}' for '{type_name}' must be <= {schema.max}, "
+                    f"got {value}"
+                )
 
     return indicator_type.factory(params)
 
@@ -421,6 +469,41 @@ def _compute_zigzag(
     )
 
 
+def _compute_spike(
+    instance_id: str,
+    label: str,
+    indicator: IndicatorProto,
+    update: UpdateFn,
+    bars: list[Bar],
+) -> IndicatorResult:
+    """Produce sparse up/down series marking firing bars (mirrors _compute_zigzag's shape)."""
+    ts_to_idx: dict[int, int] = {}
+    datetimes: list[str] = []
+    for i, bar in enumerate(bars):
+        ts_to_idx[bar.ts_init] = i
+        update(indicator, bar)
+        datetimes.append(_ns_to_iso(bar.ts_event))
+
+    spike_up: list[float | None] = [None] * len(bars)
+    spike_down: list[float | None] = [None] * len(bars)
+    for spike in indicator.spikes:  # type: ignore[attr-defined]
+        idx = ts_to_idx.get(spike.end_ts)
+        if idx is None:
+            continue
+        if spike.direction > 0:
+            spike_up[idx] = float(bars[idx].high)
+        else:
+            spike_down[idx] = float(bars[idx].low)
+
+    return IndicatorResult(
+        id=instance_id,
+        label=label,
+        display="overlay",
+        outputs={"spike_up": spike_up, "spike_down": spike_down},
+        datetime=datetimes,
+    )
+
+
 def compute_indicator_instance(
     instance_id: str,
     type_name: str,
@@ -448,6 +531,11 @@ def compute_indicator_instance(
 
     if indicator_type.type == "ZigZag":
         return _compute_zigzag(
+            instance_id, label, indicator, indicator_type.update, bars
+        )
+
+    if indicator_type.type == "Spike":
+        return _compute_spike(
             instance_id, label, indicator, indicator_type.update, bars
         )
 

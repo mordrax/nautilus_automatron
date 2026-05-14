@@ -178,4 +178,35 @@ describe('IndicatorParamForm', () => {
     if (form) fireEvent.submit(form)
     expect(onSubmit).not.toHaveBeenCalled()
   })
+
+  const spikeEnumType: IndicatorType = {
+    type: 'Spike',
+    labelTemplate: 'Spike',
+    display: 'overlay',
+    outputs: [] as readonly string[],
+    params: [
+      {
+        name: 'move_method',
+        type: 'enum',
+        default: 'EXCURSION',
+        choices: ['NET', 'EXCURSION', 'RANGE'] as readonly string[],
+        label: 'Move method',
+      },
+    ],
+  }
+
+  it('renders a Select for enum params with the default selected', () => {
+    render(
+      <IndicatorParamForm
+        type={spikeEnumType}
+        submitLabel="Save"
+        onSubmit={() => {}}
+        onCancel={() => {}}
+      />,
+    )
+    // shadcn Select uses combobox role for its trigger
+    const combobox = screen.getByRole('combobox', { name: 'Move method' })
+    expect(combobox).toBeTruthy()
+    expect(combobox.textContent).toContain('EXCURSION')
+  })
 })

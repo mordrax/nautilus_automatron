@@ -26,12 +26,13 @@ router = APIRouter()
 
 class ParamSchemaOut(BaseModel):
     name: str
-    type: Literal["int", "float"]
-    default: int | float
+    type: Literal["int", "float", "enum"]
+    default: int | float | str
     min: int | float | None = None
     max: int | float | None = None
     step: int | float | None = None
     label: str | None = None
+    choices: tuple[str, ...] | None = None
 
 
 class IndicatorTypeOut(BaseModel):
@@ -76,6 +77,7 @@ def get_available_indicators() -> list[IndicatorTypeOut]:
                         max=p.max,
                         step=p.step,
                         label=p.label,
+                        choices=p.choices,
                     )
                     for p in ind_type.params
                 ],

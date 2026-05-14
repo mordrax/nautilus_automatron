@@ -2,6 +2,13 @@ import { useState, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import type { IndicatorType } from '@/types/api'
 import {
   coerceParams,
@@ -11,9 +18,9 @@ import {
 
 type IndicatorParamFormProps = {
   readonly type: IndicatorType
-  readonly initialParams?: Record<string, number>
+  readonly initialParams?: Record<string, number | string>
   readonly submitLabel: string
-  readonly onSubmit: (params: Record<string, number>) => void
+  readonly onSubmit: (params: Record<string, number | string>) => void
   readonly onCancel: () => void
 }
 
@@ -58,6 +65,38 @@ export const IndicatorParamForm = ({
       <p className="text-sm font-semibold">{type.type}</p>
       {type.params.map(param => {
         const fieldLabel = param.label ?? param.name
+        if (param.type === 'enum') {
+          const currentValue =
+            (rawValues[param.name] as string | undefined) ?? param.default
+          return (
+            <div key={param.name} className="space-y-1">
+              <Label htmlFor={`param-${param.name}`} className="text-xs">
+                {fieldLabel}
+              </Label>
+              <Select
+                value={currentValue}
+                onValueChange={v =>
+                  setRawValues(prev => ({ ...prev, [param.name]: v }))
+                }
+              >
+                <SelectTrigger
+                  id={`param-${param.name}`}
+                  aria-label={fieldLabel}
+                  className="h-7 text-xs"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {param.choices.map(c => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )
+        }
         const error = errors[param.name]
         return (
           <div key={param.name} className="space-y-1">

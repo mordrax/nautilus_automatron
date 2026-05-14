@@ -10,7 +10,7 @@ type AddIndicatorPopoverProps = {
   readonly types: readonly IndicatorType[]
   readonly detectorTypes: readonly DetectorMeta[]
   readonly selectedDetectorIds: readonly string[]
-  readonly onAddIndicator: (type: IndicatorType, params: Record<string, number>) => void
+  readonly onAddIndicator: (type: IndicatorType, params: Record<string, number | string>) => void
   readonly onAddDetector: (id: string) => void
 }
 
@@ -44,7 +44,7 @@ export const AddIndicatorPopover = ({
     }
   }
 
-  const handleSubmit = (type: IndicatorType, params: Record<string, number>) => {
+  const handleSubmit = (type: IndicatorType, params: Record<string, number | string>) => {
     onAddIndicator(type, params)
     setOpen(false)
     setMode({ kind: 'pick' })

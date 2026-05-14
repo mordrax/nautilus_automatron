@@ -100,15 +100,23 @@ export type TradeCategory = {
   readonly tradeIds: ReadonlySet<number>
 }
 
-export type ParamSchema = {
-  readonly name: string
-  readonly type: 'int' | 'float'
-  readonly default: number
-  readonly min?: number
-  readonly max?: number
-  readonly step?: number
-  readonly label?: string
-}
+export type ParamSchema =
+  | {
+      readonly name: string
+      readonly type: 'int' | 'float'
+      readonly default: number
+      readonly min?: number
+      readonly max?: number
+      readonly step?: number
+      readonly label?: string
+    }
+  | {
+      readonly name: string
+      readonly type: 'enum'
+      readonly default: string
+      readonly choices: readonly string[]
+      readonly label?: string
+    }
 
 export type IndicatorType = {
   readonly type: string
@@ -121,7 +129,7 @@ export type IndicatorType = {
 export type IndicatorInstance = {
   readonly id: string
   readonly type: string
-  readonly params: Readonly<Record<string, number>>
+  readonly params: Readonly<Record<string, number | string>>
 }
 
 export type ViewerState = {

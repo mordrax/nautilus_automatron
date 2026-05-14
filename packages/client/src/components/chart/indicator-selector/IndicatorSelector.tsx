@@ -18,8 +18,8 @@ type IndicatorInstanceSelectorProps = {
   readonly instances: readonly IndicatorInstance[]
   readonly getColor: (id: string) => string
   readonly onSetColor: (id: string, color: string) => void
-  readonly onAdd: (type: string, params: Record<string, number>) => void
-  readonly onEdit: (id: string, params: Record<string, number>) => void
+  readonly onAdd: (type: string, params: Record<string, number | string>) => void
+  readonly onEdit: (id: string, params: Record<string, number | string>) => void
   readonly onRemove: (id: string) => void
   // detectors
   readonly detectorTypes: readonly DetectorMeta[]
@@ -43,7 +43,7 @@ export const IndicatorInstanceSelector = ({
 }: IndicatorInstanceSelectorProps) => {
   const [editState, setEditState] = useState<EditState | null>(null)
 
-  const handleAdd = (type: IndicatorType, params: Record<string, number>) => {
+  const handleAdd = (type: IndicatorType, params: Record<string, number | string>) => {
     onAdd(type.type, params)
   }
 
@@ -56,7 +56,7 @@ export const IndicatorInstanceSelector = ({
     setEditState({ instanceId: instance.id, type })
   }
 
-  const handleEditSubmit = (params: Record<string, number>) => {
+  const handleEditSubmit = (params: Record<string, number | string>) => {
     if (!editState) return
     onEdit(editState.instanceId, params)
     setEditState(null)

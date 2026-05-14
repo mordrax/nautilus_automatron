@@ -1,26 +1,33 @@
 import type { ParamSchema, IndicatorType } from '@/types/api'
 
-export const defaultParams = (schema: readonly ParamSchema[]): Record<string, number> =>
+export const defaultParams = (
+  schema: readonly ParamSchema[],
+): Record<string, number | string> =>
   Object.fromEntries(schema.map((s) => [s.name, s.default]))
 
 export const coerceParams = (
   schema: readonly ParamSchema[],
   raw: Record<string, string>,
-): Record<string, number> =>
+): Record<string, number | string> =>
   Object.fromEntries(
-    schema.map((s) => [
-      s.name,
-      s.type === 'int'
-        ? Number.parseInt(raw[s.name] ?? '', 10)
-        : Number.parseFloat(raw[s.name] ?? ''),
-    ])
+    schema.map((s) => {
+      const rawVal = raw[s.name] ?? ''
+      switch (s.type) {
+        case 'int':
+          return [s.name, Number.parseInt(rawVal, 10)]
+        case 'float':
+          return [s.name, Number.parseFloat(rawVal)]
+        case 'enum':
+          return [s.name, rawVal]
+      }
+    }),
   )
 
 export type ValidationResult = { ok: true } | { ok: false; errors: Record<string, string> }
 
 export const validateParams = (
   schema: readonly ParamSchema[],
-  params: Record<string, number>,
+  params: Record<string, number | string>,
 ): ValidationResult => {
   const errors: Record<string, string> = {}
 
@@ -32,7 +39,14 @@ export const validateParams = (
       continue
     }
 
-    if (Number.isNaN(value)) {
+    if (s.type === 'enum') {
+      if (typeof value !== 'string' || !s.choices.includes(value)) {
+        errors[s.name] = `${s.name} must be one of ${s.choices.join(', ')}`
+      }
+      continue
+    }
+
+    if (typeof value !== 'number' || Number.isNaN(value)) {
       errors[s.name] = `${s.name} must be a valid number`
       continue
     }
@@ -64,7 +78,7 @@ export const validateParams = (
  */
 export const formatLabel = (
   type: IndicatorType,
-  params: Record<string, number>,
+  params: Record<string, number | string>,
 ): string =>
   type.labelTemplate.replace(/\{(\w+)\}/g, (_, key) => {
     const val = params[key]

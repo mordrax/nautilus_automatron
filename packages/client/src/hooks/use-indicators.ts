@@ -81,7 +81,7 @@ export const useIndicators = (runId: string | null, barType: string) => {
   }, [seeded, mutationVersion, runId])
 
   const addInstance = useCallback(
-    (type: string, params: Record<string, number>): string => {
+    (type: string, params: Record<string, number | string>): string => {
       const id = newInstanceId()
       const newInstance: IndicatorInstance = { id, type, params }
       setInstances((prev) => [...prev, newInstance])
@@ -91,7 +91,7 @@ export const useIndicators = (runId: string | null, barType: string) => {
     [],
   )
 
-  const editInstance = useCallback((id: string, params: Record<string, number>) => {
+  const editInstance = useCallback((id: string, params: Record<string, number | string>) => {
     setInstances((prev) => prev.map((inst) => (inst.id === id ? { ...inst, params } : inst)))
     setMutationVersion((v) => v + 1)
   }, [])
