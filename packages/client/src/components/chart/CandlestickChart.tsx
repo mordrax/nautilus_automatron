@@ -29,6 +29,21 @@ const buildIndicatorOverlaySeries = (
     if (ind.display !== 'overlay') continue
     const baseColor = getColor(ind.id)
     for (const field of Object.keys(ind.outputs)) {
+      if (field === 'spike_up' || field === 'spike_down') {
+        const isUp = field === 'spike_up'
+        series.push({
+          name: `${ind.label} ${isUp ? 'up' : 'down'}`,
+          type: 'scatter',
+          data: ind.outputs[field],
+          symbol: 'triangle',
+          symbolRotate: isUp ? 0 : 180,
+          symbolSize: 12,
+          itemStyle: { color: baseColor },
+          xAxisIndex: 0,
+          yAxisIndex: 0,
+        })
+        continue
+      }
       series.push({
         name: Object.keys(ind.outputs).length > 1 ? `${ind.label} ${field}` : ind.label,
         type: 'line',
