@@ -204,9 +204,9 @@ The chart (`packages/client/src/components/chart/CandlestickChart.tsx`) reads th
 
 ## Tests
 
-Unit tests in `packages/indicators/tests/test_spike.py`, parametrized over `move_method` and `statistic` where relevant:
+Unit tests in `packages/indicators/tests/test_spike_moves.py` (move helpers) and `packages/indicators/tests/test_spike_indicator.py` (indicator), parametrized over `move_method` and `statistic` where relevant:
 
-- No-spike baseline (flat series)
+- No-spike baseline (small-noise series, no large move)
 - Up-spike with volume
 - Down-spike with volume
 - Price rule passes but volume rule blocks (no fire)
@@ -217,8 +217,8 @@ Unit tests in `packages/indicators/tests/test_spike.py`, parametrized over `move
 - Warmup boundary (no fire before `M+N` bars seen)
 - Cooldown: spike at bar t, no second spike before bar `t + cooldown_bars`
 - Reset behaviour: state cleared, buffers empty, mode unset
-- Parameter validation: invalid enums, non-positive windows, `baseline_window < measurement_window`, negative thresholds
-- Per-statistic threshold defaults applied when not explicit
+- Parameter validation: invalid enums, non-positive windows, `baseline_window <= measurement_window`, negative thresholds
+- Intra-window round trip: `EXCURSION` / `RANGE` fire, `NET` does not (parametrized over all statistics)
 
 ## Out of scope
 
