@@ -2,6 +2,13 @@ import { useState, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import type { IndicatorType } from '@/types/api'
 import {
   coerceParams,
@@ -57,9 +64,39 @@ export const IndicatorParamForm = ({
     <form onSubmit={handleSubmit} className="space-y-3">
       <p className="text-sm font-semibold">{type.type}</p>
       {type.params.map(param => {
-        // TODO(task 9): render Select for enum
-        if (param.type === 'enum') return null
         const fieldLabel = param.label ?? param.name
+        if (param.type === 'enum') {
+          const currentValue =
+            (rawValues[param.name] as string | undefined) ?? param.default
+          return (
+            <div key={param.name} className="space-y-1">
+              <Label htmlFor={`param-${param.name}`} className="text-xs">
+                {fieldLabel}
+              </Label>
+              <Select
+                value={currentValue}
+                onValueChange={v =>
+                  setRawValues(prev => ({ ...prev, [param.name]: v }))
+                }
+              >
+                <SelectTrigger
+                  id={`param-${param.name}`}
+                  aria-label={fieldLabel}
+                  className="h-7 text-xs"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {param.choices.map(c => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )
+        }
         const error = errors[param.name]
         return (
           <div key={param.name} className="space-y-1">
