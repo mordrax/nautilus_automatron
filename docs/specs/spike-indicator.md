@@ -107,13 +107,13 @@ That gives 16 samples per bar. Computed incrementally — new sample added each 
 | `statistic` | `Statistic` enum | `ZSCORE` | `MEAN` / `MEDIAN` / `ZSCORE` |
 | `measurement_window` | int | 5 | N |
 | `baseline_window` | int | 20 | M (must be ≥ measurement_window + 1) |
-| `price_threshold` | float | per-statistic | MEAN/MEDIAN default 3.0; ZSCORE default 2.5 |
-| `volume_threshold` | float | per-statistic | MEAN/MEDIAN default 2.0; ZSCORE default 2.0 |
-| `cooldown_bars` | int | `baseline_window` | 0 disables cooldown |
+| `price_threshold` | float | 2.5 | Single default across all statistics; user adjusts when switching statistic |
+| `volume_threshold` | float | 2.0 | Single default across all statistics |
+| `cooldown_bars` | int | 20 | 0 disables cooldown. Independent of `baseline_window` |
 | `require_volume` | `VolumeMode` enum | `AUTO` | `AUTO` / `ALWAYS` / `NEVER` |
 | `max_spikes` | int | 10000 | 0 = unlimited |
 
-If `price_threshold` / `volume_threshold` are not set, the indicator picks the per-statistic default at construction time. Explicit values always win.
+All parameters are surfaced to the indicator-selector form. Defaults are static — no constructor-time substitution. Users adjust thresholds explicitly when switching between MEAN / MEDIAN / ZSCORE statistics, because each statistic uses a different scale (multiplier vs sigma-count).
 
 ## Volume-mode latching
 

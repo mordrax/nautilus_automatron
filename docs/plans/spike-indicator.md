@@ -20,16 +20,25 @@
 - `packages/indicators/tests/test_spike_moves.py`
 - `packages/indicators/tests/test_spike_indicator.py`
 
-**Modify:**
-- `packages/server/server/store/indicators.py` (extend `ParamSchema` with `"enum"`; register `"Spike"`; add `_compute_spike`)
-- `packages/server/tests/test_indicators_store.py` (add Spike + enum-param tests — adjust path if it lives elsewhere)
-- `packages/client/src/types/api.ts` (`ParamSchema.type` gains `"enum"` + `choices`)
-- `packages/client/src/lib/indicator-params.ts` (coerce + validate enum)
-- `packages/client/src/lib/indicator-params.test.ts` (enum cases)
-- `packages/client/src/components/chart/indicator-selector/IndicatorParamForm.tsx` (render `<Select>` for enum)
-- `packages/client/src/components/chart/indicator-selector/IndicatorParamForm.test.tsx` (enum-field tests)
-- `packages/client/src/components/chart/CandlestickChart.tsx` (render Spike series)
-- `packages/client/e2e/spike-indicator.spec.ts` (new Playwright test — created in Task 11)
+**Modify (backend):**
+- `packages/server/server/store/indicators.py` — widen `ParamSchema` (add `"enum"` to `type` Literal, add `choices` field, widen `default` to `int | float | str`, type-guarded validation); register `"Spike"`; add `_compute_spike`.
+- `packages/server/server/routes/indicators.py` — widen `ParamSchemaOut` Pydantic model: `type: Literal["int", "float", "enum"]`, `default: int | float | str`, add `choices: tuple[str, ...] | None = None`; thread `choices` through the endpoint.
+- `packages/server/tests/` — locate the existing indicator-registry test file (likely `test_indicators_store.py` or similar; if absent, create alongside other tests in `packages/server/tests/`).
+
+`packages/server/server/schemas.py` already types `IndicatorInstance.params: dict[str, Any]` — string params serialize through Pydantic with no change.
+
+**Modify (frontend — every file that imports `ParamSchema` or `Record<string, number>` for instance params, from a full grep):**
+- `packages/client/src/types/api.ts` — `ParamSchema` becomes a discriminated union with `'int' | 'float' | 'enum'` variants; widen `IndicatorInstance.params` to `Readonly<Record<string, number | string>>`.
+- `packages/client/src/lib/indicator-params.ts` — return type of `defaultParams` and `coerceParams` widens to `Record<string, number | string>`; per-param switch on `type` for coerce + validate; enum membership check.
+- `packages/client/src/lib/indicator-params.test.ts` — append enum cases.
+- `packages/client/src/lib/api.ts` — verify `fetchIndicatorTypes` JSON parse still types correctly under widened ParamSchema (likely no code change, just compile-time check).
+- `packages/client/src/hooks/use-indicators.ts` — `addInstance(type, params: Record<string, number | string>)`; `editInstance(id, params: Record<string, number | string>)`.
+- `packages/client/src/components/chart/indicator-selector/IndicatorParamForm.tsx` — props `initialParams?`, `onSubmit` widen; per-param switch renders `<Select>` for enum, existing `<Input>` for int/float.
+- `packages/client/src/components/chart/indicator-selector/IndicatorParamForm.test.tsx` — append enum-render tests.
+- `packages/client/src/components/chart/indicator-selector/AddIndicatorPopover.tsx` — `onAddIndicator` signature widens.
+- `packages/client/src/components/chart/indicator-selector/IndicatorSelector.tsx` — `onAdd` / `onEdit` / `handleAdd` / `handleEditSubmit` signatures widen.
+- `packages/client/src/components/chart/CandlestickChart.tsx` — render `spike_up` / `spike_down` series.
+- `packages/client/e2e/spike-indicator.spec.ts` — new Playwright test (Task 11).
 
 Each task is independently committable.
 
@@ -84,12 +93,11 @@ Expected: FAIL with `ModuleNotFoundError: No module named 'indicators.spike'`.
 
 - [ ] **Step 3: Implement**
 
-`packages/indicators/indicators/spike/__init__.py`:
+`packages/indicators/indicators/spike/__init__.py` (model-only — `SpikeIndicator` re-export added in Task 3):
 ```python
-from indicators.spike.indicator import SpikeIndicator
 from indicators.spike.model import MoveMethod, Spike, Statistic, VolumeMode
 
-__all__ = ["SpikeIndicator", "Spike", "MoveMethod", "Statistic", "VolumeMode"]
+__all__ = ["Spike", "MoveMethod", "Statistic", "VolumeMode"]
 ```
 
 `packages/indicators/indicators/spike/model.py`:
@@ -143,7 +151,7 @@ Note: `indicator.py` is created in Task 3. Step 4 runs only the model tests.
 Run: `cd packages/indicators && uv run pytest tests/test_spike_indicator.py::test_spike_dataclass_is_frozen_and_typed tests/test_spike_indicator.py::test_volume_mode_runtime_states -v`
 Expected: 2 passed.
 
-(The `__init__.py` imports `SpikeIndicator` which doesn't exist yet; importing the module path `indicators.spike.model` directly bypasses that. The tests in Step 1 import from `indicators.spike.model`, not `indicators.spike`, so this works. If `__init__.py` raises on import, switch to importing `model.py` only and add the re-export when `indicator.py` exists in Task 3.)
+(The `__init__.py` re-exports only `model.py` symbols at this point — `SpikeIndicator` doesn't exist yet. Task 3 expands the re-exports.)
 
 - [ ] **Step 5: Commit**
 
@@ -343,6 +351,8 @@ def test_constructs_with_defaults():
     assert ind.statistic is Statistic.ZSCORE
     assert ind.measurement_window == 5
     assert ind.baseline_window == 20
+    assert ind.price_threshold == 2.5
+    assert ind.volume_threshold == 2.0
     assert ind.cooldown_bars == 20
     assert ind.has_inputs is False
     assert ind.initialized is False
@@ -364,13 +374,6 @@ def test_constructs_with_defaults():
 def test_parameter_validation_rejects_invalid(kwargs):
     with pytest.raises((ValueError, Exception)):
         SpikeIndicator(**kwargs)
-
-
-def test_per_statistic_threshold_defaults_applied():
-    z = SpikeIndicator(statistic=Statistic.ZSCORE)
-    m = SpikeIndicator(statistic=Statistic.MEAN)
-    assert z.price_threshold == 2.5
-    assert m.price_threshold == 3.0
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
@@ -407,17 +410,6 @@ from indicators.spike.model import (
 )
 from indicators.spike.moves import MoveResult, compute_move
 
-_PRICE_THRESHOLD_DEFAULTS: dict[Statistic, float] = {
-    Statistic.MEAN: 3.0,
-    Statistic.MEDIAN: 3.0,
-    Statistic.ZSCORE: 2.5,
-}
-_VOLUME_THRESHOLD_DEFAULTS: dict[Statistic, float] = {
-    Statistic.MEAN: 2.0,
-    Statistic.MEDIAN: 2.0,
-    Statistic.ZSCORE: 2.0,
-}
-
 _INPUT_VOLUME_MODES: frozenset[VolumeMode] = frozenset(
     {VolumeMode.AUTO, VolumeMode.ALWAYS, VolumeMode.NEVER}
 )
@@ -430,9 +422,9 @@ class SpikeIndicator(Indicator):
         statistic: Statistic = Statistic.ZSCORE,
         measurement_window: int = 5,
         baseline_window: int = 20,
-        price_threshold: float | None = None,
-        volume_threshold: float | None = None,
-        cooldown_bars: int | None = None,
+        price_threshold: float = 2.5,
+        volume_threshold: float = 2.0,
+        cooldown_bars: int = 20,
         require_volume: VolumeMode = VolumeMode.AUTO,
         max_spikes: int = 10000,
     ) -> None:
@@ -449,26 +441,13 @@ class SpikeIndicator(Indicator):
         PyCondition.positive_int(baseline_window, "baseline_window")
         if baseline_window <= measurement_window:
             raise ValueError("baseline_window must be > measurement_window")
-        PyCondition.not_negative_int(max_spikes, "max_spikes")
-
-        resolved_price_threshold = (
-            price_threshold
-            if price_threshold is not None
-            else _PRICE_THRESHOLD_DEFAULTS[statistic]
-        )
-        resolved_volume_threshold = (
-            volume_threshold
-            if volume_threshold is not None
-            else _VOLUME_THRESHOLD_DEFAULTS[statistic]
-        )
-        if resolved_price_threshold < 0:
+        if price_threshold < 0:
             raise ValueError("price_threshold must be >= 0")
-        if resolved_volume_threshold < 0:
+        if volume_threshold < 0:
             raise ValueError("volume_threshold must be >= 0")
-
-        resolved_cooldown = cooldown_bars if cooldown_bars is not None else baseline_window
-        if resolved_cooldown < 0:
+        if cooldown_bars < 0:
             raise ValueError("cooldown_bars must be >= 0")
+        PyCondition.not_negative_int(max_spikes, "max_spikes")
 
         super().__init__(
             params=[
@@ -476,9 +455,9 @@ class SpikeIndicator(Indicator):
                 statistic.value,
                 measurement_window,
                 baseline_window,
-                resolved_price_threshold,
-                resolved_volume_threshold,
-                resolved_cooldown,
+                price_threshold,
+                volume_threshold,
+                cooldown_bars,
                 require_volume.value,
                 max_spikes,
             ]
@@ -488,9 +467,9 @@ class SpikeIndicator(Indicator):
         self.statistic = statistic
         self.measurement_window = measurement_window
         self.baseline_window = baseline_window
-        self.price_threshold = resolved_price_threshold
-        self.volume_threshold = resolved_volume_threshold
-        self.cooldown_bars = resolved_cooldown
+        self.price_threshold = price_threshold
+        self.volume_threshold = volume_threshold
+        self.cooldown_bars = cooldown_bars
         self.require_volume = require_volume
         self.max_spikes = max_spikes
 
@@ -728,6 +707,10 @@ Append to `packages/indicators/indicators/spike/indicator.py`:
             lows=lows_win,
         )
 
+        # No spike on a flat move.
+        if result.direction == 0 or result.magnitude <= 0.0:
+            return
+
         baseline_moves = self._baseline_moves_excluding_current()
         if len(baseline_moves) < 2:
             return  # not enough samples for stdev/median
@@ -809,12 +792,15 @@ Append to `packages/indicators/indicators/spike/indicator.py`:
         return out
 
     def _baseline_volumes_excluding_current(self) -> list[float]:
+        """Cumulative N-bar volumes over the same M-N+1 overlapping windows used
+        by `_baseline_moves_excluding_current`, time-aligned with the price
+        baseline (each baseline window's measurement bars are vols[k+1 : k+N+1])."""
         N = self.measurement_window
         M = self.baseline_window
         vols = list(self._volumes)
         out: list[float] = []
         for k in range(0, M - N + 1):
-            out.append(sum(vols[k : k + N]))
+            out.append(sum(vols[k + 1 : k + N + 1]))
         return out
 
     def _price_rule_passes(self, magnitude: float, baseline: list[float]) -> bool:
@@ -890,26 +876,46 @@ def test_warmup_no_fire_before_full_buffer(method, stat):
 
 
 @pytest.mark.parametrize("method", list(MoveMethod))
-def test_excursion_fires_on_intra_window_round_trip(method):
-    # Construct a series with a tall intra-window spike that round-trips to flat.
-    closes = [100.0] * 22 + [100.0, 100.0, 100.0]  # ends flat
-    highs  = [100.5] * 22 + [100.5, 120.0, 100.5]  # one bar pierces 120
-    lows   = [ 99.5] * 25
+@pytest.mark.parametrize("stat", list(Statistic))
+def test_intra_window_round_trip_distinguishes_methods(method, stat):
+    """A tall intra-window spike that round-trips to flat.
+
+    The baseline must have non-zero stdev for ZSCORE to be able to fire,
+    so the baseline has small alternating noise — but the noise is tiny
+    relative to the spike, so a correctly-set threshold still discriminates.
+    """
+    # 22 baseline bars with small zig-zag noise, then 3 measurement bars.
+    # closes alternate 100.0 / 100.2 so baseline NET moves are non-zero
+    # but small (~0.2). Highs are close+0.5, lows are close-0.5.
+    baseline_closes = [100.0 if i % 2 == 0 else 100.2 for i in range(22)]
+    closes = baseline_closes + [100.0, 100.0, 100.0]  # ends flat
+    highs  = [c + 0.5 for c in baseline_closes] + [100.5, 120.0, 100.5]
+    lows   = [c - 0.5 for c in baseline_closes] + [99.5, 99.5, 99.5]
+
     ind = SpikeIndicator(
         move_method=method,
-        statistic=Statistic.ZSCORE,
+        statistic=stat,
         measurement_window=3,
         baseline_window=20,
-        price_threshold=1.5,
+        # Threshold needs to clearly exceed baseline noise but be below the
+        # 20-magnitude spike for EXCURSION/RANGE. Per-statistic scales differ,
+        # so we set per-statistic thresholds rather than one value.
+        price_threshold={
+            Statistic.MEAN: 5.0,
+            Statistic.MEDIAN: 5.0,
+            Statistic.ZSCORE: 3.0,
+        }[stat],
         require_volume=VolumeMode.NEVER,
     )
     for bar in _bars(closes, highs=highs, lows=lows):
         ind.handle_bar(bar)
-    # NET sees ~0 move → no fire. EXCURSION & RANGE see ~20 → fire.
+
+    # NET sees ~0 move on the final flat bars → no fire under any statistic.
+    # EXCURSION & RANGE see a ~20-magnitude move → fire under any statistic.
     if method is MoveMethod.NET:
-        assert ind.spike_count == 0
+        assert ind.spike_count == 0, f"NET should not fire under {stat}"
     else:
-        assert ind.spike_count >= 1
+        assert ind.spike_count >= 1, f"{method} should fire under {stat}"
 ```
 
 - [ ] **Step 2: Run tests to verify they pass (no implementation change needed)**
@@ -1234,9 +1240,17 @@ export type ParamSchema =
     }
 ```
 
-(If `ParamSchema` is currently a single shape with optional fields, use the discriminated union above — it gives the form code a clean narrow.)
+(The current `ParamSchema` is a single shape with optional fields; switching to the discriminated union above gives the form code a clean narrow.)
 
-The `Record<string, number>` for instance params widens to `Record<string, number | string>` everywhere that touches it. Search for `Record<string, number>` in the client and update.
+Widen `IndicatorInstance.params: Readonly<Record<string, number>>` → `Readonly<Record<string, number | string>>`.
+
+The widened `Record<string, number | string>` propagates through every prop signature that carries instance params. From the full grep, these are the exact sites to update in this task:
+
+- `packages/client/src/hooks/use-indicators.ts` — `addInstance` and `editInstance` callback signatures.
+- `packages/client/src/components/chart/indicator-selector/AddIndicatorPopover.tsx` — `onAddIndicator` prop + internal `handleSubmit` signature.
+- `packages/client/src/components/chart/indicator-selector/IndicatorSelector.tsx` — `onAdd`, `onEdit`, `handleAdd`, `handleEditSubmit`.
+- `packages/client/src/components/chart/indicator-selector/IndicatorParamForm.tsx` — `initialParams?` and `onSubmit` props (the form-body rewrite is Task 9; the signatures change here).
+- `packages/client/src/lib/indicator-params.ts` — return types of `defaultParams` and `coerceParams`; input type of `validateParams`.
 
 In `packages/client/src/lib/indicator-params.ts`:
 - `defaultParams`: return `schema.type === 'enum' ? schema.default : schema.default` (the value is already correctly typed).
