@@ -11,9 +11,9 @@ import {
 
 type IndicatorParamFormProps = {
   readonly type: IndicatorType
-  readonly initialParams?: Record<string, number>
+  readonly initialParams?: Record<string, number | string>
   readonly submitLabel: string
-  readonly onSubmit: (params: Record<string, number>) => void
+  readonly onSubmit: (params: Record<string, number | string>) => void
   readonly onCancel: () => void
 }
 
@@ -57,6 +57,8 @@ export const IndicatorParamForm = ({
     <form onSubmit={handleSubmit} className="space-y-3">
       <p className="text-sm font-semibold">{type.type}</p>
       {type.params.map(param => {
+        // TODO(task 9): render Select for enum
+        if (param.type === 'enum') return null
         const fieldLabel = param.label ?? param.name
         const error = errors[param.name]
         return (

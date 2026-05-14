@@ -159,6 +159,27 @@ describe('validateParams', () => {
   })
 })
 
+const enumSchemas = [
+  { name: 'mode', type: 'enum' as const, default: 'A', choices: ['A', 'B', 'C'] as const },
+]
+
+describe('enum params', () => {
+  it('defaultParams uses string default', () => {
+    expect(defaultParams(enumSchemas)).toEqual({ mode: 'A' })
+  })
+  it('coerceParams passes strings through', () => {
+    expect(coerceParams(enumSchemas, { mode: 'B' })).toEqual({ mode: 'B' })
+  })
+  it('validateParams rejects value outside choices', () => {
+    const v = validateParams(enumSchemas, { mode: 'X' })
+    expect(v.ok).toBe(false)
+  })
+  it('validateParams accepts valid choice', () => {
+    const v = validateParams(enumSchemas, { mode: 'C' })
+    expect(v.ok).toBe(true)
+  })
+})
+
 describe('formatLabel', () => {
   it('substitutes a single placeholder', () => {
     expect(formatLabel(smaType, { period: 20 })).toBe('SMA(20)')
