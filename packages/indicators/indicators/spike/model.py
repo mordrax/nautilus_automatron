@@ -33,8 +33,8 @@ class Spike:
     price_at_fire: float
     start_ts: int
     end_ts: int
-    volume_ratio: float | None
     start_bar_index: int
     end_bar_index: int
+    volume_ratio: float | None
     move_method: MoveMethod
     statistic: Statistic
