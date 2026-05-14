@@ -6,7 +6,7 @@ from nautilus_trader.persistence.catalog.parquet import ParquetDataCatalog
 
 from server.routes.dependencies import _catalog
 from server.store import transforms
-from server.store.catalog_reader import get_fills, read_backtest_data
+from server.store.catalog_reader import get_fills, get_positions_closed, read_backtest_data
 
 router = APIRouter()
 
@@ -23,8 +23,7 @@ def get_fills_route(run_id: str, catalog: ParquetDataCatalog = Depends(_catalog)
 @router.get("/runs/{run_id}/trades")
 def get_trades(run_id: str, catalog: ParquetDataCatalog = Depends(_catalog)):
     data = read_backtest_data(catalog, run_id)
-    fills = get_fills(data)
-    if not fills:
-        raise HTTPException(status_code=404, detail="No fills found")
-    fills_dicts = transforms.fills_to_dicts(fills)
-    return transforms.fills_to_trades(fills_dicts)
+    positions = get_positions_closed(data)
+    if not positions:
+        raise HTTPException(status_code=404, detail="No trades found")
+    return transforms.positions_to_trades(positions)

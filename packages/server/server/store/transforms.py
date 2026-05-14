@@ -6,6 +6,8 @@ plain Python structures suitable for JSON serialization.
 
 from datetime import datetime, timezone
 
+from nautilus_trader.model.enums import OrderSide
+
 
 def _ns_to_iso(ns: int) -> str:
     """Convert nanosecond timestamp to ISO 8601 string."""
@@ -57,52 +59,29 @@ def positions_closed_to_dicts(positions: list) -> list[dict]:
     ]
 
 
-def fills_to_trades(fills: list[dict]) -> list[dict]:
-    """Group fills by position_id into entry/exit trade pairs.
+def positions_to_trades(positions_closed: list) -> list[dict]:
+    """Convert closed Positions into trade rows for the UI table.
 
-    Each trade has an entry fill and an exit fill, with computed P&L.
+    One closed Position = one trade. Under NETTING OMS multiple closed
+    Positions can share a position_id; each is still its own trade row.
     """
-    from collections import defaultdict
-
-    by_position: dict[str, list[dict]] = defaultdict(list)
-    for fill in fills:
-        by_position[fill["position_id"]].append(fill)
-
-    trades = []
-    for idx, (position_id, position_fills) in enumerate(
-        sorted(by_position.items())
-    ):
-        sorted_fills = sorted(position_fills, key=lambda f: f["ts_event"])
-        if len(sorted_fills) < 2:
-            continue
-
-        entry = sorted_fills[0]
-        exit_ = sorted_fills[-1]
-
-        entry_px = float(entry["last_px"])
-        exit_px = float(exit_["last_px"])
-        qty = float(entry["last_qty"])
-
-        is_long = entry["order_side"] == "BUY"
-        pnl = (exit_px - entry_px) * qty if is_long else (entry_px - exit_px) * qty
-
-        trades.append(
-            {
-                "relative_id": idx + 1,
-                "position_id": position_id,
-                "instrument_id": entry["instrument_id"],
-                "direction": "Long" if is_long else "Short",
-                "entry_datetime": entry["ts_event"],
-                "entry_price": entry_px,
-                "exit_datetime": exit_["ts_event"],
-                "exit_price": exit_px,
-                "quantity": qty,
-                "pnl": round(pnl, 2),
-                "currency": entry["currency"],
-            }
-        )
-
-    return trades
+    sorted_positions = sorted(positions_closed, key=lambda p: p.ts_opened)
+    return [
+        {
+            "relative_id": idx + 1,
+            "position_id": str(p.position_id),
+            "instrument_id": str(p.instrument_id),
+            "direction": "Long" if OrderSide(p.entry) == OrderSide.BUY else "Short",
+            "entry_datetime": _ns_to_iso(p.ts_opened),
+            "entry_price": float(p.avg_px_open),
+            "exit_datetime": _ns_to_iso(p.ts_closed),
+            "exit_price": float(p.avg_px_close),
+            "quantity": float(p.peak_qty),
+            "pnl": round(float(p.realized_pnl), 2),
+            "currency": str(p.currency),
+        }
+        for idx, p in enumerate(sorted_positions)
+    ]
 
 
 def _safe_float(val: float) -> float | None:
