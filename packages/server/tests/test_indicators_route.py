@@ -292,3 +292,61 @@ def test_post_indicators_missing_bar_type_returns_404():
         },
     )
     assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Enum param-schema tests
+# ---------------------------------------------------------------------------
+
+from server.store.indicators import (
+    INDICATOR_TYPES,
+    IndicatorType,
+    ParamSchema,
+    ParamValidationError,
+    build_indicator_from_instance,
+)
+
+
+def test_param_schema_accepts_enum_type():
+    schema = ParamSchema(
+        name="mode", type="enum", default="A", choices=("A", "B", "C"),
+    )
+    assert schema.type == "enum"
+    assert schema.choices == ("A", "B", "C")
+    assert schema.default == "A"
+
+
+def test_build_rejects_enum_value_not_in_choices(monkeypatch):
+    # Register a temporary indicator type with one enum param.
+    class _Dummy:
+        @property
+        def initialized(self) -> bool:
+            return True
+
+        def update_raw(self, *args: float) -> None:
+            pass
+
+    dummy_type = IndicatorType(
+        type="DummyEnum",
+        label_template="Dummy({mode})",
+        display="overlay",
+        outputs=("value",),
+        params=(
+            ParamSchema(
+                name="mode",
+                type="enum",
+                default="A",
+                choices=("A", "B"),
+            ),
+        ),
+        factory=lambda p: _Dummy(),
+        update=lambda ind, bar: None,
+    )
+    monkeypatch.setitem(INDICATOR_TYPES, "DummyEnum", dummy_type)
+
+    # Valid value → no error.
+    build_indicator_from_instance("DummyEnum", {"mode": "A"})
+
+    # Invalid value → ParamValidationError.
+    with pytest.raises(ParamValidationError):
+        build_indicator_from_instance("DummyEnum", {"mode": "Z"})

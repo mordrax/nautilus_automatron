@@ -84,12 +84,13 @@ class ParamSchema:
     """Schema definition for a single indicator parameter."""
 
     name: str
-    type: Literal["int", "float"]
-    default: int | float
+    type: Literal["int", "float", "enum"]
+    default: int | float | str
     min: int | float | None = None
     max: int | float | None = None
     step: int | float | None = None
     label: str | None = None  # display label; defaults to name if None
+    choices: tuple[str, ...] | None = None  # required when type == "enum"
 
 
 @dataclass(frozen=True)
@@ -348,17 +349,23 @@ def build_indicator_from_instance(
                     f"got {type(value).__name__}: {value!r}"
                 )
 
-        # Range checks
-        if schema.min is not None and value < schema.min:
-            raise ParamValidationError(
-                f"Param '{schema.name}' for '{type_name}' must be >= {schema.min}, "
-                f"got {value}"
-            )
-        if schema.max is not None and value > schema.max:
-            raise ParamValidationError(
-                f"Param '{schema.name}' for '{type_name}' must be <= {schema.max}, "
-                f"got {value}"
-            )
+        # Enum membership / numeric range checks
+        if schema.type == "enum":
+            if schema.choices is None or value not in schema.choices:
+                raise ParamValidationError(
+                    f"{schema.name}: {value!r} not in {schema.choices}"
+                )
+        elif schema.type in ("int", "float"):
+            if schema.min is not None and value < schema.min:
+                raise ParamValidationError(
+                    f"Param '{schema.name}' for '{type_name}' must be >= {schema.min}, "
+                    f"got {value}"
+                )
+            if schema.max is not None and value > schema.max:
+                raise ParamValidationError(
+                    f"Param '{schema.name}' for '{type_name}' must be <= {schema.max}, "
+                    f"got {value}"
+                )
 
     return indicator_type.factory(params)
 
