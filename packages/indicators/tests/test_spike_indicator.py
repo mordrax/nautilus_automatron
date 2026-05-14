@@ -187,3 +187,58 @@ def test_reset_clears_state():
     assert ind.volume_mode is None
     assert ind.has_inputs is False
     assert ind.initialized is False
+
+
+@pytest.mark.parametrize("method", list(MoveMethod))
+@pytest.mark.parametrize("stat", list(Statistic))
+def test_warmup_no_fire_before_full_buffer(method, stat):
+    ind = SpikeIndicator(
+        move_method=method, statistic=stat,
+        measurement_window=3, baseline_window=10,
+        require_volume=VolumeMode.NEVER,
+    )
+    # Only N+M-1 bars → not enough
+    for bar in _bars([100.0, 101.0] * 6):  # 12 bars, need 14 (M+N+1)
+        ind.handle_bar(bar)
+    assert ind.spike_count == 0
+
+
+@pytest.mark.parametrize("method", list(MoveMethod))
+@pytest.mark.parametrize("stat", list(Statistic))
+def test_intra_window_round_trip_distinguishes_methods(method, stat):
+    """A tall intra-window spike that round-trips to flat.
+
+    Baseline has non-periodic small noise so the per-method baseline
+    distribution has non-zero stdev (required for ZSCORE to fire).
+    """
+    # 22 non-periodic noise samples; period and magnitude chosen so no
+    # baseline window itself triggers a fire.
+    noise = [0.0, 0.05, -0.03, 0.02, -0.04, 0.01, 0.06, -0.02, 0.03, -0.05,
+             0.04, 0.0, -0.01, 0.05, -0.03, 0.02, -0.04, 0.01, 0.06, -0.02,
+             0.03, -0.05]
+    baseline_closes = [100.0 + n for n in noise]
+    closes = baseline_closes + [100.0, 100.0, 100.0]  # ends flat
+    highs  = [c + 0.5 for c in baseline_closes] + [100.5, 120.0, 100.5]
+    lows   = [c - 0.5 for c in baseline_closes] + [99.5, 99.5, 99.5]
+
+    ind = SpikeIndicator(
+        move_method=method,
+        statistic=stat,
+        measurement_window=3,
+        baseline_window=20,
+        price_threshold={
+            Statistic.MEAN: 5.0,
+            Statistic.MEDIAN: 5.0,
+            Statistic.ZSCORE: 3.0,
+        }[stat],
+        require_volume=VolumeMode.NEVER,
+    )
+    for bar in _bars(closes, highs=highs, lows=lows):
+        ind.handle_bar(bar)
+
+    # NET sees ~0 move on the final flat bars → no fire under any statistic.
+    # EXCURSION & RANGE see a ~20-magnitude move → fire under any statistic.
+    if method is MoveMethod.NET:
+        assert ind.spike_count == 0, f"NET should not fire under {stat}"
+    else:
+        assert ind.spike_count >= 1, f"{method} should fire under {stat}"
