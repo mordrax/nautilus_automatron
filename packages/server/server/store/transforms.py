@@ -6,6 +6,8 @@ plain Python structures suitable for JSON serialization.
 
 from datetime import datetime, timezone
 
+from nautilus_trader.model.enums import OrderSide
+
 
 def _ns_to_iso(ns: int) -> str:
     """Convert nanosecond timestamp to ISO 8601 string."""
@@ -54,6 +56,31 @@ def positions_closed_to_dicts(positions: list) -> list[dict]:
             "duration_ns": int(p.duration_ns),
         }
         for p in positions
+    ]
+
+
+def positions_to_trades(positions_closed: list) -> list[dict]:
+    """Convert closed Positions into trade rows for the UI table.
+
+    One closed Position = one trade. Under NETTING OMS multiple closed
+    Positions can share a position_id; each is still its own trade row.
+    """
+    sorted_positions = sorted(positions_closed, key=lambda p: p.ts_opened)
+    return [
+        {
+            "relative_id": idx + 1,
+            "position_id": str(p.position_id),
+            "instrument_id": str(p.instrument_id),
+            "direction": "Long" if p.entry == OrderSide.BUY else "Short",
+            "entry_datetime": _ns_to_iso(p.ts_opened),
+            "entry_price": float(p.avg_px_open),
+            "exit_datetime": _ns_to_iso(p.ts_closed),
+            "exit_price": float(p.avg_px_close),
+            "quantity": float(p.peak_qty),
+            "pnl": round(float(p.realized_pnl), 2),
+            "currency": str(p.currency),
+        }
+        for idx, p in enumerate(sorted_positions)
     ]
 
 
