@@ -1,8 +1,7 @@
 """Tests for metrics computation module."""
 
 import math
-
-import pyarrow as pa
+from types import SimpleNamespace
 
 from server.store.metrics import (
     empty_metrics,
@@ -18,32 +17,31 @@ _1D_NS = 86_400_000_000_000
 _BASE_TS = 1_704_067_200_000_000_000  # 2024-01-01 00:00:00 UTC
 
 
-def _make_positions_table(
+def _make_positions_list(
     realized_pnl: list[float],
     ts_opened: list[int] | None = None,
     ts_closed: list[int] | None = None,
     duration_ns: list[int] | None = None,
-) -> pa.Table:
-    """Build a minimal Arrow positions_closed table for testing."""
+) -> list:
+    """Build a minimal list of SimpleNamespace positions for testing."""
     n = len(realized_pnl)
-
     if ts_opened is None:
         ts_opened = [_BASE_TS + i * _1D_NS for i in range(n)]
     if ts_closed is None:
         ts_closed = [_BASE_TS + i * _1D_NS + _1H_NS for i in range(n)]
     if duration_ns is None:
         duration_ns = [_1H_NS] * n
-
-    return pa.table(
-        {
-            "realized_pnl": pa.array(realized_pnl, type=pa.float64()),
-            "realized_return": pa.array([0.01] * n, type=pa.float64()),
-            "ts_opened": pa.array(ts_opened, type=pa.uint64()),
-            "ts_closed": pa.array(ts_closed, type=pa.uint64()),
-            "duration_ns": pa.array(duration_ns, type=pa.uint64()),
-            "position_id": pa.array([f"P-{i}" for i in range(n)], type=pa.string()),
-        }
-    )
+    return [
+        SimpleNamespace(
+            realized_pnl=realized_pnl[i],
+            realized_return=0.01,
+            ts_opened=ts_opened[i],
+            ts_closed=ts_closed[i],
+            duration_ns=duration_ns[i],
+            position_id=f"P-{i}",
+        )
+        for i in range(n)
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -81,18 +79,8 @@ def testempty_metrics_has_all_keys():
 # ---------------------------------------------------------------------------
 
 
-def test_empty_table_returns_all_none():
-    empty = pa.table(
-        {
-            "realized_pnl": pa.array([], type=pa.float64()),
-            "realized_return": pa.array([], type=pa.float64()),
-            "ts_opened": pa.array([], type=pa.uint64()),
-            "ts_closed": pa.array([], type=pa.uint64()),
-            "duration_ns": pa.array([], type=pa.uint64()),
-            "position_id": pa.array([], type=pa.string()),
-        }
-    )
-    result = compute_run_metrics(empty)
+def test_empty_list_returns_all_none():
+    result = compute_run_metrics([])
     for key, value in result.items():
         assert value is None, f"Expected None for key '{key}', got {value!r}"
 
@@ -103,13 +91,13 @@ def test_empty_table_returns_all_none():
 
 
 def test_total_pnl_sum():
-    table = _make_positions_table([100.0, -50.0, 200.0])
+    table = _make_positions_list([100.0, -50.0, 200.0])
     result = compute_run_metrics(table)
     assert result["total_pnl"] == 250.0
 
 
 def test_total_pnl_rounded_to_2_decimals():
-    table = _make_positions_table([100.123, 50.456])
+    table = _make_positions_list([100.123, 50.456])
     result = compute_run_metrics(table)
     assert result["total_pnl"] == round(100.123 + 50.456, 2)
 
@@ -120,13 +108,13 @@ def test_total_pnl_rounded_to_2_decimals():
 
 
 def test_wins_count():
-    table = _make_positions_table([100.0, 200.0, -50.0, -10.0, 0.0])
+    table = _make_positions_list([100.0, 200.0, -50.0, -10.0, 0.0])
     result = compute_run_metrics(table)
     assert result["wins"] == 2  # pnl > 0
 
 
 def test_losses_count():
-    table = _make_positions_table([100.0, 200.0, -50.0, -10.0, 0.0])
+    table = _make_positions_list([100.0, 200.0, -50.0, -10.0, 0.0])
     result = compute_run_metrics(table)
     assert result["losses"] == 3  # pnl <= 0
 
@@ -137,14 +125,14 @@ def test_losses_count():
 
 
 def test_win_rate():
-    table = _make_positions_table([100.0, -50.0, 200.0, -30.0])
+    table = _make_positions_list([100.0, -50.0, 200.0, -30.0])
     result = compute_run_metrics(table)
     # 2 wins, 4 total
     assert result["win_rate"] == round(2 / 4, 4)
 
 
 def test_win_rate_rounded_to_4_decimals():
-    table = _make_positions_table([100.0, 50.0, -10.0])
+    table = _make_positions_list([100.0, 50.0, -10.0])
     result = compute_run_metrics(table)
     assert result["win_rate"] == round(2 / 3, 4)
 
@@ -155,20 +143,20 @@ def test_win_rate_rounded_to_4_decimals():
 
 
 def test_avg_win():
-    table = _make_positions_table([100.0, 200.0, -50.0])
+    table = _make_positions_list([100.0, 200.0, -50.0])
     result = compute_run_metrics(table)
     assert result["avg_win"] == round((100.0 + 200.0) / 2, 2)
 
 
 def test_avg_loss():
-    table = _make_positions_table([100.0, -50.0, -30.0])
+    table = _make_positions_list([100.0, -50.0, -30.0])
     result = compute_run_metrics(table)
     assert result["avg_loss"] == round((-50.0 + -30.0) / 2, 2)
 
 
 def test_avg_loss_includes_zero_pnl():
     # pnl <= 0 are losses, so 0.0 counts
-    table = _make_positions_table([100.0, -50.0, 0.0])
+    table = _make_positions_list([100.0, -50.0, 0.0])
     result = compute_run_metrics(table)
     assert result["avg_loss"] == round((-50.0 + 0.0) / 2, 2)
 
@@ -179,7 +167,7 @@ def test_avg_loss_includes_zero_pnl():
 
 
 def test_win_loss_ratio():
-    table = _make_positions_table([100.0, -50.0])
+    table = _make_positions_list([100.0, -50.0])
     result = compute_run_metrics(table)
     avg_win = 100.0
     avg_loss = -50.0
@@ -189,7 +177,7 @@ def test_win_loss_ratio():
 
 def test_win_loss_ratio_none_when_avg_loss_zero():
     # All wins → avg_loss is 0 (or no losses), win_loss_ratio must be None
-    table = _make_positions_table([100.0, 200.0, 50.0])
+    table = _make_positions_list([100.0, 200.0, 50.0])
     result = compute_run_metrics(table)
     assert result["win_loss_ratio"] is None
 
@@ -200,7 +188,7 @@ def test_win_loss_ratio_none_when_avg_loss_zero():
 
 
 def test_expectancy_calculation():
-    table = _make_positions_table([100.0, 200.0, -50.0, -30.0])
+    table = _make_positions_list([100.0, 200.0, -50.0, -30.0])
     result = compute_run_metrics(table)
 
     win_rate = 2 / 4
@@ -223,7 +211,7 @@ def test_expectancy_helper_function():
 
 def test_avg_hold_hours():
     durations = [2 * _1H_NS, 4 * _1H_NS, 6 * _1H_NS]
-    table = _make_positions_table([100.0, -50.0, 200.0], duration_ns=durations)
+    table = _make_positions_list([100.0, -50.0, 200.0], duration_ns=durations)
     result = compute_run_metrics(table)
     expected = round(4.0, 1)  # mean of 2, 4, 6 hours
     assert result["avg_hold_hours"] == expected
@@ -231,7 +219,7 @@ def test_avg_hold_hours():
 
 def test_avg_hold_hours_rounded_to_1():
     durations = [1 * _1H_NS, 2 * _1H_NS]
-    table = _make_positions_table([100.0, -50.0], duration_ns=durations)
+    table = _make_positions_list([100.0, -50.0], duration_ns=durations)
     result = compute_run_metrics(table)
     assert result["avg_hold_hours"] == round(1.5, 1)
 
@@ -245,7 +233,7 @@ def test_pnl_per_week():
     # Two trades: first opens at BASE, second closes at BASE + 14 days + 1H
     ts_opened = [_BASE_TS, _BASE_TS + 14 * _1D_NS]
     ts_closed = [_BASE_TS + _1H_NS, _BASE_TS + 14 * _1D_NS + _1H_NS]
-    table = _make_positions_table(
+    table = _make_positions_list(
         [100.0, 200.0],
         ts_opened=ts_opened,
         ts_closed=ts_closed,
@@ -261,7 +249,7 @@ def test_pnl_per_week():
 def test_trades_per_week():
     ts_opened = [_BASE_TS, _BASE_TS + 14 * _1D_NS]
     ts_closed = [_BASE_TS + _1H_NS, _BASE_TS + 14 * _1D_NS + _1H_NS]
-    table = _make_positions_table(
+    table = _make_positions_list(
         [100.0, 200.0],
         ts_opened=ts_opened,
         ts_closed=ts_closed,
@@ -355,7 +343,7 @@ def test_sharpe_ratio_in_compute_run_metrics():
         _FEB_1_2024 + _1H_NS,
         _FEB_1_2024 + 2 * _1D_NS,
     ]
-    table = _make_positions_table(
+    table = _make_positions_list(
         [100.0, 200.0, -50.0, 150.0],
         ts_opened=ts_opened,
         ts_closed=ts_closed,
@@ -371,7 +359,7 @@ def test_sharpe_ratio_in_compute_run_metrics():
 
 
 def test_all_winning_trades_no_avg_loss():
-    table = _make_positions_table([100.0, 200.0, 50.0])
+    table = _make_positions_list([100.0, 200.0, 50.0])
     result = compute_run_metrics(table)
     assert result["wins"] == 3
     assert result["losses"] == 0
@@ -381,7 +369,7 @@ def test_all_winning_trades_no_avg_loss():
 
 
 def test_all_losing_trades_no_avg_win():
-    table = _make_positions_table([-100.0, -50.0])
+    table = _make_positions_list([-100.0, -50.0])
     result = compute_run_metrics(table)
     assert result["wins"] == 0
     assert result["losses"] == 2
@@ -390,7 +378,7 @@ def test_all_losing_trades_no_avg_win():
 
 
 def test_single_trade():
-    table = _make_positions_table([100.0])
+    table = _make_positions_list([100.0])
     result = compute_run_metrics(table)
     assert result["total_pnl"] == 100.0
     assert result["wins"] == 1
