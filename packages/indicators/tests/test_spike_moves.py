@@ -50,3 +50,52 @@ def test_range_direction_negative_when_net_down():
     # range = 99.5 - 89.0 = 10.5; net = 94 - 100 = -6 → direction -1
     assert m.direction == -1
     assert m.magnitude == pytest.approx(10.5)
+
+
+def test_net_flat_returns_zero_direction_and_magnitude():
+    flat = {
+        "closes": [100.0] * 6,
+        "highs":  [100.5] * 6,
+        "lows":   [ 99.5] * 6,
+    }
+    m = compute_move(MoveMethod.NET, **flat)
+    assert m.direction == 0
+    assert m.magnitude == pytest.approx(0.0)
+
+
+def test_range_flat_close_returns_zero_direction_with_nonzero_magnitude():
+    # Round-trip ends at exactly the prior close → net == 0 → direction 0,
+    # but the range is non-zero. Caller must guard.
+    closes = [100.0, 102.0, 105.0, 103.0, 101.0, 100.0]
+    highs  = [100.5, 102.5, 105.5, 103.5, 101.5, 100.5]
+    lows   = [ 99.5, 101.5, 104.5, 102.5, 100.5,  99.5]
+    m = compute_move(MoveMethod.RANGE, closes=closes, highs=highs, lows=lows)
+    assert m.direction == 0
+    assert m.magnitude > 0
+    # range = max(highs[1:]) - min(lows[1:]) = 105.5 - 99.5 = 6.0
+    assert m.magnitude == pytest.approx(6.0)
+
+
+def test_excursion_down_branch_fires_when_down_dominates():
+    # Window where down_excursion (10.0) > up_excursion (1.0) → direction -1.
+    closes = [100.0, 100.5, 99.0,  95.0, 92.0, 90.5]
+    highs  = [100.5, 101.0, 99.5,  95.5, 92.5, 91.0]
+    lows   = [ 99.5, 100.0, 98.5,  94.0, 91.5, 90.0]
+    m = compute_move(MoveMethod.EXCURSION, closes=closes, highs=highs, lows=lows)
+    # up = max(highs[1:]) - 100 = 101.0 - 100 = 1.0
+    # down = 100 - min(lows[1:]) = 100 - 90.0 = 10.0
+    assert m.direction == -1
+    assert m.magnitude == pytest.approx(10.0)
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"closes": [], "highs": [], "lows": []},
+        {"closes": [1.0], "highs": [1.0], "lows": [1.0]},  # length < 2
+        {"closes": [1.0, 2.0], "highs": [1.0], "lows": [1.0, 2.0]},  # mismatched
+    ],
+)
+def test_compute_move_rejects_invalid_input(kwargs):
+    with pytest.raises(ValueError):
+        compute_move(MoveMethod.NET, **kwargs)

@@ -16,7 +16,10 @@ from indicators.spike.model import MoveMethod
 @dataclass(frozen=True)
 class MoveResult:
     magnitude: float
-    direction: int  # +1 / -1; 0 only when magnitude == 0
+    # +1 / -1 / 0. For NET, direction == 0 iff magnitude == 0. For RANGE the
+    # direction is signed by net close-to-close, so direction can be 0 even
+    # when magnitude > 0 (flat-close round-trip window). Callers must guard.
+    direction: int
 
 
 def compute_move(
