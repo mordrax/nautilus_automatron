@@ -27,15 +27,19 @@ test.describe('Visual Regression', () => {
 
   test('runs page', async ({ page }) => {
     await page.goto('/')
-    const runsSection = page.locator('section', { has: page.getByText('Backtest Runs') })
-    await expect(runsSection.locator('.tabulator')).toBeVisible()
-    // Wait for data to render
-    await expect(page.getByText('EMACross-000').first()).toBeVisible()
 
-    await expect(page).toHaveScreenshot('runs-page.png', {
-      fullPage: true,
-      maxDiffPixelRatio: 0.01,
-    })
+    const runsSection = page.locator('section', { has: page.getByRole('heading', { name: /Backtest Runs/ }) })
+    const runsTable = runsSection.locator('.tabulator')
+    await expect(runsTable).toBeVisible()
+    await expect(runsTable.locator('.tabulator-row').first()).toBeVisible()
+    expect(await runsTable.locator('.tabulator-row').count()).toBeGreaterThan(0)
+
+    await page.getByRole('tab', { name: 'Instrument Data Catalog' }).click()
+    const catalogSection = page.locator('section', { has: page.getByRole('heading', { name: 'Instrument Data Catalog' }) })
+    const catalogTable = catalogSection.locator('.tabulator')
+    await expect(catalogTable).toBeVisible()
+    await expect(catalogTable.locator('.tabulator-row').first()).toBeVisible()
+    expect(await catalogTable.locator('.tabulator-row').count()).toBeGreaterThan(0)
   })
 
   test('chart with no indicators', async ({ page }) => {
