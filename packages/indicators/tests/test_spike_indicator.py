@@ -1,3 +1,6 @@
+import pytest
+
+from indicators.spike import SpikeIndicator
 from indicators.spike.model import Spike, MoveMethod, Statistic, VolumeMode
 
 
@@ -27,3 +30,34 @@ def test_volume_mode_runtime_states():
     assert VolumeMode.PRICE_AND_VOLUME in VolumeMode
     assert VolumeMode.PRICE_ONLY in VolumeMode
     assert VolumeMode.AUTO in VolumeMode
+
+
+def test_constructs_with_defaults():
+    ind = SpikeIndicator()
+    assert ind.move_method is MoveMethod.EXCURSION
+    assert ind.statistic is Statistic.ZSCORE
+    assert ind.measurement_window == 5
+    assert ind.baseline_window == 20
+    assert ind.price_threshold == 2.5
+    assert ind.volume_threshold == 2.0
+    assert ind.cooldown_bars == 20
+    assert ind.has_inputs is False
+    assert ind.initialized is False
+    assert ind.spike_count == 0
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"measurement_window": 0},
+        {"measurement_window": -1},
+        {"baseline_window": 5, "measurement_window": 5},  # M must be > N
+        {"price_threshold": -0.1},
+        {"volume_threshold": -1.0},
+        {"cooldown_bars": -1},
+        {"max_spikes": -1},
+    ],
+)
+def test_parameter_validation_rejects_invalid(kwargs):
+    with pytest.raises((ValueError, Exception)):
+        SpikeIndicator(**kwargs)
