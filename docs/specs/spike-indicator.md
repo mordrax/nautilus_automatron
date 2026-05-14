@@ -178,11 +178,29 @@ packages/indicators/indicators/spike/
 
 Tests at `packages/indicators/tests/test_spike.py`, parametrized over `move_method` so all three paths are exercised per scenario.
 
-Frontend hookup at `packages/client/src/components/chart/indicator-selector/spike/`:
+## Framework extension: enum parameters
 
-- `config.ts` — shadcn form for the parameter set
-- `overlay.ts` — eCharts `markArea` (spans the measurement window) + `markPoint` (firing bar) builder
-- `index.ts` — registration
+The existing parameterized-indicator framework (`packages/server/server/store/indicators.py`, `packages/client/src/components/chart/indicator-selector/IndicatorParamForm.tsx`) supports only numeric `int` / `float` parameters. The spike indicator requires three enum parameters (`move_method`, `statistic`, `require_volume`), so the framework is extended in this PR:
+
+**Backend (`packages/server/server/store/indicators.py`):**
+- `ParamSchema.type` gains `"enum"` in its `Literal` union.
+- New optional field `choices: tuple[str, ...] | None = None`; required when `type == "enum"`.
+- `ParamSchema.default` widens to `int | float | str`.
+- Validation rejects enum values not in `choices`.
+
+**Frontend (`packages/client/src/components/chart/indicator-selector/IndicatorParamForm.tsx`, `packages/client/src/lib/indicator-params.ts`, `packages/client/src/types/api.ts`):**
+- Param schema TS type gains `'enum'` variant with `choices: readonly string[]`.
+- `coerceParams` passes string enum values through unchanged.
+- `validateParams` checks enum membership.
+- The form renders a shadcn `<Select>` for enum-typed params (numeric params still render as `<Input>`).
+
+## Backend registration
+
+The indicator registers in `INDICATOR_TYPES` as `"Spike"` with all 9 params exposed. The `factory` lambda maps the schema params (strings for enums) into `SpikeIndicator` constructor arguments. The compute path uses a dedicated `_compute_spike` helper that produces sparse arrays for the chart (`spike_up`, `spike_down`) so the firing bars can be marked, mirroring how `_compute_zigzag` produces a sparse `zigzag` series.
+
+## Chart rendering
+
+The chart (`packages/client/src/components/chart/CandlestickChart.tsx`) reads the `IndicatorResult` for any "Spike" instance and renders the spike events using existing eCharts scatter/marker primitives — no per-indicator frontend module is needed. Up-spikes render at the firing-bar high, down-spikes at the firing-bar low, color from the per-instance color picker, tooltip shows magnitude (and volume ratio when available).
 
 ## Tests
 
