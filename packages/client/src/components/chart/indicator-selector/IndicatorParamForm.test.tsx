@@ -179,15 +179,15 @@ describe('IndicatorParamForm', () => {
     expect(onSubmit).not.toHaveBeenCalled()
   })
 
-  const spikeEnumType = {
+  const spikeEnumType: IndicatorType = {
     type: 'Spike',
     labelTemplate: 'Spike',
-    display: 'overlay' as const,
+    display: 'overlay',
     outputs: [] as readonly string[],
     params: [
       {
         name: 'move_method',
-        type: 'enum' as const,
+        type: 'enum',
         default: 'EXCURSION',
         choices: ['NET', 'EXCURSION', 'RANGE'] as readonly string[],
         label: 'Move method',
@@ -198,7 +198,7 @@ describe('IndicatorParamForm', () => {
   it('renders a Select for enum params with the default selected', () => {
     render(
       <IndicatorParamForm
-        type={spikeEnumType as any}
+        type={spikeEnumType}
         submitLabel="Save"
         onSubmit={() => {}}
         onCancel={() => {}}
