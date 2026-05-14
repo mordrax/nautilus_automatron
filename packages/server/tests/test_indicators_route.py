@@ -350,3 +350,74 @@ def test_build_rejects_enum_value_not_in_choices(monkeypatch):
     # Invalid value → ParamValidationError.
     with pytest.raises(ParamValidationError):
         build_indicator_from_instance("DummyEnum", {"mode": "Z"})
+
+
+# ---------------------------------------------------------------------------
+# Spike indicator registration + compute tests
+# ---------------------------------------------------------------------------
+
+from server.store.indicators import compute_indicator_instance
+
+
+def _make_spike_bars(closes: list[float]) -> list[Bar]:
+    """Build a list of Bar objects from close prices, mirroring the test's
+    existing bar-factory pattern (see top of this file)."""
+    bars: list[Bar] = []
+    for i, close in enumerate(closes):
+        prev = closes[i - 1] if i > 0 else close
+        high = max(prev, close) + 0.5
+        low = min(prev, close) - 0.5
+        bars.append(
+            Bar(
+                bar_type=_DEFAULT_BAR_TYPE,
+                open=Price.from_str(f"{prev:.5f}"),
+                high=Price.from_str(f"{high:.5f}"),
+                low=Price.from_str(f"{low:.5f}"),
+                close=Price.from_str(f"{close:.5f}"),
+                volume=Quantity.from_str("100.00"),
+                ts_event=_BASE_TS + i * _1M_NS,
+                ts_init=_BASE_TS + i * _1M_NS,
+            )
+        )
+    return bars
+
+
+def test_spike_registered_with_all_nine_params():
+    t = INDICATOR_TYPES["Spike"]
+    assert t.type == "Spike"
+    assert t.display == "overlay"
+    param_names = {p.name for p in t.params}
+    assert {
+        "move_method", "statistic", "measurement_window", "baseline_window",
+        "price_threshold", "volume_threshold", "cooldown_bars",
+        "require_volume", "max_spikes",
+    } == param_names
+
+
+def test_spike_compute_returns_sparse_series():
+    bars = _make_spike_bars([100.0] * 15)
+    result = compute_indicator_instance(
+        instance_id="test",
+        type_name="Spike",
+        params={
+            "move_method": "NET",
+            "statistic": "ZSCORE",
+            "measurement_window": 3,
+            "baseline_window": 10,
+            "price_threshold": 2.5,
+            "volume_threshold": 2.0,
+            "cooldown_bars": 10,
+            "require_volume": "NEVER",
+            "max_spikes": 100,
+        },
+        bars=bars,
+    )
+    assert result.id == "test"
+    assert result.display == "overlay"
+    assert "spike_up" in result.outputs
+    assert "spike_down" in result.outputs
+    assert len(result.outputs["spike_up"]) == len(bars)
+    assert len(result.outputs["spike_down"]) == len(bars)
+    # No spike in flat data
+    assert all(v is None for v in result.outputs["spike_up"])
+    assert all(v is None for v in result.outputs["spike_down"])
