@@ -421,3 +421,50 @@ def test_spike_compute_returns_sparse_series():
     # No spike in flat data
     assert all(v is None for v in result.outputs["spike_up"])
     assert all(v is None for v in result.outputs["spike_down"])
+
+
+def _valid_spike_params() -> dict:
+    return {
+        "move_method": "NET",
+        "statistic": "ZSCORE",
+        "measurement_window": 3,
+        "baseline_window": 10,
+        "price_threshold": 2.5,
+        "volume_threshold": 2.0,
+        "cooldown_bars": 10,
+        "require_volume": "NEVER",
+        "max_spikes": 100,
+    }
+
+
+def test_spike_rejects_invalid_enum_value():
+    """An out-of-choices enum value on the real Spike type is rejected."""
+    for bad_key, bad_value in [
+        ("move_method", "BOGUS"),
+        ("statistic", "NOT_A_STAT"),
+        ("require_volume", "MAYBE"),
+    ]:
+        with pytest.raises(ParamValidationError):
+            build_indicator_from_instance(
+                "Spike", {**_valid_spike_params(), bad_key: bad_value}
+            )
+
+
+def test_post_spike_invalid_enum_returns_400():
+    """Posting a Spike instance with a bad enum value over HTTP returns 400."""
+    bars = _make_bars(count=30)
+    client = _client_with_bars(bars)
+
+    resp = client.post(
+        f"/api/bars/{_DEFAULT_BAR_TYPE_STR}/indicators",
+        json={
+            "instances": [
+                {
+                    "id": "x",
+                    "type": "Spike",
+                    "params": {**_valid_spike_params(), "move_method": "BOGUS"},
+                }
+            ]
+        },
+    )
+    assert resp.status_code == 400

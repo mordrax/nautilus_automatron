@@ -95,9 +95,9 @@ Example with `baseline_window=20`, `measurement_window=5`:
 - …
 - baseline sample 16 → move over bars `[t-10, t-5]`
 
-That gives 16 samples per bar. Computed incrementally — new sample added each bar, oldest dropped.
+That gives 16 samples per bar. Recomputed from the rolling buffers each bar — the buffers are bounded (`maxlen = M + N + 1`), so the oldest bar drops off automatically as new bars arrive.
 
-**Warmup length.** `baseline_window + measurement_window` bars. The indicator becomes `initialized` once it has seen that many bars and the first baseline can be computed alongside the first recent move.
+**Warmup length.** `baseline_window + measurement_window + 1` bars (`M + N + 1`). The extra bar is the `prior_close` the earliest baseline window needs. The indicator becomes `initialized` on the bar that first fills the buffer, when the first baseline can be computed alongside the first recent move.
 
 ## Parameters
 
@@ -214,7 +214,7 @@ Unit tests in `packages/indicators/tests/test_spike_moves.py` (move helpers) and
 - Price-only spike when volume absent (mode latches to `PRICE_ONLY`)
 - `require_volume=ALWAYS` with absent volume → never fires
 - `require_volume=NEVER` with present volume → fires on price alone
-- Warmup boundary (no fire before `M+N` bars seen)
+- Warmup boundary (no fire before `M+N+1` bars seen)
 - Cooldown: spike at bar t, no second spike before bar `t + cooldown_bars`
 - Reset behaviour: state cleared, buffers empty, mode unset
 - Parameter validation: invalid enums, non-positive windows, `baseline_window <= measurement_window`, negative thresholds

@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from collections import deque
 from statistics import mean, median, pstdev
-from typing import Deque, List
 
 from nautilus_trader.core.correctness import PyCondition
 from nautilus_trader.indicators.base import Indicator
@@ -21,7 +20,7 @@ from indicators.spike.model import (
     Statistic,
     VolumeMode,
 )
-from indicators.spike.moves import MoveResult, compute_move
+from indicators.spike.moves import compute_move
 
 _INPUT_VOLUME_MODES: frozenset[VolumeMode] = frozenset(
     {VolumeMode.AUTO, VolumeMode.ALWAYS, VolumeMode.NEVER}
@@ -87,13 +86,13 @@ class SpikeIndicator(Indicator):
         self.max_spikes = max_spikes
 
         buf_size = baseline_window + measurement_window + 1
-        self._closes: Deque[float] = deque(maxlen=buf_size)
-        self._highs: Deque[float] = deque(maxlen=buf_size)
-        self._lows: Deque[float] = deque(maxlen=buf_size)
-        self._volumes: Deque[float] = deque(maxlen=buf_size)
-        self._timestamps: Deque[int] = deque(maxlen=buf_size)
+        self._closes: deque[float] = deque(maxlen=buf_size)
+        self._highs: deque[float] = deque(maxlen=buf_size)
+        self._lows: deque[float] = deque(maxlen=buf_size)
+        self._volumes: deque[float] = deque(maxlen=buf_size)
+        self._timestamps: deque[int] = deque(maxlen=buf_size)
 
-        self._spikes: Deque[Spike] | List[Spike] = (
+        self._spikes: deque[Spike] | list[Spike] = (
             deque(maxlen=max_spikes) if max_spikes > 0 else []
         )
 

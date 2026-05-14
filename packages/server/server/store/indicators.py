@@ -375,15 +375,16 @@ def build_indicator_from_instance(
 
         value = params[schema.name]
 
-        # Type check
+        # Type check. `bool` is a subclass of `int`, so guard against it
+        # explicitly — a boolean param value is never valid.
         if schema.type == "int":
-            if not isinstance(value, int):
+            if not isinstance(value, int) or isinstance(value, bool):
                 raise ParamValidationError(
                     f"Param '{schema.name}' for '{type_name}' must be an int, "
                     f"got {type(value).__name__}: {value!r}"
                 )
         elif schema.type == "float":
-            if not isinstance(value, (int, float)):
+            if not isinstance(value, (int, float)) or isinstance(value, bool):
                 raise ParamValidationError(
                     f"Param '{schema.name}' for '{type_name}' must be a float, "
                     f"got {type(value).__name__}: {value!r}"
