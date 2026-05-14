@@ -87,6 +87,17 @@ def test_positions_to_trades_direction():
     assert trades[1]["direction"] == "Short"
 
 
+def test_positions_to_trades_direction_raw_int():
+    """entry as raw int (feather deserialisation path): 1 → 'Long', 2 → 'Short'."""
+    positions = [
+        _mk_pos(position_id="P-int-buy", ts_opened=_BASE_TS, entry=1),
+        _mk_pos(position_id="P-int-sell", ts_opened=_BASE_TS + _1D_NS, entry=2),
+    ]
+    trades = positions_to_trades(positions)
+    assert trades[0]["direction"] == "Long"
+    assert trades[1]["direction"] == "Short"
+
+
 def test_positions_to_trades_empty():
     """Empty input returns empty output."""
     assert positions_to_trades([]) == []

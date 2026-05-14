@@ -71,7 +71,7 @@ def positions_to_trades(positions_closed: list) -> list[dict]:
             "relative_id": idx + 1,
             "position_id": str(p.position_id),
             "instrument_id": str(p.instrument_id),
-            "direction": "Long" if p.entry == OrderSide.BUY else "Short",
+            "direction": "Long" if OrderSide(p.entry) == OrderSide.BUY else "Short",
             "entry_datetime": _ns_to_iso(p.ts_opened),
             "entry_price": float(p.avg_px_open),
             "exit_datetime": _ns_to_iso(p.ts_closed),
