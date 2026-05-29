@@ -79,8 +79,6 @@ export const IndicatorChip = ({
       data-testid="indicator-chip"
       data-instance-id={instance.id}
       data-enabled={enabled}
-      role="button"
-      aria-pressed={enabled}
       title={enabled ? 'Click to hide from chart' : 'Click to show on chart'}
       onClick={onToggle}
     >
@@ -95,7 +93,12 @@ export const IndicatorChip = ({
             onClick={(e) => e.stopPropagation()}
           />
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-2" side="bottom" align="start">
+        <PopoverContent
+          className="w-auto p-2"
+          side="bottom"
+          align="start"
+          onClick={(e) => e.stopPropagation()}
+        >
           <ColorPicker color={color} onChange={onColorChange} />
         </PopoverContent>
       </Popover>

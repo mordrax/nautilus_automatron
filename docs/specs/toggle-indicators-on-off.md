@@ -78,10 +78,18 @@ lines/markers — **no `CandlestickChart` change required**.
 
 `IndicatorChip` gains two props: `enabled: boolean` and `onToggle: () => void`.
 
-- The chip root `<div>` gets `onClick={onToggle}`, `role="button"`,
-  `aria-pressed={enabled}`, `cursor-pointer`, a `title`, and
-  `data-enabled={enabled}` (for e2e assertions).
+- The chip root `<div>` gets `onClick={onToggle}`, `cursor-pointer`, a `title`,
+  and `data-enabled={enabled}` (for e2e assertions). It deliberately does **not**
+  carry `role="button"`/`aria-pressed`: a `role="button"` derives its accessible
+  name from its contents, which would absorb the inner swatch button's label and
+  collide with role-based queries (and is invalid nested-interactive ARIA). The
+  chip stays a plain clickable container; its inner controls remain proper buttons.
 - When `enabled` is false, the root div is dimmed (`opacity-50`).
+- The color picker's `PopoverContent` also calls `e.stopPropagation()` on click.
+  React routes synthetic events through the React tree, not the DOM, so a click
+  inside the portaled popover would otherwise bubble to the chip's `onClick` and
+  toggle the indicator. (The edit popover lives in `IndicatorSelector` as a
+  sibling of the chip, so it is unaffected.)
 - The three existing controls — color-swatch `PopoverTrigger`, edit pencil,
   remove X — call `e.stopPropagation()` in their `onClick` so they do not also
   toggle the chip. They remain fully functional while the chip is dimmed.
@@ -103,6 +111,7 @@ popover opens only via the explicit edit handler (`open={isEditing}`;
 |------|--------|
 | `src/hooks/use-indicators.ts` | Add `enabled` state, `loadEnabled`/`saveEnabled`, `isEnabled`, `toggleEnabled`; export the two new functions. |
 | `src/pages/RunDetailPage.tsx` | Destructure `isEnabled`/`toggleEnabled`; filter `indicatorData` by `isEnabled`; pass props to the selector. |
+| `src/pages/InstrumentPage.tsx` | Second consumer of `IndicatorInstanceSelector`; same wiring (type-forced once the selector props are required). Toggle works here too. |
 | `src/components/chart/indicator-selector/IndicatorSelector.tsx` | Add `isEnabled`/`onToggle` props; thread to `IndicatorChip`. |
 | `src/components/chart/indicator-selector/IndicatorChip.tsx` | Add `enabled`/`onToggle` props; click-to-toggle on root div; dim when disabled; `stopPropagation` on the three controls. |
 | `src/hooks/use-indicators.test.ts` | Unit tests for `isEnabled`/`toggleEnabled` + localStorage. |
