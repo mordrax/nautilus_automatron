@@ -30,6 +30,25 @@ const saveColors = (colors: Record<string, string>) => {
   }
 }
 
+const ENABLED_STORAGE_KEY = 'indicator-enabled-v1'
+
+const loadEnabled = (): Record<string, boolean> => {
+  try {
+    const stored = localStorage.getItem(ENABLED_STORAGE_KEY)
+    return stored ? JSON.parse(stored) : {}
+  } catch {
+    return {}
+  }
+}
+
+const saveEnabled = (enabled: Record<string, boolean>) => {
+  try {
+    localStorage.setItem(ENABLED_STORAGE_KEY, JSON.stringify(enabled))
+  } catch {
+    // ignore storage errors
+  }
+}
+
 const hashInstances = (instances: readonly IndicatorInstance[]): string =>
   JSON.stringify([...instances].sort((a, b) => a.id.localeCompare(b.id)))
 
@@ -37,6 +56,7 @@ export const useIndicators = (runId: string | null, barType: string) => {
   const [instances, setInstances] = useState<IndicatorInstance[]>([])
   const [detectorIds, setDetectorIds] = useState<string[]>([])
   const [colors, setColorsState] = useState<Record<string, string>>(loadColors)
+  const [enabled, setEnabledState] = useState<Record<string, boolean>>(loadEnabled)
   const [seeded, setSeeded] = useState(false)
   // mutationVersion increments on every user mutation; used to trigger debounced PUT
   const [mutationVersion, setMutationVersion] = useState(0)
@@ -133,6 +153,19 @@ export const useIndicators = (runId: string | null, barType: string) => {
     })
   }, [])
 
+  const isEnabled = useCallback(
+    (id: string): boolean => enabled[id] ?? true,
+    [enabled],
+  )
+
+  const toggleEnabled = useCallback((id: string) => {
+    setEnabledState((prev) => {
+      const next = { ...prev, [id]: !(prev[id] ?? true) }
+      saveEnabled(next)
+      return next
+    })
+  }, [])
+
   return {
     // indicators
     types: types ?? [],
@@ -143,6 +176,8 @@ export const useIndicators = (runId: string | null, barType: string) => {
     removeInstance,
     getColor,
     setColor,
+    isEnabled,
+    toggleEnabled,
     // detectors
     detectorTypes,
     detectorIds,
