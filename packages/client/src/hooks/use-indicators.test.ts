@@ -274,3 +274,53 @@ describe('useIndicators', () => {
     expect(result.current.detectorIds).toEqual(['wick_rejection', 'pivot_standard'])
   })
 })
+
+describe('useIndicators — enabled toggle', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  it('isEnabled returns true for an unknown id by default', async () => {
+    const wrapper = makeWrapper()
+    const { result } = renderHook(() => useIndicators('run-123', 'BAR_TYPE'), { wrapper })
+    await waitForSeed(result)
+    expect(result.current.isEnabled('never-added')).toBe(true)
+  })
+
+  it('toggleEnabled flips an indicator off then back on', async () => {
+    const wrapper = makeWrapper()
+    const { result } = renderHook(() => useIndicators('run-123', 'BAR_TYPE'), { wrapper })
+    await waitForSeed(result)
+
+    act(() => {
+      result.current.toggleEnabled('sma-1')
+    })
+    expect(result.current.isEnabled('sma-1')).toBe(false)
+
+    act(() => {
+      result.current.toggleEnabled('sma-1')
+    })
+    expect(result.current.isEnabled('sma-1')).toBe(true)
+  })
+
+  it('persists the disabled state to localStorage under indicator-enabled-v1', async () => {
+    const wrapper = makeWrapper()
+    const { result } = renderHook(() => useIndicators('run-123', 'BAR_TYPE'), { wrapper })
+    await waitForSeed(result)
+
+    act(() => {
+      result.current.toggleEnabled('sma-1')
+    })
+
+    const stored = JSON.parse(localStorage.getItem('indicator-enabled-v1') ?? '{}')
+    expect(stored['sma-1']).toBe(false)
+  })
+
+  it('reads an existing disabled state from localStorage on mount', async () => {
+    localStorage.setItem('indicator-enabled-v1', JSON.stringify({ 'sma-1': false }))
+    const wrapper = makeWrapper()
+    const { result } = renderHook(() => useIndicators('run-123', 'BAR_TYPE'), { wrapper })
+    await waitForSeed(result)
+    expect(result.current.isEnabled('sma-1')).toBe(false)
+  })
+})

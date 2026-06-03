@@ -4,6 +4,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { INDICATOR_COLORS } from '@/lib/chart-config'
 import type { IndicatorInstance, IndicatorType } from '@/types/api'
 import { formatLabel } from '@/lib/indicator-params'
+import { cn } from '@/lib/utils'
 
 type ColorPickerProps = {
   readonly color: string
@@ -50,6 +51,8 @@ type IndicatorChipProps = {
   readonly instance: IndicatorInstance
   readonly type: IndicatorType
   readonly color: string
+  readonly enabled: boolean
+  readonly onToggle: () => void
   readonly onEdit: () => void
   readonly onRemove: () => void
   readonly onColorChange: (color: string) => void
@@ -59,6 +62,8 @@ export const IndicatorChip = ({
   instance,
   type,
   color,
+  enabled,
+  onToggle,
   onEdit,
   onRemove,
   onColorChange,
@@ -67,9 +72,15 @@ export const IndicatorChip = ({
 
   return (
     <div
-      className="inline-flex items-center gap-1.5 pl-1 pr-1.5 py-0.5 rounded-md border border-border bg-background text-xs"
+      className={cn(
+        'inline-flex items-center gap-1.5 pl-1 pr-1.5 py-0.5 rounded-md border border-border bg-background text-xs cursor-pointer',
+        !enabled && 'opacity-50',
+      )}
       data-testid="indicator-chip"
       data-instance-id={instance.id}
+      data-enabled={enabled}
+      title={enabled ? 'Click to hide from chart' : 'Click to show on chart'}
+      onClick={onToggle}
     >
       <Popover>
         <PopoverTrigger asChild>
@@ -79,9 +90,15 @@ export const IndicatorChip = ({
             className="w-3 h-3 rounded-sm border border-border cursor-pointer shrink-0 hover:scale-110 transition-transform"
             style={{ backgroundColor: color }}
             title="Change color"
+            onClick={(e) => e.stopPropagation()}
           />
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-2" side="bottom" align="start">
+        <PopoverContent
+          className="w-auto p-2"
+          side="bottom"
+          align="start"
+          onClick={(e) => e.stopPropagation()}
+        >
           <ColorPicker color={color} onChange={onColorChange} />
         </PopoverContent>
       </Popover>
@@ -90,7 +107,10 @@ export const IndicatorChip = ({
         type="button"
         aria-label={`Edit ${label}`}
         data-testid="indicator-chip-edit"
-        onClick={onEdit}
+        onClick={(e) => {
+          e.stopPropagation()
+          onEdit()
+        }}
         className="ml-0.5 rounded-sm hover:bg-muted p-0.5 cursor-pointer"
       >
         <Pencil className="w-3 h-3" />
@@ -99,7 +119,10 @@ export const IndicatorChip = ({
         type="button"
         aria-label={`Remove ${label}`}
         data-testid="indicator-chip-remove"
-        onClick={onRemove}
+        onClick={(e) => {
+          e.stopPropagation()
+          onRemove()
+        }}
         className="rounded-sm hover:bg-muted p-0.5 cursor-pointer"
       >
         <X className="w-3 h-3" />

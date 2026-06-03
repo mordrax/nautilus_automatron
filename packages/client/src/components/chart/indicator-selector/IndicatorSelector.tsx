@@ -18,6 +18,8 @@ type IndicatorInstanceSelectorProps = {
   readonly instances: readonly IndicatorInstance[]
   readonly getColor: (id: string) => string
   readonly onSetColor: (id: string, color: string) => void
+  readonly isEnabled: (id: string) => boolean
+  readonly onToggle: (id: string) => void
   readonly onAdd: (type: string, params: Record<string, number | string>) => void
   readonly onEdit: (id: string, params: Record<string, number | string>) => void
   readonly onRemove: (id: string) => void
@@ -33,6 +35,8 @@ export const IndicatorInstanceSelector = ({
   instances,
   getColor,
   onSetColor,
+  isEnabled,
+  onToggle,
   onAdd,
   onEdit,
   onRemove,
@@ -89,6 +93,8 @@ export const IndicatorInstanceSelector = ({
                   instance={instance}
                   type={type}
                   color={getColor(instance.id)}
+                  enabled={isEnabled(instance.id)}
+                  onToggle={() => onToggle(instance.id)}
                   onEdit={() => handleEditOpen(instance)}
                   onRemove={() => onRemove(instance.id)}
                   onColorChange={color => onSetColor(instance.id, color)}

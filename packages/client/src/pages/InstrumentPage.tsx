@@ -21,6 +21,8 @@ export const InstrumentPage = ({ barType }: InstrumentPageProps) => {
     removeInstance,
     getColor,
     setColor,
+    isEnabled,
+    toggleEnabled,
     detectorTypes,
     detectorIds,
     addDetector,
@@ -51,7 +53,7 @@ export const InstrumentPage = ({ barType }: InstrumentPageProps) => {
             {ohlc && (
               <CandlestickChart
                 ohlc={ohlc}
-                indicators={indicatorData}
+                indicators={indicatorData?.filter((r) => isEnabled(r.id))}
                 keyLevels={keyLevels ?? []}
                 getIndicatorColor={getColor}
               />
@@ -69,6 +71,8 @@ export const InstrumentPage = ({ barType }: InstrumentPageProps) => {
               instances={instances}
               getColor={getColor}
               onSetColor={setColor}
+              isEnabled={isEnabled}
+              onToggle={toggleEnabled}
               onAdd={addInstance}
               onEdit={editInstance}
               onRemove={removeInstance}

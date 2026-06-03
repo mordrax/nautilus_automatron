@@ -74,6 +74,8 @@ export const RunDetailPage = ({ runId }: RunDetailPageProps) => {
     removeInstance,
     getColor,
     setColor,
+    isEnabled,
+    toggleEnabled,
     detectorTypes,
     detectorIds,
     addDetector,
@@ -119,7 +121,7 @@ export const RunDetailPage = ({ runId }: RunDetailPageProps) => {
               <CandlestickChart
                 ohlc={ohlc}
                 trades={trades}
-                indicators={indicatorData}
+                indicators={indicatorData?.filter((r) => isEnabled(r.id))}
                 keyLevels={keyLevels ?? []}
                 getIndicatorColor={getColor}
                 currentTradeIndex={currentIndex}
@@ -144,6 +146,8 @@ export const RunDetailPage = ({ runId }: RunDetailPageProps) => {
               instances={instances}
               getColor={getColor}
               onSetColor={setColor}
+              isEnabled={isEnabled}
+              onToggle={toggleEnabled}
               onAdd={addInstance}
               onEdit={editInstance}
               onRemove={removeInstance}
